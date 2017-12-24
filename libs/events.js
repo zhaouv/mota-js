@@ -89,7 +89,7 @@ events.prototype.win = function(reason) {
         core.removeGlobalAnimate(0,0,true);
         core.clearMap('all'); // 清空全地图
         core.drawText([
-            "\t[结局2]恭喜通关！你的分数是${status:hp}。"
+            "\t[结局1]恭喜通关！你的分数是${status:hp}。"
         ], function () {
             core.restart();
         })
@@ -100,7 +100,7 @@ events.prototype.lose = function(reason) {
     // 失败
     core.waitHeroToStop(function() {
         core.drawText([
-            "\t[结局1]你死了。\n如题。"
+            "\t[结局2]你死了。\n如题。"
         ], function () {
             core.restart();
         });

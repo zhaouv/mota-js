@@ -26,10 +26,16 @@ main.floors.sample4 = {
         
       ],
       "events": { // 该楼的所有可能事件列表
-  
+          "11,1": [
+              "\t[你赢了]如题,你赢了",
+              {"type": "setValue", "name": "status:atk", "value": "2" }, // 攻击提高1点
+              {"type": "setValue", "name": "flag:visitedRainbow", "value": "1" },
+              {"type": "win", "reason": "win"},
+            ],
       },
       "changeFloor": { // 楼层转换事件；该事件不能和上面的events有冲突（同位置点），否则会被覆盖
-          "11,1": {"floorId": "sample5", "stair": "downFloor"}, // 目标点：sample1层的下楼梯位置
+          //"11,1": {"floorId": "sample5", "stair": "downFloor"}, 
+          // 目标点：sample1层的下楼梯位置
       },
       "afterBattle": { // 战斗后可能触发的事件列表
           
