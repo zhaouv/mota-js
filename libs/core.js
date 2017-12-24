@@ -667,7 +667,7 @@ core.prototype.getClickLoc = function (x, y) {
 }
 
 core.prototype.onclick = function (x, y, stepPostfix) {
-    // console.log("Click: (" + x + "," + y + ")");
+    console.log("Click: (" + x + "," + y + ")");
 
     // 非游戏屏幕内
     if (x<0 || y<0 || x>12 || y>12) return;
@@ -1493,6 +1493,9 @@ core.prototype.afterBattle = function(id, x, y, callback) {
     var hint = "打败 " + core.material.enemys[id].name + "，金币+" + money;
     if (core.flags.enableExperience)
         hint += "，经验+" + core.material.enemys[id].experience;
+    //changed
+    if (core.material.enemys[id].name=='血瓶')
+        hint = "使用血瓶获得 "+String(-core.material.enemys[id].atk)+" 生命值";
     core.drawTip(hint);
 
     core.updateCheckBlockMap();
@@ -2456,7 +2459,8 @@ core.prototype.updateFg = function () {
     var mapBlocks = core.status.thisMap.blocks;
     core.clearMap('fg', 0, 0, 416, 416);
     // 没有怪物手册
-    if (!core.hasItem('book')) return;
+    //changed
+    //if (!core.hasItem('book')) return;
     core.setFont('fg', "bold 11px Arial");
     var hero_hp = core.status.hero.hp;
     if (core.flags.displayEnemyDamage) {
@@ -2478,6 +2482,8 @@ core.prototype.updateFg = function () {
                 if (damage >= 999999999) damage = "???";
                 else if (damage > 100000) damage = (damage / 10000).toFixed(1) + "w";
 
+                //changed
+                if (damage < 0) damage=-damage;
                 core.setFillStyle('fg', '#000000');
                 core.canvas.fg.fillText(damage, 32 * x + 2, 32 * (y + 1) - 2);
                 core.canvas.fg.fillText(damage, 32 * x, 32 * (y + 1) - 2);

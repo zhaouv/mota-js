@@ -415,6 +415,8 @@ events.prototype.disableQuickShop = function (shopId) {
 ////// 降低难度 //////
 
 events.prototype.decreaseHard = function() {
+    //changed
+    core.ui.closePanel();
     core.drawTip("本塔不支持降低难度！");
     /*
     if (core.status.hard == 0) {
@@ -495,6 +497,30 @@ events.prototype.afterBattle = function(enemyId,x,y,callback) {
     // 增加仇恨值
     core.setFlag('hatred', core.getFlag('hatred',0)+core.values.hatred);
     core.updateStatusBar();
+
+    // 分裂
+    //changed
+    console.log('x,y:'+x+','+y)
+    if (core.enemys.hasSpecial(special, 18) && !core.hasFlag('visitedRainbow')) {
+        var blocks=core.status.maps[core.status.floorId].blocks;
+        var enemy=[{"x":4,"y":1,"id":201,"event":{"cls":"enemys","id":"greenSlime","trigger":"battle","noPass":true,"animate":2}},
+        {"x":1,"y":3,"id":202,"event":{"cls":"enemys","id":"redSlime","trigger":"battle","noPass":true,"animate":2}},
+        {"x":9,"y":3,"id":203,"event":{"cls":"enemys","id":"blackSlime","trigger":"battle","noPass":true,"animate":2}}].filter(function(ee){return(ee.event.id==enemyId);})[0];
+        for(var direction of [[-2,0],[2,0],[0,-2],[0,2]]){
+            var len = Object.keys(Object.assign({},blocks.filter(function(block){
+                if (x+direction[0]<0 || x+direction[0]>12 || y+direction[1]<0 || y+direction[1]>12) return true;
+                return(block.x==x+direction[0] && block.y==y+direction[1]);
+            })[0]))
+            if (len==0) {
+                enemy.x=x+direction[0];
+                enemy.y=y+direction[1];
+                blocks.push(JSON.parse(JSON.stringify(enemy)));
+            }
+        }
+        core.drawMap(core.status.floorId);
+        core.drawHero(core.getHeroLoc('direction'), core.getHeroLoc('x'), core.getHeroLoc('y'), 'stop');
+        core.updateFg()
+    }
 
     // 如果已有事件正在处理中
     if (core.status.lockControl) {
