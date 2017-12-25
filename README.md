@@ -1,6 +1,6 @@
 # Pacman Tower
 
-<span style='font-size:1.4em'><b>吃豆人魔塔</b></span>
+<span style='font-size:1.4em'><b><a href="https://github.com/zhaouv/mota-js/tree/pacmanTower">吃豆人魔塔</a></b></span>
 
 幽灵吸收玩家生命后会分裂,在十字形的四个位置,如果是空地则会出现同样的幽灵
 

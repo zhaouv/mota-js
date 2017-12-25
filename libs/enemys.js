@@ -26,7 +26,7 @@ enemys.prototype.init = function () {
         'brownWizard': {'name': '血瓶', 'hp': 2, 'atk': -55, 'def': 0, 'money': 16, 'experience': 0, 'special': 0}, // 领域怪需要加value表示领域伤害的数值
         'redWizard': {'name': '血瓶', 'hp': 2, 'atk': -60, 'def': 0, 'money': 160, 'experience': 0, 'special': 0},
         'yellowGuard': {'name': '血瓶', 'hp': 2, 'atk': 10, 'def': 0, 'money': 10, 'experience': 0, 'special': 0},
-        'blueGuard': {'name': '血瓶', 'hp': 2, 'atk': 10, 'def': 0, 'money': 0, 'experience': 0, 'special': 0},
+        'blueGuard': {'name': '血瓶', 'hp': 2, 'atk': -16, 'def': 0, 'money': 0, 'experience': 0, 'special': 0},
         'redGuard': {'name': '血瓶', 'hp': 2, 'atk': 10, 'def': 0, 'money': 0, 'experience': 0, 'special': 0},
         'swordsman': {'name': '血瓶', 'hp': 2, 'atk': 10, 'def': 0, 'money': 6, 'experience': 0, 'special': 0},
         'soldier': {'name': '血瓶', 'hp': 2, 'atk': 10, 'def': 0, 'money': 0, 'experience': 0, 'special': 0},
