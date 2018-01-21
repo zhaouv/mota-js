@@ -31,14 +31,15 @@ data.prototype.init = function() {
                 "poison": false, // 毒
                 "weak": false, // 衰
                 "curse": false, // 咒
-            }
+            },
+            "steps": 0, // 行走步数统计
         },
         "startText": [ // 游戏开始前剧情。如果无剧情直接留一个空数组即可。
             
         ],
-        "shops": { // 定义全局商店（即快捷商店）
+        "shops": [ // 定义全局商店（即快捷商店）
             
-        },
+        ],
     }
     // 各种数值；一些数值可以在这里设置
     this.values = {
@@ -55,6 +56,8 @@ data.prototype.init = function() {
         "bluePotion": 250, // 蓝血瓶加血数值
         "yellowPotion": 500, // 黄血瓶加血数值
         "greenPotion": 800, // 绿血瓶加血数值
+        "sword0": 0, // 默认装备折断的剑的攻击力
+        "shield0": 0, // 默认装备残破的盾的防御力
         "sword1": 10, // 铁剑加攻数值
         "shield1": 10, // 铁盾加防数值
         "sword2": 20, // 银剑加攻数值
@@ -76,23 +79,35 @@ data.prototype.init = function() {
     }
     // 系统FLAG，在游戏运行中中请不要修改它。
     this.flags = {
-        /****** 角色状态相关 ******/
-        "enableMDef": false, // 是否涉及勇士的魔防值；如果此项为false，则状态栏不会显示勇士的魔防值
-        "enableExperience": true, // 是否涉及经验值；如果此项为false，则状态栏和怪物手册均将不会显示经验值
+        /****** 状态栏相关 ******/
+        "enableFloor": true, // 是否在状态栏显示当前楼层
+        "enableLv": false, // 是否在状态栏显示当前等级
+        "enableMDef": false, // 是否在状态栏及战斗界面显示魔防（护盾）
+        "enableMoney": true, // 是否在状态栏、怪物手册及战斗界面显示金币
+        "enableExperience": true, // 是否在状态栏、怪物手册及战斗界面显示经验
+        "enableLevelUp": false, // 是否允许等级提升（进阶）；如果上面enableExperience为false，则此项恒视为false
         "enableDebuff": false, // 是否涉及毒衰咒；如果此项为false则不会在状态栏中显示毒衰咒的debuff
+        ////// 上述的几个开关将直接影响状态栏的显示效果 //////
         /****** 道具相关 ******/
         "flyNearStair": true, // 是否需要在楼梯边使用传送器
         "pickaxeFourDirections": false, // 使用破墙镐是否四个方向都破坏；如果false则只破坏面前的墙壁
         "bombFourDirections": false, // 使用炸弹是否四个方向都会炸；如果false则只炸面前的怪物（即和圣锤等价）
         "bigKeyIsBox": false, // 如果此项为true，则视为钥匙盒，红黄蓝钥匙+1；若为false，则视为大黄门钥匙
+        "equipment": false, // 剑和盾是否直接作为装备。如果此项为true，则作为装备，需要在道具栏使用，否则将直接加属性。
+        /****** 怪物相关 ******/
+        "enableNegativeDamage": true, // 是否支持负伤害（回血）
+        "hatredDecrease": true, // 是否在和仇恨怪战斗后减一半的仇恨值，此项为false则和仇恨怪不会扣减仇恨值。
+        "betweenAttackCeil": false, // 夹击方式是向上取整还是向下取整。如果此项为true则为向上取整，为false则为向下取整
         /****** 系统相关 ******/
         "startDirectly": true, // 点击“开始游戏”后是否立刻开始游戏而不显示难度选择界面
+        "canOpenBattleAnimate": false, // 是否允许用户开启战斗过程；如果此项为false，则下面两项均强制视为false
+        "showBattleAnimateConfirm": false, // 是否在游戏开始时提供“是否开启战斗动画”的选项
         "battleAnimate": false, // 是否默认显示战斗动画；用户可以手动在菜单栏中开关
         "displayEnemyDamage": true, // 是否地图怪物显伤；用户可以手动在菜单栏中开关
         "displayExtraDamage": false, // 是否地图高级显伤（领域、夹击等）；用户可以手动在菜单栏中开关
         "enableGentleClick": false, // 是否允许轻触（获得面前物品）
-        "portalWithoutTrigger": false, // 经过楼梯、传送门时是否能“穿透”。穿透的意思是，自动寻路得到的的路径中间经过了楼梯，行走时是否触发楼层转换事件
-        "potionWhileRouting": true, // 寻路算法是否经过血瓶；如果该项为false，则寻路算法会自动尽量绕过血瓶
+        "potionWhileRouting": false, // 寻路算法是否经过血瓶；如果该项为false，则寻路算法会自动尽量绕过血瓶
+        "enableViewMaps": true, // 是否支持在菜单栏中查看所有楼层的地图
     }
 }
 

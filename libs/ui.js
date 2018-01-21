@@ -12,28 +12,20 @@ ui.prototype.init = function () {
 main.instance.ui = new ui();
 
 
-/**
- * 关闭一切UI窗口
- * @param clearData 是否同时清掉data层
- */
-ui.prototype.closePanel = function (clearData) {
+////// 结束一切事件和绘制，关闭UI窗口，返回游戏进程 //////
+ui.prototype.closePanel = function () {
     core.status.boxAnimateObjs = [];
     core.setBoxAnimate();
     core.clearMap('ui', 0, 0, 416, 416);
     core.setAlpha('ui', 1.0);
-    if (core.isset(clearData) && clearData)
-        core.clearMap('data', 0, 0, 416, 416);
     core.unLockControl();
     core.status.event.data = null;
     core.status.event.id = null;
+    core.status.event.selection = null;
+    core.status.event.ui = null;
 }
 
-
-/**
- * 绘制对话框
- * @param content
- * @param id
- */
+////// 绘制一个对话框 //////
 ui.prototype.drawTextBox = function(content) {
 
     // 获得name, image, icon
@@ -135,7 +127,7 @@ ui.prototype.drawTextBox = function(content) {
     core.fillText('ui', '<点击任意位置继续>', 270, top+height-13, '#CCCCCC', '13px Verdana');
 }
 
-// 绘制选项事件
+////// 绘制一个选项界面 //////
 ui.prototype.drawChoices = function(content, choices) {
 
     var background = core.canvas.ui.createPattern(core.material.ground, "repeat");
@@ -143,6 +135,8 @@ ui.prototype.drawChoices = function(content, choices) {
     core.clearMap('ui', 0, 0, 416, 416);
     core.setAlpha('ui', 1);
     core.setFillStyle('ui', background);
+
+    core.status.event.ui = {"text": content, "choices": choices};
 
     // Step 1: 计算长宽高
     var length = choices.length;
@@ -258,21 +252,29 @@ ui.prototype.drawChoices = function(content, choices) {
     // 选项
     core.canvas.ui.textAlign = "center";
     for (var i = 0; i < choices.length; i++) {
-        core.fillText('ui', core.replaceText(choices[i].text), 208, choice_top + 32 * i, "#FFFFFF", "bold 17px Verdana");
+        core.fillText('ui', core.replaceText(choices[i].text || choices[i]), 208, choice_top + 32 * i, "#FFFFFF", "bold 17px Verdana");
+    }
+
+    if (choices.length>0) {
+        if (!core.isset(core.status.event.selection)) core.status.event.selection=0;
+        if (core.status.event.selection<0) core.status.event.selection=0;
+        if (core.status.event.selection>=choices.length) core.status.event.selection=choices.length-1;
+        var len = core.canvas.ui.measureText(core.replaceText(choices[core.status.event.selection].text || choices[core.status.event.selection])).width;
+        core.strokeRect('ui', 208-len/2-5, choice_top + 32 * core.status.event.selection - 20, len+10, 28, "#FFD700", 2);
     }
     return;
-
 }
 
-/**
- * 绘制确认/取消警告
- * @param text
- * @param yesCallback
- * @param noCallback
- */
+////// 绘制一个确认/取消的警告页面 //////
 ui.prototype.drawConfirmBox = function (text, yesCallback, noCallback) {
+    core.lockControl();
+
     core.status.event.id = 'confirmBox';
     core.status.event.data = {'yes': yesCallback, 'no': noCallback};
+    core.status.event.ui = text;
+
+    if (!core.isset(core.status.event.selection) || core.status.event.selection>1) core.status.event.selection=1;
+    if (core.status.event.selection<0) core.status.event.selection=0;
 
     var background = core.canvas.ui.createPattern(core.material.ground, "repeat");
     core.clearMap('ui', 0, 0, 416, 416);
@@ -291,8 +293,10 @@ ui.prototype.drawConfirmBox = function (text, yesCallback, noCallback) {
     var top = 140 - (lines-1)*30;
     var right = 416 - 2 * left, bottom = 416 - 140 - top;
 
-    core.fillRect('ui', left, top, right, bottom, background);
-    core.strokeRect('ui', left - 1, top - 1, right + 1, bottom + 1, '#FFFFFF', 2);
+    if (core.isPlaying())
+        core.fillRect('ui', left, top, right, bottom, background);
+    if (core.isPlaying())
+        core.strokeRect('ui', left - 1, top - 1, right + 1, bottom + 1, '#FFFFFF', 2);
     core.canvas.ui.textAlign = "center";
     for (var i in contents) {
         core.fillText('ui', contents[i], 208, top + 50 + i*30, "#FFFFFF");
@@ -300,58 +304,40 @@ ui.prototype.drawConfirmBox = function (text, yesCallback, noCallback) {
 
     core.fillText('ui', "确定", 208 - 38, top + bottom - 35, "#FFFFFF", "bold 17px Verdana");
     core.fillText('ui', "取消", 208 + 38, top + bottom - 35);
+
+    var len=core.canvas.ui.measureText("确定").width;
+    if (core.status.event.selection==0) {
+        core.strokeRect('ui', 208-38-len/2-5, top+bottom-35-20, len+10, 28, "#FFD700", 2);
+    }
+    if (core.status.event.selection==1) {
+        core.strokeRect('ui', 208+38-len/2-5, top+bottom-35-20, len+10, 28, "#FFD700", 2);
+    }
+
 }
 
-////// 绘制开关界面 //////
+////// 绘制系统设置界面 //////
 ui.prototype.drawSwitchs = function() {
-    // 背景音乐、背景音效、战斗动画、怪物显伤、领域显伤、返回
-
     core.status.event.id = 'switchs';
 
-    var background = core.canvas.ui.createPattern(core.material.ground, "repeat");
-    core.clearMap('ui', 0, 0, 416, 416);
-    core.setAlpha('ui', 1);
-    core.setFillStyle('ui', background);
-    var left = 97, top = 64 + 32, right = 416 - 2 * left, bottom = 416 - 2 * top;
-    core.fillRect('ui', left, top, right, bottom, background);
-    core.strokeRect('ui', left - 1, top - 1, right + 1, bottom + 1, '#FFFFFF', 2);
-
-    core.canvas.ui.textAlign = "center";
-    core.fillText('ui', "背景音乐： " + (core.musicStatus.soundStatus ? "[ON]" : "[OFF]"), 208, top + 56, "#FFFFFF", "bold 17px Verdana");
-    // core.fillText('ui', "背景音效" + (core.musicStatus.soundStatus ? "[ON]" : "[OFF]"), 208, top + 88, "#FFFFFF", "bold 17px Verdana")
-    core.fillText('ui', "战斗动画： " + (core.flags.battleAnimate ? "[ON]" : "[OFF]"), 208, top + 88, "#FFFFFF", "bold 17px Verdana")
-    core.fillText('ui', "怪物显伤： " + (core.flags.displayEnemyDamage ? "[ON]" : "[OFF]"), 208, top + 120, "#FFFFFF", "bold 17px Verdana")
-    core.fillText('ui', "领域显伤： " + (core.flags.displayExtraDamage ? "[ON]" : "[OFF]"), 208, top + 152, "#FFFFFF", "bold 17px Verdana")
-
-    core.fillText('ui', "返回上级菜单", 208, top + 184, "#FFFFFF", "bold 17px Verdana");
+    var choices = [
+        "背景音乐："+(core.musicStatus.bgmStatus ? "[ON]" : "[OFF]"),
+        "背景音效："+(core.musicStatus.soundStatus ? "[ON]" : "[OFF]"),
+        "战斗动画： "+(core.flags.battleAnimate ? "[ON]" : "[OFF]"),
+        "怪物显伤： "+(core.flags.displayEnemyDamage ? "[ON]" : "[OFF]"),
+        "领域显伤： "+(core.flags.displayExtraDamage ? "[ON]" : "[OFF]"),
+        "下载离线版本",
+        "返回主菜单"
+    ];
+    this.drawChoices(null, choices);
 }
 
-/**
- * 绘制菜单栏
- * @param need
- */
-ui.prototype.drawSettings = function (need) {
-    if (!core.checkStatus('settings', need))
-        return;
+////// 绘制系统菜单栏 //////
+ui.prototype.drawSettings = function () {
+    core.status.event.id = 'settings';
 
-    var background = core.canvas.ui.createPattern(core.material.ground, "repeat");
-    core.clearMap('ui', 0, 0, 416, 416);
-    core.setAlpha('ui', 1);
-    core.setFillStyle('ui', background);
-    var left = 97, top = 64, right = 416 - 2 * left, bottom = 416 - 2 * top;
-    core.fillRect('ui', left, top, right, bottom, background);
-    core.strokeRect('ui', left - 1, top - 1, right + 1, bottom + 1, '#FFFFFF', 2);
-
-    core.canvas.ui.textAlign = "center";
-    core.fillText('ui', "系统设置", 208, top + 56, "#FFFFFF", "bold 17px Verdana");
-    core.fillText('ui', "降低难度", 208, top + 88, "#FFFFFF", "bold 17px Verdana")
-    core.fillText('ui', "快捷商店", 208, top + 120, "#FFFFFF", "bold 17px Verdana");
-    core.fillText('ui', "同步存档", 208, top + 152, "#FFFFFF", "bold 17px Verdana");
-    // core.fillText('ui', "清空存档", 208, top + 152, "#FFFFFF", "bold 17px Verdana");
-    core.fillText('ui', "重新开始", 208, top + 184, "#FFFFFF", "bold 17px Verdana");
-    core.fillText('ui', "关于本塔", 208, top + 216, "#FFFFFF", "bold 17px Verdana");
-    core.fillText('ui', "返回游戏", 208, top + 248, "#FFFFFF", "bold 17px Verdana");
-
+    this.drawChoices(null, [
+        "系统设置", "快捷商店", "浏览地图", "同步存档", "重新开始", "数据统计", "操作帮助", "关于本塔", "返回游戏"
+    ]);
 }
 
 /**
@@ -364,30 +350,21 @@ ui.prototype.drawQuickShop = function (need) {
         return;
 
     core.status.event.id = 'selectShop';
-    var background = core.canvas.ui.createPattern(core.material.ground, "repeat");
-    core.clearMap('ui', 0, 0, 416, 416);
-    core.setAlpha('ui', 1);
-    core.setFillStyle('ui', background);
 
     var shopList = core.status.shops, keys = Object.keys(shopList);
-    var len = keys.length + 1;
-    if (len % 2 == 0) len++;
 
-    var left = 97, top = 208 - 32 - 16 * len, right = 416 - 2 * left, bottom = 416 - 2 * top;
-    core.fillRect('ui', left, top, right, bottom, background);
-    core.strokeRect('ui', left - 1, top - 1, right + 1, bottom + 1, '#FFFFFF', 2);
-
-    core.canvas.ui.textAlign = "center";
-    for (var i = 0; i < keys.length; i++) {
-        core.fillText('ui', shopList[keys[i]].textInList, 208, top + 56 + 32 * i, "#FFFFFF", "bold 17px Verdana");
+    var choices = [];
+    for (var i=0;i<keys.length;i++) {
+        choices.push(shopList[keys[i]].textInList);
     }
-
-    core.fillText('ui', "返回游戏", 208, top + bottom - 40, "#FFFFFF", "bold 17px Verdana");
+    choices.push("返回游戏");
+    this.drawChoices(null, choices);
     //changed
     core.ui.closePanel();
     core.drawTip("本塔不包含商店");
 }
 
+////// 绘制战斗动画 //////
 ui.prototype.drawBattleAnimate = function(monsterId, callback) {
 
     // UI层
@@ -403,12 +380,12 @@ ui.prototype.drawBattleAnimate = function(monsterId, callback) {
 
     hero_hp -= core.enemys.getExtraDamage(monster);
 
-    if (core.enemys.hasSpecial(mon_special, 2)) hero_def=0; // 魔攻
-    if (core.enemys.hasSpecial(mon_special, 3) && mon_def<hero_atk) mon_def=hero_atk-1; // 坚固
     if (core.enemys.hasSpecial(mon_special, 10)) { // 模仿
         mon_atk=hero_atk;
         mon_def=hero_def;
     }
+    if (core.enemys.hasSpecial(mon_special, 2)) hero_def=0; // 魔攻
+    if (core.enemys.hasSpecial(mon_special, 3) && mon_def<hero_atk) mon_def=hero_atk-1; // 坚固
 
     // 实际操作
     var turn = 0; // 0为勇士攻击
@@ -418,7 +395,7 @@ ui.prototype.drawBattleAnimate = function(monsterId, callback) {
     var turns = 2;
     if (core.enemys.hasSpecial(mon_special, 4)) turns=3;
     if (core.enemys.hasSpecial(mon_special, 5)) turns=4;
-    if (core.enemys.hasSpecial(mon_special, 6)) turns=5;
+    if (core.enemys.hasSpecial(mon_special, 6)) turns=1+(monster.n||4);
 
 
     // 初始伤害
@@ -436,7 +413,7 @@ ui.prototype.drawBattleAnimate = function(monsterId, callback) {
         hero_mdef=0;
     }
 
-    var specialText = core.enemys.getSpecialText(monsterId);
+    var specialTexts = core.enemys.getSpecialText(monsterId);
 
     var background = core.canvas.ui.createPattern(core.material.ground, "repeat");
 
@@ -444,7 +421,10 @@ ui.prototype.drawBattleAnimate = function(monsterId, callback) {
     var left=10, right=416-2*left;
 
 
-    var lines = core.flags.enableExperience?5:4;
+    // var lines = core.flags.enableExperience?5:4;
+    var lines = 3;
+    if (core.flags.enableMDef || core.flags.enableMoney || core.flags.enableExperience) lines=4;
+    if (core.flags.enableMoney && core.flags.enableExperience) lines=5;
 
     var lineHeight = 60;
     var height = lineHeight * lines + 50;
@@ -457,6 +437,8 @@ ui.prototype.drawBattleAnimate = function(monsterId, callback) {
     core.setAlpha('ui', 1);
     core.strokeRect('ui', left - 1, top - 1, right + 1, bottom + 1, '#FFFFFF', 2);
     core.clearMap('data',0,0,416,416);
+
+    clearInterval(core.interval.tipAnimate);
     core.setAlpha('data', 1);
     core.setOpacity('data', 1);
     core.status.boxAnimateObjs = [];
@@ -474,7 +456,6 @@ ui.prototype.drawBattleAnimate = function(monsterId, callback) {
     core.canvas.ui.textAlign='center';
     core.fillText('ui', core.status.hero.name, left+margin+boxWidth/2, top+margin+heroHeight+40, '#FFD700', 'bold 22px Verdana');
     core.fillText('ui', "怪物", left+right-margin-boxWidth/2, top+margin+32+40);
-    var specialTexts = specialText.split(" ");
     for (var i=0, j=0; i<specialTexts.length;i++) {
         if (specialTexts[i]!='') {
             core.fillText('ui', specialTexts[i], left+right-margin-boxWidth/2, top+margin+32+44+20*(++j), '#FF6A6A', '15px Verdana');
@@ -527,7 +508,7 @@ ui.prototype.drawBattleAnimate = function(monsterId, callback) {
     if (core.flags.enableMDef) {
         textTop += lineHeight;
         core.canvas.ui.textAlign='left';
-        core.fillText('ui', "魔防", left_start, textTop, '#DDDDDD', '16px Verdana');
+        core.fillText('ui', "护盾", left_start, textTop, '#DDDDDD', '16px Verdana');
         core.drawLine('ui', left_start, textTop + 8, left_end, textTop + 8, '#FFFFFF', 2);
         core.canvas.data.textAlign='right';
         core.fillText('data', hero_mdef, left_end, textTop+26, '#DDDDDD', 'bold 16px Verdana');
@@ -555,12 +536,14 @@ ui.prototype.drawBattleAnimate = function(monsterId, callback) {
     core.canvas.ui.textAlign='left';
     core.fillText('ui', mon_def, right_start, textTop+26, '#DDDDDD', 'bold 16px Verdana');
 
-    textTop += lineHeight;
-    core.canvas.ui.textAlign='right';
-    core.fillText('ui', "金币", right_end, textTop, '#DDDDDD', '16px Verdana');
-    core.drawLine('ui', right_start, textTop + 8, right_end, textTop + 8, '#FFFFFF', 2);
-    core.canvas.ui.textAlign='left';
-    core.fillText('ui', mon_money, right_start, textTop+26, '#DDDDDD', 'bold 16px Verdana');
+    if (core.flags.enableMoney) {
+        textTop += lineHeight;
+        core.canvas.ui.textAlign = 'right';
+        core.fillText('ui', "金币", right_end, textTop, '#DDDDDD', '16px Verdana');
+        core.drawLine('ui', right_start, textTop + 8, right_end, textTop + 8, '#FFFFFF', 2);
+        core.canvas.ui.textAlign = 'left';
+        core.fillText('ui', mon_money, right_start, textTop + 26, '#DDDDDD', 'bold 16px Verdana');
+    }
 
     if (core.flags.enableExperience) {
         textTop += lineHeight;
@@ -576,15 +559,9 @@ ui.prototype.drawBattleAnimate = function(monsterId, callback) {
 
     core.canvas.ui.textAlign='right';
     core.fillText("ui", "S", right_start-8, 208+15, "#FFFFFF", "italic bold 40px Verdana");
-/*
-    core.drawLine('data', left + right - margin - boxWidth + 6, top+margin+boxWidth-6,
-        left+right-margin-6, top+margin+6, '#FF0000', 4);
-    core.drawLine('data', left + margin + 6, top+margin+heroHeight+(boxWidth-32)-6,
-        left+margin+boxWidth-6, top+margin+6, '#FF0000', 4);
-*/
 
     var battleInterval = setInterval(function() {
-        core.playSound("attack", "ogg");
+        core.playSound("attack.ogg");
 
         if (turn==0) {
             // 勇士攻击
@@ -606,8 +583,7 @@ ui.prototype.drawBattleAnimate = function(monsterId, callback) {
 
             // 反击
             if (core.enemys.hasSpecial(mon_special, 8)) {
-                var counterDamage = parseInt(core.values.counterAttack * hero_atk);
-                hero_mdef -= counterDamage;
+                hero_mdef -= parseInt(core.values.counterAttack * hero_atk);
 
                 if (hero_mdef<0) {
                     hero_hp+=hero_mdef;
@@ -676,10 +652,7 @@ ui.prototype.drawBattleAnimate = function(monsterId, callback) {
     }, 500);
 }
 
-/**
- * 绘制“请等候...”
- * @param text
- */
+////// 绘制等待界面 //////
 ui.prototype.drawWaiting = function(text) {
 
     core.lockControl();
@@ -690,42 +663,32 @@ ui.prototype.drawWaiting = function(text) {
     core.setAlpha('ui', 1);
     core.setFillStyle('ui', background);
 
-    var left = 97, top = 208 - 32 - 16, right = 416 - 2 * left, bottom = 416 - 2 * top;
+    core.setFont('ui', 'bold 17px Verdana');
+    var text_length = core.canvas.ui.measureText(text).width;
+
+    var right = Math.max(text_length+50, 220);
+    var left = 208-right/2, top = 208 - 32 - 16, bottom = 416 - 2 * top;
+
     core.fillRect('ui', left, top, right, bottom, background);
     core.strokeRect('ui', left - 1, top - 1, right + 1, bottom + 1, '#FFFFFF', 2);
 
     core.canvas.ui.textAlign = "center";
-    core.fillText('ui', text, 208, top + 56, "#FFFFFF", "bold 17px Verdana");
+    core.fillText('ui', text, 208, top + 56, '#FFFFFF');
 
 }
 
-/**
- * 绘制“存档同步”选项
- */
+////// 绘制存档同步界面 //////
 ui.prototype.drawSyncSave = function () {
 
     core.status.event.id = 'syncSave';
-    var background = core.canvas.ui.createPattern(core.material.ground, "repeat");
-    core.clearMap('ui', 0, 0, 416, 416);
-    core.setAlpha('ui', 1);
-    core.setFillStyle('ui', background);
 
-    var left = 97, top = 208 - 32 - 16 * 3, right = 416 - 2 * left, bottom = 416 - 2 * top + 32;
-    core.fillRect('ui', left, top, right, bottom, background);
-    core.strokeRect('ui', left - 1, top - 1, right + 1, bottom + 1, '#FFFFFF', 2);
+    this.drawChoices(null, [
+        "同步存档到服务器", "从服务器加载存档", "存档至本地文件", "从本地文件读档", "清空所有存档", "返回主菜单"
+    ]);
 
-    core.canvas.ui.textAlign = "center";
-    core.fillText('ui', "同步存档到服务器", 208, top + 56, "#FFFFFF", "bold 17px Verdana");
-    core.fillText('ui', "从服务器加载存档", 208, top + 56 + 32, "#FFFFFF", "bold 17px Verdana");
-    core.fillText('ui', "清空本地存档", 208, top + 56 + 64, "#FFFFFF", "bold 17px Verdana");
-    core.fillText('ui', "返回游戏", 208, top + bottom - 40);
 }
 
-/**
- * 绘制“分页”
- * @param page
- * @param totalPage
- */
+////// 绘制分页 //////
 ui.prototype.drawPagination = function (page, totalPage) {
 
     core.setFont('ui', 'bold 15px Verdana');
@@ -747,11 +710,8 @@ ui.prototype.drawPagination = function (page, totalPage) {
 
 }
 
-/**
- * 绘制怪物手册
- * @param page 页数
- */
-ui.prototype.drawEnemyBook = function (page) {
+////// 绘制怪物手册 //////
+ui.prototype.drawBook = function (index) {
 
     var enemys = core.enemys.getCurrentEnemys();
     var background = core.canvas.ui.createPattern(core.material.ground, "repeat");
@@ -781,11 +741,12 @@ ui.prototype.drawEnemyBook = function (page) {
         return;
     }
 
+    if (index<0) index=0;
+    if (index>=enemys.length) index=enemys.length-1;
     var perpage = 6;
+    var page=parseInt(index/perpage)+1;
     var totalPage = parseInt((enemys.length - 1) / perpage) + 1;
-    if (page < 1) page = 1;
-    if (page > totalPage) page = totalPage;
-    core.status.event.data = page;
+    core.status.event.data = index;
     var start = (page - 1) * perpage, end = Math.min(page * perpage, enemys.length);
 
     enemys = enemys.slice(start, end);
@@ -819,25 +780,34 @@ ui.prototype.drawEnemyBook = function (page) {
         core.fillText('ui', enemy.atk, 285, 62 * i + 32, '#DDDDDD', 'bold 13px Verdana');
         core.fillText('ui', '防御', 335, 62 * i + 32, '#DDDDDD', '13px Verdana');
         core.fillText('ui', enemy.def, 365, 62 * i + 32, '#DDDDDD', 'bold 13px Verdana');
-        core.fillText('ui', '金币', 165, 62 * i + 50, '#DDDDDD', '13px Verdana');
-        core.fillText('ui', enemy.money, 195, 62 * i + 50, '#DDDDDD', 'bold 13px Verdana');
 
-        var damage_offset = 326;
+        var expOffset = 165;
+        if (core.flags.enableMoney) {
+            core.fillText('ui', '金币', 165, 62 * i + 50, '#DDDDDD', '13px Verdana');
+            core.fillText('ui', enemy.money, 195, 62 * i + 50, '#DDDDDD', 'bold 13px Verdana');
+            expOffset = 255;
+        }
+
         if (core.flags.enableExperience) {
             core.canvas.ui.textAlign = "left";
-            core.fillText('ui', '经验', 255, 62 * i + 50, '#DDDDDD', '13px Verdana');
-            core.fillText('ui', enemy.experience, 285, 62 * i + 50, '#DDDDDD', 'bold 13px Verdana');
-            damage_offset = 361;
+            core.fillText('ui', '经验', expOffset, 62 * i + 50, '#DDDDDD', '13px Verdana');
+            core.fillText('ui', enemy.experience, expOffset + 30, 62 * i + 50, '#DDDDDD', 'bold 13px Verdana');
         }
+
+        var damageOffet = 281;
+        if (core.flags.enableMoney && core.flags.enableExperience)
+            damageOffet = 361;
+        else if (core.flags.enableMoney || core.flags.enableExperience)
+            damageOffet = 326;
+
 
         core.canvas.ui.textAlign = "center";
         var damage = enemy.damage;
         var color = '#FFFF00';
         if (damage >= core.status.hero.hp) color = '#FF0000';
-        if (damage == 0) color = '#00FF00';
+        if (damage <= 0) color = '#00FF00';
         if (damage >= 999999999) damage = '无法战斗';
-        var length = core.canvas.ui.measureText(damage).width;
-        core.fillText('ui', damage, damage_offset, 62 * i + 50, color, 'bold 13px Verdana');
+        core.fillText('ui', damage, damageOffet, 62 * i + 50, color, 'bold 13px Verdana');
 
         core.canvas.ui.textAlign = "left";
 
@@ -848,15 +818,79 @@ ui.prototype.drawEnemyBook = function (page) {
         core.fillText('ui', '1防', 335, 62 * i + 68, '#DDDDDD', '13px Verdana');
         core.fillText('ui', enemy.defDamage, 365, 62 * i + 68, '#DDDDDD', 'bold 13px Verdana');
 
+        if (index == start+i) {
+            core.strokeRect('ui', 10, 62 * i + 13, 416-10*2,  62, '#FFD700');
+        }
+
     }
     core.setBoxAnimate();
     this.drawPagination(page, totalPage);
 }
 
-/**
- * 绘制楼传器
- * @param page
- */
+////// 绘制怪物属性的详细信息 //////
+ui.prototype.drawBookDetail = function (index) {
+    var enemys = core.enemys.getCurrentEnemys();
+    if (enemys.length==0) return;
+    if (index<0) index=0;
+    if (index>=enemys.length) index=enemys.length-1;
+
+    var enemy = enemys[index];
+    var enemyId=enemy.id;
+    var hints=core.enemys.getSpecialHint(core.enemys.getEnemys(enemyId));
+
+    if (hints.length==0) {
+        core.drawTip("该怪物无特殊属性！");
+        return;
+    }
+    var content=hints.join("\n");
+
+    core.status.event.id = 'book-detail';
+    clearInterval(core.interval.tipAnimate);
+
+    core.clearMap('data', 0, 0, 416, 416);
+    core.setOpacity('data', 1);
+
+    var left=10, right=416-2*left;
+    var content_left = left + 25;
+
+    var validWidth = right-(content_left-left)-13;
+    var contents = core.splitLines("data", content, validWidth, '16px Verdana');
+
+    var height = 416 - 10 - Math.min(416-24*(contents.length+1)-65, 250);
+    var top = (416-height)/2, bottom = height;
+
+    // var left = 97, top = 64, right = 416 - 2 * left, bottom = 416 - 2 * top;
+    core.setAlpha('data', 0.9);
+    core.fillRect('data', left, top, right, bottom, '#000000');
+    core.setAlpha('data', 1);
+    core.strokeRect('data', left - 1, top - 1, right + 1, bottom + 1, '#FFFFFF', 2);
+
+    // 名称
+    core.canvas.data.textAlign = "left";
+
+    core.fillText('data', enemy.name, content_left, top + 30, '#FFD700', 'bold 22px Verdana');
+    var content_top = top + 57;
+
+    for (var i=0;i<contents.length;i++) {
+        // core.fillText('data', contents[i], content_left, content_top, '#FFFFFF', '16px Verdana');
+        var text=contents[i];
+        var index=text.indexOf("：");
+        if (index>=0) {
+            var x1 = text.substring(0, index+1);
+            core.fillText('data', x1, content_left, content_top, '#FF6A6A', 'bold 16px Verdana');
+            var len=core.canvas.data.measureText(x1).width;
+            core.fillText('data', text.substring(index+1), content_left+len, content_top, '#FFFFFF', '16px Verdana');
+        }
+        else {
+            core.fillText('data', contents[i], content_left, content_top, '#FFFFFF', '16px Verdana');
+        }
+        content_top+=24;
+    }
+
+    core.fillText('data', '<点击任意位置继续>', 270, top+height-13, '#CCCCCC', '13px Verdana');
+}
+
+////// 绘制楼层传送器 //////
 ui.prototype.drawFly = function(page) {
 
     if (page<0) page=0;
@@ -879,17 +913,62 @@ ui.prototype.drawFly = function(page) {
     if (page>0)
         core.fillText('ui', '▼', 356, 247+64, '#FFFFFF', "17px Verdana");
     core.strokeRect('ui', 20, 100, 273, 273, '#FFFFFF', 2);
-    this.drawThumbnail('ui', core.status.maps[floorId].blocks, 20, 100, 273);
+    this.drawThumbnail(floorId, 'ui', core.status.maps[floorId].blocks, 20, 100, 273);
 }
 
-/**
- * 绘制工具栏
- * @param selectId
- */
-ui.prototype.drawToolbox = function(selectId) {
+////// 绘制浏览地图界面 //////
+ui.prototype.drawMaps = function (index) {
+    if (!core.isset(index)) index=core.floorIds.indexOf(core.status.floorId);
 
-    if (!core.hasItem(selectId))
-        selectId=null;
+    if (index<0) index=0;
+    if (index>=core.floorIds.length) index=core.floorIds.length-1;
+
+    core.lockControl();
+    core.status.event.id = 'viewMaps';
+    core.status.event.data = index;
+
+    var floorId = core.floorIds[index];
+
+    clearTimeout(core.interval.tipAnimate);
+
+    core.clearMap('ui', 0, 0, 416, 416);
+    core.setAlpha('ui', 1);
+    this.drawThumbnail(floorId, 'ui', core.status.maps[floorId].blocks, 0, 0, 416);
+
+    core.clearMap('data', 0, 0, 416, 416);
+    core.setOpacity('data', 0.2);
+    core.canvas.data.textAlign = 'left';
+    core.setFont('data', '16px Arial');
+
+    var text = core.floors[floorId].title;
+    var textX = 16, textY = 18, width = textX + core.canvas.data.measureText(text).width + 16, height = 42;
+    core.fillRect('data', 5, 5, width, height, '#000');
+    core.setOpacity('data', 0.5);
+    core.fillText('data', text, textX + 5, textY + 15, '#fff');
+
+}
+
+////// 绘制道具栏 //////
+ui.prototype.drawToolbox = function(index) {
+
+    var tools = Object.keys(core.status.hero.items.tools).sort();
+    var constants = Object.keys(core.status.hero.items.constants).sort();
+
+    if (!core.isset(index)) {
+        if (tools.length>0) index=0;
+        else if (constants.length>0) index=100;
+        else index=0;
+    }
+
+    core.status.event.selection=index;
+
+    var selectId;
+    if (index<100)
+        selectId = tools[index];
+    else
+        selectId = constants[index-100];
+
+    if (!core.hasItem(selectId)) selectId=null;
     core.status.event.data=selectId;
 
     core.clearMap('ui', 0, 0, 416, 416);
@@ -940,7 +1019,7 @@ ui.prototype.drawToolbox = function(selectId) {
     core.canvas.ui.textAlign = 'right';
     var images = core.material.images.items;
     // 消耗道具
-    var tools = Object.keys(core.status.hero.items.tools).sort();
+
     for (var i=0;i<tools.length;i++) {
         var tool=tools[i];
         var icon=core.material.icons.items[tool];
@@ -962,7 +1041,7 @@ ui.prototype.drawToolbox = function(selectId) {
     }
 
     // 永久道具
-    var constants = Object.keys(core.status.hero.items.constants).sort();
+
     for (var i=0;i<constants.length;i++) {
         var constant=constants[i];
         var icon=core.material.icons.items[constant];
@@ -984,16 +1063,17 @@ ui.prototype.drawToolbox = function(selectId) {
     core.fillText('ui', '返回游戏', 370, 403,'#DDDDDD', 'bold 15px Verdana');
 }
 
-/**
- * 绘制存档、读档
- * @param page
- */
-ui.prototype.drawSLPanel = function(page) {
+////// 绘制存档/读档界面 //////
+ui.prototype.drawSLPanel = function(index) {
+    if (!core.isset(index)) index=1;
+    if (index<0) index=0;
 
-    if (page<0) page=0;
+    var page = parseInt(index/10), offset=index%10;
     if (page>=30) page=29;
-    core.status.event.data = page;
-    core.status.savePage = page;
+    if (offset>5) offset=5;
+    index=10*page+offset;
+
+    core.status.event.data=index;
 
     core.clearMap('ui', 0, 0, 416, 416);
     core.setAlpha('ui', 0.85);
@@ -1005,14 +1085,13 @@ ui.prototype.drawSLPanel = function(page) {
 
     var name=core.status.event.id=='save'?"存档":"读档";
     for (var i=0;i<6;i++) {
-        var id=6*page+i+1;
-        var data=core.getLocalStorage("save"+id,null);
-
+        var id=5*page+i;
+        var data=core.getLocalStorage(i==0?"autoSave":"save"+id, null);
         if (i<3) {
-            core.fillText('ui', name+id, (2*i+1)*u, 35, '#FFFFFF', "bold 17px Verdana");
-            core.strokeRect('ui', (2*i+1)*u-size/2, 50, size, size, '#FFFFFF', 2);
+            core.fillText('ui', i==0?"自动存档":name+id, (2*i+1)*u, 35, '#FFFFFF', "bold 17px Verdana");
+            core.strokeRect('ui', (2*i+1)*u-size/2, 50, size, size, i==offset?'#FFD700':'#FFFFFF', i==offset?6:2);
             if (core.isset(data) && core.isset(data.floorId)) {
-                this.drawThumbnail('ui', core.maps.load(data.maps, data.floorId).blocks, (2*i+1)*u-size/2, 50, size, data.hero.loc);
+                this.drawThumbnail(data.floorId, 'ui', core.maps.load(data.maps, data.floorId).blocks, (2*i+1)*u-size/2, 50, size, data.hero.loc);
                 core.fillText('ui', core.formatDate(new Date(data.time)), (2*i+1)*u, 65+size, '#FFFFFF', '10px Verdana');
             }
             else {
@@ -1022,9 +1101,9 @@ ui.prototype.drawSLPanel = function(page) {
         }
         else {
             core.fillText('ui', name+id, (2*i-5)*u, 230, '#FFFFFF', "bold 17px Verdana");
-            core.strokeRect('ui', (2*i-5)*u-size/2, 245, size, size, '#FFFFFF', 2);
+            core.strokeRect('ui', (2*i-5)*u-size/2, 245, size, size, i==offset?'#FFD700':'#FFFFFF', i==offset?6:2);
             if (core.isset(data) && core.isset(data.floorId)) {
-                this.drawThumbnail('ui', core.maps.load(data.maps, data.floorId).blocks, (2*i-5)*u-size/2, 245, size, data.hero.loc);
+                this.drawThumbnail(data.floorId, 'ui', core.maps.load(data.maps, data.floorId).blocks, (2*i-5)*u-size/2, 245, size, data.hero.loc);
                 core.fillText('ui', core.formatDate(new Date(data.time)), (2*i-5)*u, 260+size, '#FFFFFF', '10px Verdana');
             }
             else {
@@ -1034,36 +1113,44 @@ ui.prototype.drawSLPanel = function(page) {
         }
     }
     this.drawPagination(page+1, 30);
-
 }
 
-ui.prototype.drawThumbnail = function(canvas, blocks, x, y, size, heroLoc) {
+////// 绘制一个缩略图 //////
+ui.prototype.drawThumbnail = function(floorId, canvas, blocks, x, y, size, heroLoc) {
     core.clearMap(canvas, x, y, size, size);
+    var groundId = core.floors[floorId].defaultGround || "ground";
+    var blockIcon = core.material.icons.terrains[groundId];
+    var blockImage = core.material.images.terrains;
     var persize = size/13;
     for (var i=0;i<13;i++) {
         for (var j=0;j<13;j++) {
-            var blockIcon = core.material.icons.terrains.ground;
-            var blockImage = core.material.images.terrains;
             core.canvas[canvas].drawImage(blockImage, 0, blockIcon * 32, 32, 32, x + i * persize, y + j * persize, persize, persize);
         }
     }
-    var autotileMaps = [];
+
+    if (core.isset(core.floors[floorId].png)) {
+        var png = core.floors[floorId].png;
+        if (core.isset(core.material.images.pngs[png])) {
+            core.canvas.ui.drawImage(core.material.images.pngs[png], x, y, size, size);
+        }
+    }
+
+    var mapArray = core.maps.getMapArray(blocks);
     for (var b in blocks) {
         var block = blocks[b];
         if (core.isset(block.event) && !(core.isset(block.enable) && !block.enable)) {
             if (block.event.cls == 'autotile') {
-                // core.drawAutotile();
-                autotileMaps[13*block.x + block.y] = true;
-                continue;
+                core.drawAutotile(core.canvas.ui, mapArray, block, persize, x, y);
             }
             else {
-                var blockIcon = core.material.icons[block.event.cls][block.event.id];
-                var blockImage = core.material.images[block.event.cls];
-                core.canvas[canvas].drawImage(blockImage, 0, blockIcon * 32, 32, 32, x + block.x * persize, y + block.y * persize, persize, persize);
+                if (block.event.id!='none') {
+                    var blockIcon = core.material.icons[block.event.cls][block.event.id];
+                    var blockImage = core.material.images[block.event.cls];
+                    core.canvas[canvas].drawImage(blockImage, 0, blockIcon * 32, 32, 32, x + block.x * persize, y + block.y * persize, persize, persize);
+                }
             }
         }
     }
-    core.drawAutotile('ui', autotileMaps, x, y, persize);
 
     if (core.isset(heroLoc)) {
         var heroIcon = core.material.icons.hero[heroLoc.direction];
@@ -1073,9 +1160,45 @@ ui.prototype.drawThumbnail = function(canvas, blocks, x, y, size, heroLoc) {
     }
 }
 
-/**
- * 绘制"关于"
- */
+ui.prototype.drawKeyBoard = function () {
+    core.lockControl();
+    core.status.event.id = 'keyBoard';
+
+    core.clearMap('ui', 0, 0, 416, 416);
+
+    var left = 16, top = 48, right = 416 - 2 * left, bottom = 416 - 2 * top;
+    var background = core.canvas.ui.createPattern(core.material.ground, "repeat");
+    core.fillRect('ui', left, top, right, bottom, background);
+    core.strokeRect('ui', left - 1, top - 1, right + 1, bottom + 1, '#FFFFFF', 2);
+
+    core.canvas.ui.textAlign = "center";
+    core.fillText('ui', "虚拟键盘", 208, top+35, "#FFD700", "bold 22px Verdana");
+
+    core.setFont('ui', '17px Verdana');
+    core.setFillStyle('ui', '#FFFFFF');
+    var offset = 128-9;
+
+    var lines = [
+        ["F1","F2","F3","F4","F5","F6","F7","F8","F9","10","11"],
+        ["1","2","3","4","5","6","7","8","9","0"],
+        ["Q","W","E","R","T","Y","U","I","O","P"],
+        ["A","S","D","F","G","H","J","K","L"],
+        ["Z","X","C","V","B","N","M"],
+        ["-","=","[","]","\\",";","'",",",".","/","`"],
+        ["ES","TA","CA","SH","CT","AL","SP","BS","EN","DE"]
+    ]
+
+    lines.forEach(function (line) {
+        for (var i=0;i<line.length;i++) {
+            core.fillText('ui', line[i], 48+32*i, offset);
+        }
+        offset+=32;
+    });
+
+    core.fillText("ui", "返回游戏", 416-80, offset-3, '#FFFFFF', 'bold 15px Verdana');
+}
+
+////// 绘制“关于”界面 //////
 ui.prototype.drawAbout = function() {
 
     if (!core.isPlaying()) {
@@ -1104,7 +1227,7 @@ ui.prototype.drawAbout = function() {
     core.fillText('ui', 'HTML5魔塔交流群：539113091', text_start, top+112);*/
     // TODO: 写自己的“关于”页面
     top+=32;
-    core.fillText('ui', "原作： zhaouv", text_start, top + 112, "#FFFFFF", "bold 17px Verdana");
+    core.fillText('ui', "作者： zhaouv", text_start, top + 112, "#FFFFFF", "bold 17px Verdana");
     core.fillText('ui', "制作工具： HTML5 魔塔样板", text_start, top + 144, "#FFFFFF", "bold 17px Verdana");
     core.fillText('ui', "测试平台： Chrome/微信/iOS", text_start, top + 176, "#FFFFFF", "bold 17px Verdana");
     core.fillText('ui', '特别鸣谢： 艾之葵', text_start, top+208);
@@ -1113,5 +1236,32 @@ ui.prototype.drawAbout = function() {
     //core.fillText('ui', '打Dota的喵', text_start+len, top+272);
     top-=32;
     core.fillText('ui', 'HTML5魔塔交流群：539113091', text_start, top+304);
-    
+}
+
+////// 绘制帮助页面 //////
+ui.prototype.drawHelp = function () {
+    core.drawText([
+        "\t[键盘快捷键列表]"+
+        "[CTRL] 跳过对话\n" +
+        "[X] 打开/关闭怪物手册\n" +
+        "[G] 打开/关闭楼层传送器\n" +
+        "[A] 读取自动存档（回退）\n" +
+        "[S/D] 打开/关闭存/读档页面\n" +
+        "[K] 打开/关闭快捷商店选择列表\n" +
+        "[T] 打开/关闭工具栏\n" +
+        "[ESC] 打开/关闭系统菜单\n" +
+        "[H] 打开帮助页面\n"+
+        "[R] 回放\n"+
+        "[SPACE] 轻按（仅在轻按开关打开时有效）\n" +
+        "[1] 快捷使用破墙镐\n" +
+        "[2] 快捷使用炸弹/圣锤\n" +
+        "[3] 快捷使用中心对称飞行器",
+        "\t[鼠标操作]"+
+        "点状态栏中图标： 进行对应的操作\n"+
+        "点任意块： 寻路并移动\n"+
+        "点任意块并拖动： 指定寻路路线\n"+
+        "单击勇士： 转向\n"+
+        "双击勇士： 轻按（仅在轻按开关打开时有效）\n"+
+        "长按任意位置：打开虚拟键盘"
+    ]);
 }

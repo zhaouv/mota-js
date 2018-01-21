@@ -2,9 +2,11 @@ function events() {
 
 }
 
+////// 初始化 //////
 events.prototype.init = function () {
     this.events = {
         'battle': function (data, core, callback) {
+            core.autosave();
             core.battle(data.event.id, data.x, data.y);
             if (core.isset(callback))
                 callback();
@@ -15,19 +17,23 @@ events.prototype.init = function () {
                 callback();
         },
         'openDoor': function (data, core, callback) {
-            core.openDoor(data.event.id, data.x, data.y, true);
-            if (core.isset(callback))
-                callback();
+            core.autosave();
+            core.openDoor(data.event.id, data.x, data.y, true, function () {
+                if (core.isset(callback)) callback();
+                core.replay();
+            });
         },
         'changeFloor': function (data, core, callback) {
-            var heroLoc = null;
-            if (core.isset(data.event.data.loc)) {
+            var heroLoc = {};
+            if (core.isset(data.event.data.loc))
                 heroLoc = {'x': data.event.data.loc[0], 'y': data.event.data.loc[1]};
-                if (core.isset(data.event.data.direction))
-                    heroLoc.direction = data.event.data.direction;
-            }
+            if (core.isset(data.event.data.direction))
+                heroLoc.direction = data.event.data.direction;
             core.changeFloor(data.event.data.floorId, data.event.data.stair,
-                heroLoc, data.event.data.time, callback);
+                heroLoc, data.event.data.time, function () {
+                    if (core.isset(callback)) callback();
+                    core.replay();
+                });
         },
         'passNet': function (data, core, callback) {
             core.events.passNet(data);
@@ -46,9 +52,9 @@ events.prototype.init = function () {
     }
 }
 
-// 初始化
+////// 获得一个或所有系统事件类型 //////
 events.prototype.getEvents = function (eventName) {
-    if (eventName == undefined) {
+    if (!core.isset(eventName)) {
         return this.events;
     }
     return this.events[eventName];
@@ -66,63 +72,177 @@ events.prototype.startGame = function (hard) {
 
     core.hideStartAnimate(function() {
         core.drawText(core.clone(core.firstData.startText), function() {
-            core.startGame(hard);
-            if (hard=='Easy') { // 简单难度
-                core.setFlag('hard', 1); // 可以用flag:hard来获得当前难度
-                // 可以在此设置一些初始福利，比如设置初始生命值可以调用：
-                // core.setStatus("hp", 10000);
+            if (core.flags.showBattleAnimateConfirm) { // 是否提供“开启战斗动画”的选择项
+                core.status.event.selection = core.flags.battleAnimate ? 0 : 1;
+                core.ui.drawConfirmBox("你想开启战斗动画吗？\n之后可以在菜单栏中开启或关闭。\n（强烈建议新手开启此项）", function () {
+                    core.flags.battleAnimate = true;
+                    core.setLocalStorage('battleAnimate', true);
+                    core.startGame(hard);
+                    core.events.setInitData(hard);
+                }, function () {
+                    core.flags.battleAnimate = false;
+                    core.setLocalStorage('battleAnimate', false);
+                    core.startGame(hard);
+                    core.events.setInitData(hard);
+                });
             }
-            if (hard=='Normal') { // 普通难度
-                core.setFlag('hard', 2); // 可以用flag:hard来获得当前难度
-            }
-            if (hard=='Hard') { // 困难难度
-                core.setFlag('hard', 3); // 可以用flag:hard来获得当前难度
+            else {
+                core.startGame(hard);
+                core.events.setInitData(hard);
             }
         });
     })
 }
 
-////// 游戏结束事件 //////
+////// 不同难度分别设置初始属性 //////
+events.prototype.setInitData = function (hard) {
+    if (hard=='Easy') { // 简单难度
+        core.setFlag('hard', 1); // 可以用flag:hard来获得当前难度
+        // 可以在此设置一些初始福利，比如设置初始生命值可以调用：
+        // core.setStatus("hp", 10000);
+        // 赠送一把黄钥匙可以调用
+        // core.setItem("yellowKey", 1);
+    }
+    if (hard=='Normal') { // 普通难度
+        core.setFlag('hard', 2); // 可以用flag:hard来获得当前难度
+    }
+    if (hard=='Hard') { // 困难难度
+        core.setFlag('hard', 3); // 可以用flag:hard来获得当前难度
+    }
+}
+
+////// 游戏获胜事件 //////
 events.prototype.win = function(reason) {
-    // 获胜
+    core.ui.closePanel();
+    var replaying = core.status.replay.replaying;
+    core.status.replay.replaying=false;
     core.waitHeroToStop(function() {
         core.removeGlobalAnimate(0,0,true);
         core.clearMap('all'); // 清空全地图
         core.drawText([
-            "\t[结局1]恭喜通关！你的分数是${status:hp}。"
+            "\t[恭喜通关]你的分数是${status:hp}。"
         ], function () {
-            core.restart();
+            core.events.gameOver(true, replaying);
         })
     });
 }
 
+////// 游戏失败事件 //////
 events.prototype.lose = function(reason) {
-    // 失败
+    core.ui.closePanel();
+    var replaying = core.status.replay.replaying;
+    core.status.replay.replaying=false;
     core.waitHeroToStop(function() {
+        core.status.replay.replaying=false;
         core.drawText([
             "\t[结局2]你死了。\n如题。"
         ], function () {
-            core.restart();
+            core.events.gameOver(false, replaying);
         });
     })
 }
 
-////// 转换楼层结束的事件 //////
-events.prototype.afterChangeFloor = function (floorId) {
-    if (!core.isset(core.status.event.id) && !core.hasFlag("visited_"+floorId)) {
-        this.doEvents(core.floors[floorId].firstArrive);
-        core.setFlag("visited_"+floorId, true);
+////// 游戏结束 //////
+events.prototype.gameOver = function (success, fromReplay) {
+
+    // 上传成绩
+    var confirmUpload = function () {
+
+        if (!success) {
+            core.restart();
+            return;
+        }
+
+        var doUpload = function(username) {
+            if (username==null) username="";
+
+            // upload
+            var formData = new FormData();
+            formData.append('type', 'score');
+            formData.append('name', core.firstData.name);
+            formData.append('version', core.firstData.version);
+            formData.append('platform', core.platform.isPC?"PC":core.platform.isAndroid?"Android":core.platform.isIOS?"iOS":"");
+            formData.append('hard', core.status.hard);
+            formData.append('username', username);
+            formData.append('lv', core.status.hero.lv);
+            formData.append('hp', core.status.hero.hp);
+            formData.append('atk', core.status.hero.atk);
+            formData.append('def', core.status.hero.def);
+            formData.append('mdef', core.status.hero.mdef);
+            formData.append('money', core.status.hero.money);
+            formData.append('experience', core.status.hero.experience);
+            formData.append('steps', core.status.hero.steps);
+            formData.append('route', core.encodeRoute(core.status.route));
+
+            var xhr = new XMLHttpRequest();
+            xhr.open("POST", "/games/upload.php");
+            xhr.send(formData);
+
+            core.restart();
+        }
+
+        core.ui.drawConfirmBox("你想记录你的ID和成绩吗？", function () {
+            doUpload(prompt("请输入你的ID："));
+        }, function () {
+            doUpload("");
+        })
+
+        return;
     }
+
+    // 下载录像
+    var confirmDownload = function () {
+        core.ui.closePanel();
+        core.ui.drawConfirmBox("你想下载录像吗？", function () {
+            var obj = {
+                'name': core.firstData.name,
+                'version': core.firstData.version,
+                'hard': core.status.hard,
+                'route': core.encodeRoute(core.status.route)
+            }
+            core.download(core.firstData.name+"_"+core.formatDate2(new Date())+".h5route", JSON.stringify(obj));
+            confirmUpload();
+        }, function () {
+            confirmUpload();
+        })
+    }
+
+    if (fromReplay) {
+        core.drawText("录像回放完毕！", function () {
+            core.restart();
+        });
+    }
+    else {
+        confirmDownload();
+    }
+
 }
 
-////// 实际事件的处理 //////
+////// 转换楼层结束的事件 //////
+events.prototype.afterChangeFloor = function (floorId) {
+    if (core.isset(core.status.event.id)) return; // 当前存在事件
+
+    if (!core.hasFlag("visited_"+floorId)) {
+        this.doEvents(core.floors[floorId].firstArrive, null, null, function () {
+            core.autosave();
+        });
+        core.setFlag("visited_"+floorId, true);
+        return;
+    }
+
+    // 自动存档
+    core.autosave();
+}
+
+////// 开始执行一系列自定义事件 //////
 events.prototype.doEvents = function (list, x, y, callback) {
+    if (!core.isset(list)) return;
+    if (!(list instanceof Array)) {
+        list = [list];
+    }
+
     // 停止勇士
     core.waitHeroToStop(function() {
-        if (!core.isset(list)) return;
-        if (!(list instanceof Array)) {
-            list = [list];
-        }
         core.lockControl();
         core.status.event = {'id': 'action', 'data': {
             'list': core.clone(list), 'x': x, 'y': y, 'callback': callback
@@ -131,6 +251,7 @@ events.prototype.doEvents = function (list, x, y, callback) {
     });
 }
 
+////// 执行当前自定义事件列表中的下一个事件 //////
 events.prototype.doAction = function() {
     // 清空boxAnimate和UI层
     clearInterval(core.interval.boxAnimate);
@@ -141,7 +262,8 @@ events.prototype.doAction = function() {
     if (core.status.event.data.list.length==0) {
         if (core.isset(core.status.event.data.callback))
             core.status.event.data.callback();
-        core.ui.closePanel(false);
+        core.ui.closePanel();
+        core.replay();
         return;
     }
 
@@ -155,26 +277,34 @@ events.prototype.doAction = function() {
     // 如果是文字：显示
     if (typeof data == "string") {
         core.status.event.data.type='text';
-        core.ui.drawTextBox(data);
+        // 如果是正在回放中，不显示
+        if (core.status.replay.replaying)
+            core.events.doAction();
+        else
+            core.ui.drawTextBox(data);
         return;
     }
     core.status.event.data.type=data.type;
     switch (data.type) {
         case "text": // 文字/对话
-            core.ui.drawTextBox(data.data);
+            if (core.status.replay.isreplaying)
+                core.events.doAction();
+            else
+                core.ui.drawTextBox(data.data);
             break;
         case "tip":
             core.drawTip(core.replaceText(data.text));
             core.events.doAction();
+            break;
         case "show": // 显示
             if (core.isset(data.time) && data.time>0 && (!core.isset(data.floorId) || data.floorId==core.status.floorId)) {
                 core.animateBlock(data.loc[0],data.loc[1],'show', data.time, function () {
-                    core.addBlock(data.loc[0],data.loc[1],data.floorId);
+                    core.showBlock(data.loc[0],data.loc[1],data.floorId);
                     core.events.doAction();
                 });
             }
             else {
-                core.addBlock(data.loc[0],data.loc[1],data.floorId)
+                core.showBlock(data.loc[0],data.loc[1],data.floorId)
                 this.doAction();
             }
             break;
@@ -246,7 +376,12 @@ events.prototype.doAction = function() {
             this.doAction();
             break;
         case "openShop": // 打开一个全局商店
-            core.events.openShop(data.id);
+            if (core.status.replay.replaying) { // 正在播放录像，简单将visited置为true
+                core.status.shops[data.id].visited=true;
+                this.doAction();
+            }
+            else
+                core.events.openShop(data.id);
             break;
         case "disableShop": // 禁用一个全局商店
             core.events.disableQuickShop(data.id);
@@ -264,11 +399,6 @@ events.prototype.doAction = function() {
                 block = block.block;
                 if (core.isset(block.event) && block.event.trigger=='action') {
                     // 触发
-                    /*
-                    core.status.event = {'id': 'action', 'data': {
-                        'list': core.clone(block.event.data), 'x': block.x, 'y': block.y, 'callback': core.status.event.data.callback
-                    }}
-                    */
                     core.status.event.data.list = core.clone(block.event.data);
                     core.status.event.data.x=block.x;
                     core.status.event.data.y=block.y;
@@ -277,11 +407,21 @@ events.prototype.doAction = function() {
             this.doAction();
             break;
         case "playSound":
-            var name=data.name.split(".");
-            if (name.length==2)
-                core.playSound(name[0],name[1]);
+            core.playSound(data.name);
             this.doAction();
             break;
+        case "playBgm":
+            core.playBgm(data.name);
+            this.doAction();
+            break
+        case "pauseBgm":
+            core.pauseBgm();
+            this.doAction();
+            break
+        case "resumeBgm":
+            core.resumeBgm();
+            this.doAction();
+            break
         case "setValue":
             try {
                 var value=core.calValue(data.value);
@@ -308,7 +448,6 @@ events.prototype.doAction = function() {
                 core.status.hero.hp=0;
                 core.updateStatusBar();
                 core.events.lose('damage');
-
             }
             else {
                 core.updateStatusBar();
@@ -323,17 +462,51 @@ events.prototype.doAction = function() {
             this.doAction();
             break;
         case "choices": // 提供选项
+            if (core.status.replay.replaying) {
+                if (core.status.replay.toReplay.length==0) { // 回放完毕
+                    core.status.replay.replaying=false;
+                    core.drawTip("录像回放完毕");
+                }
+                else {
+                    var action = core.status.replay.toReplay.shift(), index;
+                    if (action.indexOf("choices:")==0 && ((index=parseInt(action.substring(8)))>=0) && index<data.choices.length) {
+                            //core.status.route.push("choices:"+index);
+                            //this.insertAction(data.choices[index].action);
+                            //this.doAction();
+                            core.status.event.selection=index;
+                            setTimeout(function () {
+                                core.status.route.push("choices:"+index);
+                                core.events.insertAction(data.choices[index].action);
+                                core.events.doAction();
+                            }, 500)
+                    }
+                    else {
+                        core.status.replay.replaying=false;
+                        core.drawTip("录像文件出错");
+                    }
+                }
+            }
             core.ui.drawChoices(data.text, data.choices);
             break;
         case "win":
-            core.events.win(data.reason);
+            core.events.win(data.reason, function () {
+                core.events.doAction();
+            });
             break;
         case "lose":
-            core.events.lose(data.reason);
+            core.events.lose(data.reason, function () {
+                core.events.doAction();
+            });
             break;
         case "function":
-            if (core.isset(data["function"]))
-                data["function"]();
+            var func = data["function"];
+            if (core.isset(func)) {
+                if ((typeof func == "string") && func.indexOf("function")==0) {
+                    eval('('+func+')()');
+                }
+                else if (func instanceof Function)
+                    func();
+            }
             this.doAction();
             break;
         case "update":
@@ -361,17 +534,25 @@ events.prototype.doAction = function() {
             break;
         default:
             core.status.event.data.type='text';
-            core.ui.drawTextBox("\t[警告,]出错啦！\n"+data.type+" 事件不被支持...");
+            core.ui.drawTextBox("\t[警告]出错啦！\n"+data.type+" 事件不被支持...");
     }
     return;
 }
 
 ////// 往当前事件列表之前添加一个或多个事件 //////
-events.prototype.insertAction = function (action) {
-    core.unshift(core.status.event.data.list, action)
+events.prototype.insertAction = function (action, x, y, callback) {
+    if (core.status.event.id == null) {
+        this.doEvents(action, x, y, callback);
+    }
+    else {
+        core.unshift(core.status.event.data.list, action)
+        if (core.isset(x)) core.status.event.data.x=x;
+        if (core.isset(y)) core.status.event.data.y=y;
+        if (core.isset(callback)) core.status.event.data.callback=callback;
+    }
 }
 
-////// 打开商店 //////
+////// 打开一个全局商店 //////
 events.prototype.openShop = function(shopId, needVisited) {
     var shop = core.status.shops[shopId];
     shop.times = shop.times || 0;
@@ -383,9 +564,18 @@ events.prototype.openShop = function(shopId, needVisited) {
     }
     shop.visited = true;
 
+    var selection = core.status.event.selection;
+    var actions = [];
+    if (core.isset(core.status.event.data) && core.isset(core.status.event.data.actions))
+        actions=core.status.event.data.actions;
+
     core.ui.closePanel();
     core.lockControl();
-    core.status.event = {'id': 'shop', 'data': {'id': shopId, 'shop': shop}};
+    // core.status.event = {'id': 'shop', 'data': {'id': shopId, 'shop': shop}};
+    core.status.event.id = 'shop';
+    core.status.event.data = {'id': shopId, 'shop': shop, 'actions': actions};
+    core.status.event.selection = selection;
+
     // 拼词
     var content = "\t["+shop.name+","+shop.icon+"]";
     var times = shop.times, need=eval(shop.need);
@@ -402,54 +592,55 @@ events.prototype.openShop = function(shopId, needVisited) {
         var text = choice.text;
         if (core.isset(choice.need))
             text += "（"+eval(choice.need)+use+"）"
-        choices.push({"text": text});
+        choices.push(text);
     }
-    choices.push({"text": "离开"});
+    choices.push("离开");
     core.ui.drawChoices(content, choices);
 }
 
+////// 禁用一个全局商店 //////
 events.prototype.disableQuickShop = function (shopId) {
     core.status.shops[shopId].visited = false;
 }
 
-////// 降低难度 //////
-
-events.prototype.decreaseHard = function() {
-    //changed
-    core.ui.closePanel();
-    core.drawTip("本塔不支持降低难度！");
-    /*
-    if (core.status.hard == 0) {
-        core.drawTip("当前已是难度0，不能再降低难度了");
-        return;
-    }
-    var add = 100, x=core.status.hard;
-    while (x<10) {
-        x++; add*=2;
-    }
-    core.ui.drawConfirmBox("本次操作可生命+" + add + "，确定吗？", function () {
-        core.status.hero.hp += add;
-        core.status.hard--;
-        core.updateStatusBar();
-        core.ui.closePanel();
-        core.drawTip("降低难度成功，生命+" + add);
-    }, function () {
-        core.ui.drawSettings(false);
-    });
-    */
-}
-
 ////// 能否使用快捷商店 //////
-events.prototype.canUseQuickShop = function(shopIndex) {
+events.prototype.canUseQuickShop = function(shopId) {
     if (core.isset(core.floors[core.status.floorId].canUseQuickShop) && !core.isset(core.floors[core.status.floorId].canUseQuickShop))
         return '当前不能使用快捷商店。';
 
     return null;
 }
 
+////// 检查升级事件 //////
+events.prototype.checkLvUp = function () {
+    if (!core.flags.enableLevelUp || core.status.hero.lv>=core.firstData.levelUp.length) return;
+    // 计算下一个所需要的数值
+    var need=core.firstData.levelUp[core.status.hero.lv].need;
+    if (!core.isset(need)) return;
+    if (core.status.hero.experience>=need) {
+        // 升级
+        core.status.hero.lv++;
+        var effect = core.firstData.levelUp[core.status.hero.lv-1].effect;
+        if (typeof effect == "string") {
+            if (effect.indexOf("function")==0) {
+                eval("("+effect+")()");
+            }
+            else {
+                effect.split(";").forEach(function (t) {
+                    core.doEffect(t);
+                });
+            }
+        }
+        else if (effect instanceof Function) {
+            effect();
+        }
+        this.checkLvUp();
+    }
+}
+
 ////// 尝试使用道具 //////
 events.prototype.useItem = function(itemId) {
-    core.ui.closePanel(false);
+    core.ui.closePanel();
 
     if (itemId=='book') {
         core.openBook(false);
@@ -464,6 +655,7 @@ events.prototype.useItem = function(itemId) {
         var fillstyle = 'rgba(255,0,0,0.5)';
         if (core.canUseItem('centerFly')) fillstyle = 'rgba(0,255,0,0.5)';
         core.fillRect('ui',(12-core.getHeroLoc('x'))*32,(12-core.getHeroLoc('y'))*32,32,32,fillstyle);
+        core.drawTip("请确认当前中心对称飞行器的位置");
         return;
     }
 
@@ -471,7 +663,30 @@ events.prototype.useItem = function(itemId) {
     else core.drawTip("当前无法使用"+core.material.items[itemId].name);
 }
 
-/****** 打完怪物 ******/
+////// 加点事件 //////
+events.prototype.addPoint = function (enemy) {
+    var point = enemy.point;
+    if (!core.isset(point) || point<=0) return [];
+
+    // 加点，返回一个choices事件
+    return [
+        {"type": "choices",
+            "choices": [
+                {"text": "攻击+"+(1*point), "action": [
+                    {"type": "setValue", "name": "status:atk", "value": "status:atk+"+(1*point)}
+                ]},
+                {"text": "防御+"+(2*point), "action": [
+                    {"type": "setValue", "name": "status:def", "value": "status:def+"+(2*point)}
+                ]},
+                {"text": "生命+"+(200*point), "action": [
+                    {"type": "setValue", "name": "status:hp", "value": "status:hp+"+(200*point)}
+                ]},
+            ]
+        }
+    ];
+}
+
+////// 战斗结束后触发的事件 //////
 events.prototype.afterBattle = function(enemyId,x,y,callback) {
 
     // 毒衰咒的处理
@@ -491,17 +706,37 @@ events.prototype.afterBattle = function(enemyId,x,y,callback) {
         core.setFlag('curse', true);
     }
     // 仇恨属性：减半
-    if (core.enemys.hasSpecial(special, 17)) {
+    if (core.flags.hatredDecrease && core.enemys.hasSpecial(special, 17)) {
         core.setFlag('hatred', parseInt(core.getFlag('hatred', 0)/2));
+    }
+    // 自爆
+    if (core.enemys.hasSpecial(special, 19)) {
+        core.status.hero.hp = 1;
     }
     // 增加仇恨值
     core.setFlag('hatred', core.getFlag('hatred',0)+core.values.hatred);
     core.updateStatusBar();
 
+
+    // 事件的处理
+    var todo = [];
+    // 如果不为阻击，且该点存在，且有事件
+    if (!core.enemys.hasSpecial(special, 18) && core.isset(x) && core.isset(y)) {
+        var event = core.floors[core.status.floorId].afterBattle[x+","+y];
+        if (core.isset(event)) {
+            // 插入事件
+            core.unshift(todo, event);
+        }
+    }
+    // 如果有加点
+    var point = core.material.enemys[enemyId].point;
+    if (core.isset(point) && point>0) {
+        core.unshift(todo, core.events.addPoint(core.material.enemys[enemyId]));
+    }
     // 分裂
     //changed
     console.log('x,y:'+x+','+y)
-    if (core.enemys.hasSpecial(special, 18) && !core.hasFlag('visitedRainbow')) {
+    if (core.enemys.hasSpecial(special, 48) && !core.hasFlag('visitedRainbow')) {
         var blocks=core.status.maps[core.status.floorId].blocks;
         var enemy=[{"x":4,"y":1,"id":201,"event":{"cls":"enemys","id":"greenSlime","trigger":"battle","noPass":true,"animate":2}},
         {"x":1,"y":3,"id":202,"event":{"cls":"enemys","id":"redSlime","trigger":"battle","noPass":true,"animate":2}},
@@ -522,46 +757,42 @@ events.prototype.afterBattle = function(enemyId,x,y,callback) {
         core.updateFg()
     }
 
-    // 如果已有事件正在处理中
-    if (core.status.lockControl) {
-        if (core.isset(callback)) callback();
-        return;
+
+    // 如果事件不为空，将其插入
+    if (todo.length>0) {
+        this.insertAction(todo);
     }
 
-    // 检查处理后的事件。
-    var event = core.floors[core.status.floorId].afterBattle[x+","+y];
-    if (core.isset(event)) {
-        core.events.doEvents(event, x, y, callback);
-    }
-    //继续行走
-    else {
+    // 如果已有事件正在处理中
+    if (core.status.event.id == null) {
         core.continueAutomaticRoute();
-        if (core.isset(callback)) callback();
     }
+    if (core.isset(callback)) callback();
+
 }
 
-/****** 开完门 ******/
+////// 开一个门后触发的事件 //////
 events.prototype.afterOpenDoor = function(doorId,x,y,callback) {
 
-    // 如果已有事件正在处理中
-    if (core.status.lockControl) {
-        if (core.isset(callback)) callback();
-        return;
+    var todo = [];
+    if (core.isset(x) && core.isset(y)) {
+        var event = core.floors[core.status.floorId].afterOpenDoor[x+","+y];
+        if (core.isset(event)) {
+            core.unshift(todo, event);
+        }
     }
 
-    // 检查处理后的事件。
-    var event = core.floors[core.status.floorId].afterOpenDoor[x+","+y];
-    if (core.isset(event)) {
-        core.events.doEvents(event, x, y, callback);
+    if (todo.length>0) {
+        this.insertAction(todo);
     }
-    //继续行走
-    else {
+
+    if (core.status.event.id == null) {
         core.continueAutomaticRoute();
-        if (core.isset(callback)) callback();
     }
+    if (core.isset(callback)) callback();
 }
 
-/****** 经过路障 ******/
+////// 经过一个路障 //////
 events.prototype.passNet = function (data) {
     // 有鞋子
     if (core.hasItem('shoes')) return;
@@ -592,6 +823,7 @@ events.prototype.passNet = function (data) {
     core.updateStatusBar();
 }
 
+////// 改变亮灯（感叹号）的事件 //////
 events.prototype.changeLight = function(x, y) {
     var block = core.getBlock(x, y);
     if (block==null) return;
@@ -608,27 +840,95 @@ events.prototype.changeLight = function(x, y) {
     this.afterChangeLight(x,y);
 }
 
-// 改变灯后的事件
+////// 改变亮灯之后，可以触发的事件 //////
 events.prototype.afterChangeLight = function(x,y) {
 
 }
 
-// 存档事件前一刻的处理
+////// 使用炸弹/圣锤后的事件 //////
+events.prototype.afterUseBomb = function () {
+
+    // 这是一个使用炸弹也能开门的例子
+    /*
+    if (core.status.floorId=='xxx' && core.terrainExists(x0,y0,'specialDoor') // 某个楼层，该机关门存在
+        && !core.enemyExists(x1,y1) && !core.enemyExists(x2,y2)) // 且守门的怪物都不存在
+    {
+        core.insertAction([ // 插入事件
+            {"type": "openDoor", "loc": [x0,y0]} // 开门
+        ])
+    }
+    */
+
+}
+
+////// 即将存档前可以执行的操作 //////
 events.prototype.beforeSaveData = function(data) {
 
 }
 
-// 读档事件后，载入事件前，对数据的处理
+////// 读档事件后，载入事件前，可以执行的操作 //////
 events.prototype.afterLoadData = function(data) {
 
 }
 
 
-/******************************************/
-/*********** 界面上的点击事件 ***************/
-/******************************************/
+/****************************************/
+/********** 点击事件、键盘事件 ************/
+/****************************************/
 
-// 正在处理事件时的点击操作...
+////// 长按 //////
+events.prototype.longClick = function () {
+    core.waitHeroToStop(function () {
+        // 绘制快捷键
+        core.ui.drawKeyBoard();
+    });
+}
+
+////// 按下Ctrl键时（快捷跳过对话） //////
+events.prototype.keyDownCtrl = function () {
+    if (core.status.event.id=='text') {
+        core.drawText();
+        return;
+    }
+    if (core.status.event.id=='action' && core.status.event.data.type=='text') {
+        this.doAction();
+        return;
+    }
+}
+
+////// 点击确认框时 //////
+events.prototype.clickConfirmBox = function (x,y) {
+    if ((x == 4 || x == 5) && y == 7 && core.isset(core.status.event.data.yes))
+        core.status.event.data.yes();
+    if ((x == 7 || x == 8) && y == 7 && core.isset(core.status.event.data.no))
+        core.status.event.data.no();
+}
+
+////// 键盘操作确认框时 //////
+events.prototype.keyUpConfirmBox = function (keycode) {
+    if (keycode==37) {
+        core.status.event.selection=0;
+        core.ui.drawConfirmBox(core.status.event.ui, core.status.event.data.yes, core.status.event.data.no);
+    }
+
+    if (keycode==39) {
+        core.status.event.selection=1;
+        core.ui.drawConfirmBox(core.status.event.ui, core.status.event.data.yes, core.status.event.data.no);
+    }
+
+    if (keycode==13 || keycode==32 || keycode==67) {
+        if (core.status.event.selection==0 && core.isset(core.status.event.data.yes)) {
+            core.status.event.selection=null;
+            core.status.event.data.yes();
+        }
+        if (core.status.event.selection==1 && core.isset(core.status.event.data.no)) {
+            core.status.event.selection=null;
+            core.status.event.data.no();
+        }
+    }
+}
+
+////// 自定义事件时的点击操作 //////
 events.prototype.clickAction = function (x,y) {
 
     if (core.status.event.data.type=='text') {
@@ -644,6 +944,8 @@ events.prototype.clickAction = function (x,y) {
         if (x >= 5 && x <= 7) {
             var topIndex = 6 - parseInt((choices.length - 1) / 2);
             if (y>=topIndex && y<topIndex+choices.length) {
+                // 选择
+                core.status.route.push("choices:"+(y-topIndex));
                 this.insertAction(choices[y-topIndex].action);
                 this.doAction();
             }
@@ -651,24 +953,104 @@ events.prototype.clickAction = function (x,y) {
     }
 }
 
-// 怪物手册
+////// 自定义事件时，按下某个键的操作 //////
+events.prototype.keyDownAction = function (keycode) {
+    if (core.status.event.data.type=='choices') {
+        var data = core.status.event.data.current;
+        var choices = data.choices;
+        if (choices.length>0) {
+            if (keycode==38) {
+                core.status.event.selection--;
+                core.ui.drawChoices(core.status.event.ui.text, core.status.event.ui.choices);
+            }
+            if (keycode==40) {
+                core.status.event.selection++;
+                core.ui.drawChoices(core.status.event.ui.text, core.status.event.ui.choices);
+            }
+        }
+    }
+}
+
+////// 自定义事件时，放开某个键的操作 //////
+events.prototype.keyUpAction = function (keycode) {
+    if (core.status.event.data.type=='text' && (keycode==13 || keycode==32 || keycode==67)) {
+        this.doAction();
+        return;
+    }
+    if (core.status.event.data.type=='choices') {
+        var data = core.status.event.data.current;
+        var choices = data.choices;
+        if (choices.length>0) {
+            if (keycode==13 || keycode==32 || keycode==67) {
+                core.status.route.push("choices:"+core.status.event.selection);
+                this.insertAction(choices[core.status.event.selection].action);
+                this.doAction();
+            }
+        }
+    }
+}
+
+////// 怪物手册界面的点击操作 //////
 events.prototype.clickBook = function(x,y) {
     // 上一页
     if ((x == 3 || x == 4) && y == 12) {
-        core.ui.drawEnemyBook(core.status.event.data - 1);
+        core.ui.drawBook(core.status.event.data - 6);
+        return;
     }
     // 下一页
     if ((x == 8 || x == 9) && y == 12) {
-        core.ui.drawEnemyBook(core.status.event.data + 1);
+        core.ui.drawBook(core.status.event.data + 6);
+        return;
     }
     // 返回
     if (x>=10 && x<=12 && y==12) {
-        core.ui.closePanel(true);
+        core.ui.closePanel();
+        return;
+    }
+    // 怪物信息
+    var data = core.status.event.data;
+    if (core.isset(data) && y<12) {
+        var page=parseInt(data/6);
+        var index=6*page+parseInt(y/2);
+        core.ui.drawBook(index);
+        core.ui.drawBookDetail(index);
     }
     return;
 }
 
-// 飞行器
+////// 怪物手册界面时，按下某个键的操作 //////
+events.prototype.keyDownBook = function (keycode) {
+    if (keycode==37) core.ui.drawBook(core.status.event.data-6);
+    if (keycode==38) core.ui.drawBook(core.status.event.data-1);
+    if (keycode==39) core.ui.drawBook(core.status.event.data+6);
+    if (keycode==40) core.ui.drawBook(core.status.event.data+1);
+    if (keycode==33) core.ui.drawBook(core.status.event.data-6);
+    if (keycode==34) core.ui.drawBook(core.status.event.data+6);
+    return;
+}
+
+////// 怪物手册界面时，放开某个键的操作 //////
+events.prototype.keyUpBook = function (keycode) {
+    if (keycode==27 || keycode==88) {
+        core.ui.closePanel();
+        return;
+    }
+    if (keycode==13 || keycode==32 || keycode==67) {
+        var data=core.status.event.data;
+        if (core.isset(data)) {
+            this.clickBook(6, 2*(data%6));
+        }
+        return;
+    }
+}
+
+////// 怪物手册属性显示界面时的点击操作 //////
+events.prototype.clickBookDetail = function () {
+    core.clearMap('data', 0, 0, 416, 416);
+    core.status.event.id = 'book';
+}
+
+////// 楼层传送器界面时的点击操作 //////
 events.prototype.clickFly = function(x,y) {
     if ((x==10 || x==11) && y==9) core.ui.drawFly(core.status.event.data-1);
     if ((x==10 || x==11) && y==5) core.ui.drawFly(core.status.event.data+1);
@@ -677,19 +1059,71 @@ events.prototype.clickFly = function(x,y) {
         var index=core.status.hero.flyRange.indexOf(core.status.floorId);
         var stair=core.status.event.data<index?"upFloor":"downFloor";
         var floorId=core.status.event.data;
+        core.status.route.push("fly:"+core.status.hero.flyRange[floorId]);
         core.changeFloor(core.status.hero.flyRange[floorId], stair);
         core.ui.closePanel();
     }
     return;
 }
 
-// 商店
+////// 楼层传送器界面时，按下某个键的操作 //////
+events.prototype.keyDownFly = function (keycode) {
+    if (keycode==37 || keycode==38) core.ui.drawFly(core.status.event.data+1);
+    else if (keycode==39 || keycode==40) core.ui.drawFly(core.status.event.data-1);
+    return;
+}
+
+////// 楼层传送器界面时，放开某个键的操作 //////
+events.prototype.keyUpFly = function (keycode) {
+    if (keycode==71 || keycode==27 || keycode==88)
+        core.ui.closePanel();
+    if (keycode==13 || keycode==32 || keycode==67)
+        this.clickFly(5,5);
+    return;
+}
+
+////// 查看地图界面时的点击操作 //////
+events.prototype.clickViewMaps = function (x,y) {
+    if(y<=4) {
+        core.ui.drawMaps(core.status.event.data+1);
+    }
+    else if (y>=8) {
+        core.ui.drawMaps(core.status.event.data-1);
+    }
+    else {
+        core.clearMap('data', 0, 0, 416, 416);
+        core.setOpacity('data', 1);
+        core.ui.closePanel();
+    }
+}
+
+////// 查看地图界面时，按下某个键的操作 //////
+events.prototype.keyDownViewMaps = function (keycode) {
+    if (keycode==37 || keycode==38) core.ui.drawMaps(core.status.event.data+1);
+    else if (keycode==39 || keycode==40) core.ui.drawMaps(core.status.event.data-1);
+    return;
+}
+
+////// 查看地图界面时，放开某个键的操作 //////
+events.prototype.keyUpViewMaps = function (keycode) {
+    if (keycode==27 || keycode==88 || keycode==13 || keycode==32 || keycode==67) {
+        core.clearMap('data', 0, 0, 416, 416);
+        core.setOpacity('data', 1);
+        core.ui.closePanel();
+    }
+    return;
+}
+
+////// 商店界面时的点击操作 //////
 events.prototype.clickShop = function(x,y) {
     var shop = core.status.event.data.shop;
     var choices = shop.choices;
     if (x >= 5 && x <= 7) {
         var topIndex = 6 - parseInt(choices.length / 2);
         if (y>=topIndex && y<topIndex+choices.length) {
+
+            core.status.event.selection=y-topIndex;
+
             //this.insertAction(choices[y-topIndex].action);
             //this.doAction();
             var money = core.getStatus('money'), experience = core.getStatus('experience');
@@ -703,22 +1137,18 @@ events.prototype.clickShop = function(x,y) {
 
             if (need > eval(use)) {
                 core.drawTip("你的"+use_text+"不足");
-                return;
+                return false;
             }
 
-            eval(use+'-='+need);
+            core.status.event.data.actions.push(y-topIndex);
 
+            eval(use+'-='+need);
             core.setStatus('money', money);
             core.setStatus('experience', experience);
 
             // 更新属性
             choice.effect.split(";").forEach(function (t) {
-                if (t.indexOf("status:")==0) {
-                    eval(t.replace("status:", "core.status.hero."));
-                }
-                else if (t.indexOf("item:")==0) {
-                    eval(t.replace("item:", "core.getItem('").replace("+=", "', ")+")");
-                }
+                core.doEffect(t);
             });
             core.updateStatusBar();
             shop.times++;
@@ -726,24 +1156,61 @@ events.prototype.clickShop = function(x,y) {
         }
         // 离开
         else if (y==topIndex+choices.length) {
+            if (core.status.event.data.actions.length>0) {
+                core.status.route.push("shop:"+core.status.event.data.id+":"+core.status.event.data.actions.join(""));
+            }
+
             core.status.boxAnimateObjs = [];
             core.setBoxAnimate();
             if (core.status.event.data.fromList)
                 core.ui.drawQuickShop();
             else core.ui.closePanel();
         }
+        else return false;
+    }
+    return true;
+}
+
+////// 商店界面时，按下某个键的操作 //////
+events.prototype.keyDownShop = function (keycode) {
+    if (keycode==38) {
+        core.status.event.selection--;
+        core.ui.drawChoices(core.status.event.ui.text, core.status.event.ui.choices);
+    }
+    if (keycode==40) {
+        core.status.event.selection++;
+        core.ui.drawChoices(core.status.event.ui.text, core.status.event.ui.choices);
     }
 }
 
-// 快捷商店
-events.prototype.clickQuickShop = function(x, y) {
-    if (x >= 5 && x <= 7) {
-        var shopList = core.status.shops, keys = Object.keys(shopList);
-        var topIndex = 6 - parseInt((keys.length + 1) / 2);
-        var exitIndex = 6 + parseInt((keys.length + 1) / 2);
+////// 商店界面时，放开某个键的操作 //////
+events.prototype.keyUpShop = function (keycode) {
+    if (keycode==27 || keycode==88) {
+        if (core.status.event.data.fromList) {
+            core.status.boxAnimateObjs = [];
+            core.setBoxAnimate();
+            core.ui.drawQuickShop();
+        }
+        else
+            core.ui.closePanel();
+        return;
+    }
+    var shop = core.status.event.data.shop;
+    var choices = shop.choices;
+    if (keycode==13 || keycode==32 || keycode==67) {
+        var topIndex = 6 - parseInt(choices.length / 2);
+        this.clickShop(6, topIndex+core.status.event.selection);
+    }
+    return;
+}
 
-        if (y >= topIndex && y - topIndex < keys.length) {
-            var reason = core.events.canUseQuickShop(y-topIndex);
+////// 快捷商店界面时的点击操作 //////
+events.prototype.clickQuickShop = function(x, y) {
+    var shopList = core.status.shops, keys = Object.keys(shopList);
+    if (x >= 5 && x <= 7) {
+        var topIndex = 6 - parseInt(keys.length / 2);
+        if (y>=topIndex && y<topIndex+keys.length) {
+            var reason = core.events.canUseQuickShop(keys[y - topIndex]);
             if (core.isset(reason)) {
                 core.drawText(reason);
                 return;
@@ -752,149 +1219,648 @@ events.prototype.clickQuickShop = function(x, y) {
             if (core.status.event.id=='shop')
                 core.status.event.data.fromList = true;
         }
-        if (y == exitIndex) {
+        // 离开
+        else if (y==topIndex+keys.length)
             core.ui.closePanel();
-        }
     }
 }
 
-// 工具栏
-events.prototype.clickToolbox = function(x,y) {
+////// 快捷商店界面时，按下某个键的操作 //////
+events.prototype.keyDownQuickShop = function (keycode) {
+    if (keycode==38) {
+        core.status.event.selection--;
+        core.ui.drawChoices(core.status.event.ui.text, core.status.event.ui.choices);
+    }
+    if (keycode==40) {
+        core.status.event.selection++;
+        core.ui.drawChoices(core.status.event.ui.text, core.status.event.ui.choices);
+    }
+}
 
-    // 返回
-    if (x>=10 && x<=12 && y==12) {
-        core.ui.closePanel(false);
+////// 快捷商店界面时，放开某个键的操作 //////
+events.prototype.keyUpQuickShop = function (keycode) {
+    if (keycode==27 || keycode==75 || keycode==88) {
+        core.ui.closePanel();
         return;
     }
+    var shopList = core.status.shops, keys = Object.keys(shopList);
+    if (keycode==13 || keycode==32 || keycode==67) {
+        var topIndex = 6 - parseInt(keys.length / 2);
+        this.clickQuickShop(6, topIndex+core.status.event.selection);
+    }
+    return;
+}
 
-    var items = null;
-
-    if (y>=4 && y<=7 && x!=12)
-        items = Object.keys(core.status.hero.items.tools).sort();
-
-    if (y>=9 && y<=12 && x!=12)
-        items = Object.keys(core.status.hero.items.constants).sort();
-
-    if (items==null) return;
+////// 工具栏界面时的点击操作 //////
+events.prototype.clickToolbox = function(x,y) {
+    // 返回
+    if (x>=10 && x<=12 && y==12) {
+        core.ui.closePanel();
+        return;
+    }
     var index=0;
     if (y==4||y==5||y==9||y==10) index=parseInt(x/2);
     else index=6+parseInt(x/2);
+    if (y>=9) index+=100;
+    this.clickToolboxIndex(index);
+}
 
-    if (index>=items.length) return;
-    itemId=items[index];
-
+////// 选择工具栏界面中某个Index后的操作 //////
+events.prototype.clickToolboxIndex = function(index) {
+    var items = null;
+    var ii=index;
+    if (ii<100)
+        items = Object.keys(core.status.hero.items.tools).sort();
+    else {
+        ii-=100;
+        items = Object.keys(core.status.hero.items.constants).sort();
+    }
+    if (items==null) return;
+    if (ii>=items.length) return;
+    var itemId=items[ii];
     if (itemId==core.status.event.data) {
         core.events.useItem(itemId);
     }
     else {
-        core.ui.drawToolbox(itemId);
+        core.ui.drawToolbox(index);
     }
 }
 
-// 存读档
+////// 工具栏界面时，按下某个键的操作 //////
+events.prototype.keyDownToolbox = function (keycode) {
+    if (!core.isset(core.status.event.data)) return;
+
+    var tools = Object.keys(core.status.hero.items.tools).sort();
+    var constants = Object.keys(core.status.hero.items.constants).sort();
+    var index=core.status.event.selection;
+
+    if (keycode==37) { // left
+        if ((index>0 && index<100) || index>100) {
+            this.clickToolboxIndex(index-1);
+            return;
+        }
+        if (index==100 && tools.length>0) {
+            this.clickToolboxIndex(tools.length-1);
+            return;
+        }
+    }
+    if (keycode==38) { // up
+        if ((index>5 && index<100) || index>105) {
+            this.clickToolboxIndex(index-6);
+            return;
+        }
+        if (index>=100 && index<=105) {
+            if (tools.length>6) {
+                this.clickToolboxIndex(Math.min(tools.length-1, index-100+6));
+            }
+            else if (tools.length>0) {
+                this.clickToolboxIndex(Math.min(tools.length-1, index-100));
+            }
+            return;
+        }
+    }
+    if (keycode==39) { // right
+        if ((index<tools.length-1) || (index>=100 && index<constants.length+100)) {
+            this.clickToolboxIndex(index+1);
+            return;
+        }
+        if (index==tools.length-1 && constants.length>0) {
+            this.clickToolboxIndex(100);
+            return;
+        }
+    }
+    if (keycode==40) { // down
+        if (index<=5) {
+            if (tools.length>6) {
+                this.clickToolboxIndex(Math.min(tools.length-1, index+6));
+            }
+            else if (constants.length>0) {
+                this.clickToolboxIndex(100+Math.min(constants.length-1, index));
+            }
+            return;
+        }
+        if (index>5 && index<100 && constants.length>0) {
+            this.clickToolboxIndex(100+Math.min(constants.length-1, index-6));
+            return;
+        }
+        if (index>=100 && index<=105 && constants.length>6) {
+            this.clickToolboxIndex(Math.min(100+constants.length-1, index+6));
+            return;
+        }
+    }
+}
+
+////// 工具栏界面时，放开某个键的操作 //////
+events.prototype.keyUpToolbox = function (keycode) {
+    if (keycode==84 || keycode==27 || keycode==88) {
+        core.ui.closePanel();
+        return;
+    }
+    if (!core.isset(core.status.event.data)) return;
+
+    if (keycode==13 || keycode==32 || keycode==67) {
+        this.clickToolboxIndex(core.status.event.selection);
+        return;
+    }
+}
+
+////// 存读档界面时的点击操作 //////
 events.prototype.clickSL = function(x,y) {
+
+    var index=core.status.event.data;
+    var page = parseInt(index/10), offset=index%10;
+
     // 上一页
     if ((x == 3 || x == 4) && y == 12) {
-        core.ui.drawSLPanel(core.status.event.data - 1);
+        core.ui.drawSLPanel(10*(page-1)+offset);
     }
     // 下一页
     if ((x == 8 || x == 9) && y == 12) {
-        core.ui.drawSLPanel(core.status.event.data + 1);
+        core.ui.drawSLPanel(10*(page+1)+offset);
     }
     // 返回
     if (x>=10 && x<=12 && y==12) {
-        core.ui.closePanel(false);
+        core.ui.closePanel();
         if (!core.isPlaying()) {
             core.showStartAnimate();
         }
         return;
     }
 
-    var index=6*core.status.event.data+1;
+    var index=6*page+1;
     if (y>=1 && y<=4) {
-        if (x>=1 && x<=3) core.doSL(index, core.status.event.id);
-        if (x>=5 && x<=7) core.doSL(index+1, core.status.event.id);
-        if (x>=9 && x<=11) core.doSL(index+2, core.status.event.id);
+        if (x>=1 && x<=3) core.doSL("autoSave", core.status.event.id);
+        if (x>=5 && x<=7) core.doSL(5*page+1, core.status.event.id);
+        if (x>=9 && x<=11) core.doSL(5*page+2, core.status.event.id);
     }
     if (y>=7 && y<=10) {
-        if (x>=1 && x<=3) core.doSL(index+3, core.status.event.id);
-        if (x>=5 && x<=7) core.doSL(index+4, core.status.event.id);
-        if (x>=9 && x<=11) core.doSL(index+5, core.status.event.id);
+        if (x>=1 && x<=3) core.doSL(5*page+3, core.status.event.id);
+        if (x>=5 && x<=7) core.doSL(5*page+4, core.status.event.id);
+        if (x>=9 && x<=11) core.doSL(5*page+5, core.status.event.id);
     }
 }
 
+////// 存读档界面时，按下某个键的操作 //////
+events.prototype.keyDownSL = function(keycode) {
+
+    var index=core.status.event.data;
+    var page = parseInt(index/10), offset=index%10;
+
+    if (keycode==37) { // left
+        if (offset==0) {
+            core.ui.drawSLPanel(10*(page-1) + 5);
+        }
+        else {
+            core.ui.drawSLPanel(index - 1);
+        }
+        return;
+    }
+    if (keycode==38) { // up
+        if (offset<3) {
+            core.ui.drawSLPanel(10*(page-1) + offset + 3);
+        }
+        else {
+            core.ui.drawSLPanel(index - 3);
+        }
+        return;
+    }
+    if (keycode==39) { // right
+        if (offset==5) {
+            core.ui.drawSLPanel(10*(page+1)+1);
+        }
+        else {
+            core.ui.drawSLPanel(index + 1);
+        }
+        return;
+    }
+    if (keycode==40) { // down
+        if (offset>=3) {
+            core.ui.drawSLPanel(10*(page+1) + offset - 3);
+        }
+        else {
+            core.ui.drawSLPanel(index + 3);
+        }
+        return;
+    }
+    if (keycode==33) { // PAGEUP
+        core.ui.drawSLPanel(10*(page-1) + offset);
+        return;
+    }
+    if (keycode==34) { // PAGEDOWN
+        core.ui.drawSLPanel(10*(page+1) + offset);
+        return;
+    }
+}
+
+////// 存读档界面时，放开某个键的操作 //////
+events.prototype.keyUpSL = function (keycode) {
+
+    var index=core.status.event.data;
+    var page = parseInt(index/10), offset=index%10;
+
+    if (keycode==27 || keycode==88 || (core.status.event.id == 'save' && keycode==83) || (core.status.event.id == 'load' && keycode==68)) {
+        core.ui.closePanel();
+        if (!core.isPlaying()) {
+            core.showStartAnimate();
+        }
+        return;
+    }
+    if (keycode==13 || keycode==32 || keycode==67) {
+        if (offset==0) {
+            core.doSL("autoSave", core.status.event.id);
+        }
+        else {
+            core.doSL(5*page+offset, core.status.event.id);
+        }
+        return;
+    }
+}
+
+////// 系统设置界面时的点击操作 //////
 events.prototype.clickSwitchs = function (x,y) {
     if (x<5 || x>7) return;
-    if (y==4) {
-        if (core.musicStatus.isIOS) {
-            core.drawTip("iOS设备不支持播放音乐");
-            return;
+    var choices = [
+        "背景音乐", "背景音效", "战斗动画", "怪物显伤", "领域显伤", "下载离线版本", "返回主菜单"
+    ];
+    var topIndex = 6 - parseInt((choices.length - 1) / 2);
+    if (y>=topIndex && y<topIndex+choices.length) {
+        var selection = y-topIndex;
+        switch (selection) {
+            case 0:
+                core.musicStatus.bgmStatus = !core.musicStatus.bgmStatus;
+                if (core.musicStatus.bgmStatus)
+                    core.resumeBgm();
+                else
+                    core.pauseBgm();
+                core.setLocalStorage('bgmStatus', core.musicStatus.bgmStatus);
+                core.ui.drawSwitchs();
+                break;
+            case 1:
+                core.musicStatus.soundStatus = !core.musicStatus.soundStatus;
+                core.setLocalStorage('soundStatus', core.musicStatus.soundStatus);
+                core.ui.drawSwitchs();
+                break;
+            case 2:
+                if (!core.flags.canOpenBattleAnimate) {
+                    core.drawTip("本塔不能开启战斗动画！");
+                }
+                else {
+                    core.flags.battleAnimate=!core.flags.battleAnimate;
+                    core.setLocalStorage('battleAnimate', core.flags.battleAnimate);
+                    core.ui.drawSwitchs();
+                }
+                break;
+            case 3:
+                core.flags.displayEnemyDamage=!core.flags.displayEnemyDamage;
+                core.updateFg();
+                core.setLocalStorage('enemyDamage', core.flags.displayEnemyDamage);
+                core.ui.drawSwitchs();
+                break;
+            case 4:
+                core.flags.displayExtraDamage=!core.flags.displayExtraDamage;
+                core.updateFg();
+                core.setLocalStorage('extraDamage', core.flags.displayExtraDamage);
+                core.ui.drawSwitchs();
+                break;
+            case 5:
+                window.open(core.firstData.name+".zip", "_blank");
+                break;
+            case 6:
+                core.status.event.selection=0;
+                core.ui.drawSettings();
+                break;
         }
-        core.changeSoundStatus();
-        core.ui.drawSwitchs();
-    }
-    if (y==5) {
-        core.flags.battleAnimate=!core.flags.battleAnimate;
-        core.ui.drawSwitchs();
-    }
-    if (y==6) {
-        core.flags.displayEnemyDamage=!core.flags.displayEnemyDamage;
-        core.updateFg();
-        core.ui.drawSwitchs();
-    }
-    if (y==7) {
-        core.flags.displayExtraDamage=!core.flags.displayExtraDamage;
-        core.updateFg();
-        core.ui.drawSwitchs();
-    }
-    if (y==8) {
-        core.ui.drawSettings(false);
     }
 }
 
-// 菜单栏
+////// 系统设置界面时，按下某个键的操作 //////
+events.prototype.keyDownSwitchs = function (keycode) {
+    if (keycode==38) {
+        core.status.event.selection--;
+        core.ui.drawChoices(core.status.event.ui.text, core.status.event.ui.choices);
+    }
+    if (keycode==40) {
+        core.status.event.selection++;
+        core.ui.drawChoices(core.status.event.ui.text, core.status.event.ui.choices);
+    }
+}
+
+////// 系统设置界面时，放开某个键的操作 //////
+events.prototype.keyUpSwitchs = function (keycode) {
+    if (keycode==27 || keycode==88) {
+        core.status.event.selection=0;
+        core.ui.drawSettings();
+        return;
+    }
+    var choices = [
+        "背景音乐", "背景音效", "战斗动画", "怪物显伤", "领域显伤", "下载离线版本", "返回主菜单"
+    ];
+    if (keycode==13 || keycode==32 || keycode==67) {
+        var topIndex = 6 - parseInt((choices.length - 1) / 2);
+        this.clickSwitchs(6, topIndex+core.status.event.selection);
+    }
+}
+
+
+////// 系统菜单栏界面时的点击事件 //////
 events.prototype.clickSettings = function (x,y) {
     if (x<5 || x>7) return;
-    if (y == 3) {
-        core.ui.drawSwitchs();
+    var choices = [
+        "系统设置", "快捷商店", "浏览地图", "同步存档", "重新开始", "数据统计", "操作帮助", "关于本塔", "返回游戏"
+    ];
+    var topIndex = 6 - parseInt((choices.length - 1) / 2);
+    if (y>=topIndex && y<topIndex+choices.length) {
+        var selection = y-topIndex;
+
+        switch (selection) {
+            case 0:
+                core.status.event.selection=0;
+                core.ui.drawSwitchs();
+                break;
+            case 1:
+                core.status.event.selection=0;
+                core.ui.drawQuickShop();
+                break;
+            case 2:
+                if (!core.flags.enableViewMaps) {
+                    core.drawTip("本塔不允许浏览地图！");
+                }
+                else {
+                    core.drawText("\t[系统提示]即将进入浏览地图模式。\n\n点击地图上半部分，或按[↑]键可查看前一张地图\n点击地图下半部分，或按[↓]键可查看后一张地图\n点击地图中间，或按[ESC]键可离开浏览地图模式", function () {
+                        core.ui.drawMaps(core.floorIds.indexOf(core.status.floorId));
+                    })
+                }
+                break;
+            case 3:
+                core.status.event.selection=0;
+                core.ui.drawSyncSave();
+                break;
+            case 4:
+                core.status.event.selection=1;
+                core.ui.drawConfirmBox("你确定要重新开始吗？", function () {
+                    core.ui.closePanel();
+                    core.restart();
+                }, function () {
+                    core.status.event.selection=3;
+                    core.ui.drawSettings();
+                });
+                break;
+            case 5:
+                core.ui.drawWaiting("正在拉取统计信息，请稍后...");
+
+                var formData = new FormData();
+                formData.append('type', 'getinfo');
+                formData.append('name', core.firstData.name);
+                formData.append('version', core.firstData.version);
+
+                var xhr = new XMLHttpRequest();
+                xhr.open("POST", "/games/upload.php");
+
+                xhr.onload = function(e) {
+                    if (xhr.status==200) {
+                        var response = JSON.parse(xhr.response);
+                        if (response.code<0) {
+                            core.drawText("出错啦！\n无法拉取统计信息。\n错误原因："+response.msg);
+                        }
+                        else {
+                            var text="\t[本塔统计信息]";
+                            var toAdd=false;
+                            response.data.forEach(function (t) {
+                                if (toAdd) text+="\n\n";
+                                toAdd=true;
+                                if (t.hard!='') text+=t.hard+"难度： "
+                                text+="已有"+t.people+"人次游戏，"+t.score+"人次通关。";
+                                if (core.isset(t.max) && t.max>0) {
+                                    text+="\n当前MAX为"+t.max+"，最早由 "+(t.username||"匿名")+" 于"+core.formatDate(new Date(1000*t.timestamp))+"打出。";
+                                }
+                            })
+                            core.drawText(text);
+                        }
+                    }
+                    else {
+                        core.drawText("出错啦！\n无法拉取统计信息。\n错误原因：HTTP "+xhr.status);
+                    }
+                };
+                xhr.ontimeout = function() {
+                    core.drawText("出错啦！\n无法拉取统计信息。\n错误原因：Timeout");
+                }
+                xhr.onerror = function() {
+                    core.drawText("出错啦！\n无法拉取统计信息。\n错误原因：XHR Error");
+                }
+                xhr.send(formData);
+                break;
+            case 6:
+                core.ui.drawHelp();
+                break;
+            case 7:
+                core.ui.drawAbout();
+                break;
+            case 8:
+                core.ui.closePanel();
+                break;
+        }
     }
-    if (y==4) {
-        /*
-        core.flags.battleAnimate=!core.flags.battleAnimate;
-        core.setLocalStorage('battleAnimate', core.flags.battleAnimate);
-        core.ui.drawSettings(false);
-        */
-        this.decreaseHard();
-    }
-    if (y == 5) core.ui.drawQuickShop();
-    // if (y == 5) this.decreaseHard();
-    if (y == 6) {
-        core.ui.drawSyncSave();
-    }
-    /*
-    if (y == 6) {
-        core.ui.drawConfirmBox("你确定要清空所有本地存档吗？", function() {
-            localStorage.clear();
-            core.drawText("\t[操作成功]你的本地所有存档已被清空。");
-        }, function() {
-            core.ui.drawSettings(false);
-        })
-    }
-    */
-    if (y == 7) {
-        core.ui.drawConfirmBox("你确定要重新开始吗？", function () {
-            core.ui.closePanel();
-            core.restart();
-        }, function () {
-            core.ui.drawSettings(false);
-        });
-    }
-    if (y==8) {
-        core.ui.drawAbout();
-        // core.debug();
-    }
-    if (y == 9) core.ui.closePanel();
     return;
 }
 
-/*********** 点击事件 END ***************/
+////// 系统菜单栏界面时，按下某个键的操作 //////
+events.prototype.keyDownSettings = function (keycode) {
+    if (keycode==38) {
+        core.status.event.selection--;
+        core.ui.drawChoices(core.status.event.ui.text, core.status.event.ui.choices);
+    }
+    if (keycode==40) {
+        core.status.event.selection++;
+        core.ui.drawChoices(core.status.event.ui.text, core.status.event.ui.choices);
+    }
+}
+
+////// 系统菜单栏界面时，放开某个键的操作 //////
+events.prototype.keyUpSettings = function (keycode) {
+    if (keycode==27 || keycode==88) {
+        core.ui.closePanel();
+        return;
+    }
+    var choices = [
+        "系统设置", "快捷商店", "浏览地图", "同步存档", "重新开始", "数据统计", "操作帮助", "关于本塔", "返回游戏"
+    ];
+    if (keycode==13 || keycode==32 || keycode==67) {
+        var topIndex = 6 - parseInt((choices.length - 1) / 2);
+        this.clickSettings(6, topIndex+core.status.event.selection);
+    }
+}
+
+////// 同步存档界面时的点击操作 //////
+events.prototype.clickSyncSave = function (x,y) {
+    if (x<5 || x>7) return;
+    var choices = [
+        "同步存档到服务器", "从服务器加载存档", "存档至本地文件", "从本地文件读档", "清空所有存档", "返回主菜单"
+    ];
+    var topIndex = 6 - parseInt((choices.length - 1) / 2);
+    if (y>=topIndex && y<topIndex+choices.length) {
+        var selection = y-topIndex;
+        switch (selection) {
+            case 0:
+                core.syncSave("save");
+                break;
+            case 1:
+                core.syncSave("load");
+                break;
+            case 2:
+                var saves = [];
+                for (var i=1;i<=150;i++) {
+                    var data = core.getLocalStorage("save"+i, null);
+                    if (core.isset(data)) {
+                        saves.push(data);
+                    }
+                }
+                var content = {
+                    "name": core.firstData.name,
+                    "version": core.firstData.version,
+                    "data": saves
+                }
+                core.download(core.firstData.name+"_"+core.formatDate2(new Date())+".h5save", JSON.stringify(content));
+                break;
+            case 3:
+                core.readFile(function (obj) {
+                    if (obj.name!=core.firstData.name) {
+                        alert("存档和游戏不一致！");
+                        return;
+                    }
+                    if (obj.version!=core.firstData.version) {
+                        alert("游戏版本不一致！");
+                        return;
+                    }
+                    if (!core.isset(obj.data)) {
+                        alert("无效的存档！");
+                        return;
+                    }
+                    var data=obj.data;
+                    for (var i=1;i<=150;i++) {
+                        if (i<=data.length) {
+                            core.setLocalStorage("save"+i, data[i-1]);
+                        }
+                        else {
+                            core.removeLocalStorage("save"+i);
+                        }
+                    }
+                    core.drawText("读取成功！\n你的本地所有存档均已被覆盖。");
+                }, function () {
+                    
+                });
+                break;
+            case 4:
+                core.status.event.selection=1;
+                core.ui.drawConfirmBox("你确定要清空所有存档吗？", function() {
+                    localStorage.clear();
+                    core.drawText("\t[操作成功]你的所有存档已被清空。");
+                }, function() {
+                    core.status.event.selection=2;
+                    core.ui.drawSyncSave(false);
+                })
+                break;
+            case 5:
+                core.status.event.selection=3;
+                core.ui.drawSettings();
+                break;
+
+        }
+    }
+    return;
+}
+
+////// 同步存档界面时，按下某个键的操作 //////
+events.prototype.keyDownSyncSave = function (keycode) {
+    if (keycode==38) {
+        core.status.event.selection--;
+        core.ui.drawChoices(core.status.event.ui.text, core.status.event.ui.choices);
+    }
+    if (keycode==40) {
+        core.status.event.selection++;
+        core.ui.drawChoices(core.status.event.ui.text, core.status.event.ui.choices);
+    }
+}
+
+////// 同步存档界面时，放开某个键的操作 //////
+events.prototype.keyUpSyncSave = function (keycode) {
+    if (keycode==27 || keycode==88) {
+        core.status.event.selection=2;
+        core.ui.drawSettings();
+        return;
+    }
+    var choices = [
+        "同步存档到服务器", "从服务器加载存档", "存档至本地文件", "从本地文件读档", "清空所有存档", "返回主菜单"
+    ];
+    if (keycode==13 || keycode==32 || keycode==67) {
+        var topIndex = 6 - parseInt((choices.length - 1) / 2);
+        this.clickSyncSave(6, topIndex+core.status.event.selection);
+    }
+}
+
+////// “虚拟键盘”界面时的点击操作 //////
+events.prototype.clickKeyBoard = function (x, y) {
+    if (y==3 && x>=1 && x<=11) {
+        core.ui.closePanel();
+        core.keyUp(112+x-1); // F1-F12: 112-122
+    }
+    if (y==4 && x>=1 && x<=10) {
+        core.ui.closePanel();
+        core.keyUp(x==10?48:48+x); // 1-9: 49-57; 0: 48
+    }
+    // 字母
+    var lines = [
+        ["Q","W","E","R","T","Y","U","I","O","P"],
+        ["A","S","D","F","G","H","J","K","L"],
+        ["Z","X","C","V","B","N","M"],
+    ];
+    if (y==5 && x>=1 && x<=10) {
+        core.ui.closePanel();
+        core.keyUp(lines[0][x-1].charCodeAt(0));
+    }
+    if (y==6 && x>=1 && x<=9) {
+        core.ui.closePanel();
+        core.keyUp(lines[1][x-1].charCodeAt(0));
+    }
+    if (y==7 && x>=1 && x<=7) {
+        core.ui.closePanel();
+        core.keyUp(lines[2][x-1].charCodeAt(0));
+    }
+    if (y==8 && x>=1 && x<=11) {
+        core.ui.closePanel();
+        if (x==1) core.keyUp(189); // -
+        if (x==2) core.keyUp(187); // =
+        if (x==3) core.keyUp(219); // [
+        if (x==4) core.keyUp(221); // ]
+        if (x==5) core.keyUp(220); // \
+        if (x==6) core.keyUp(186); // ;
+        if (x==7) core.keyUp(222); // '
+        if (x==8) core.keyUp(188); // ,
+        if (x==9) core.keyUp(190); // .
+        if (x==10) core.keyUp(191); // /
+        if (x==11) core.keyUp(192); // `
+    }
+    if (y==9 && x>=1 && x<=10) {
+        core.ui.closePanel();
+        if (x==1) core.keyUp(27); // ESC
+        if (x==2) core.keyUp(9); // TAB
+        if (x==3) core.keyUp(20); // CAPS
+        if (x==4) core.keyUp(16); // SHIFT
+        if (x==5) core.keyUp(17); // CTRL
+        if (x==6) core.keyUp(18); // ALT
+        if (x==7) core.keyUp(32); // SPACE
+        if (x==8) core.keyUp(8); // BACKSPACE
+        if (x==9) core.keyUp(13); // ENTER
+        if (x==10) core.keyUp(46); // DEL
+    }
+    if (y==10 && x>=9 && x<=11)
+        core.ui.closePanel();
+}
+
+////// “关于”界面时的点击操作 //////
+events.prototype.clickAbout = function () {
+    if (core.isPlaying())
+        core.ui.closePanel();
+    else
+        core.showStartAnimate();
+}
+
