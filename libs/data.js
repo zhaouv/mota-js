@@ -4,8 +4,8 @@ function data() {
 
 data.prototype.init = function() {
     this.firstData = {
-        "title": "Packman Tower", // 游戏名，将显示在标题页面以及切换楼层的界面中
-        "name": "packman", // 游戏的唯一英文标识符。由英文、数字、下划线组成，不能超过20个字符。
+        "title": "Pacman Tower", // 游戏名，将显示在标题页面以及切换楼层的界面中
+        "name": "pacman", // 游戏的唯一英文标识符。由英文、数字、下划线组成，不能超过20个字符。
         "version": "Ver 1.2.0 (Alpha)", // 当前游戏版本；版本不一致的存档不能通用。
         "floorId": "sample0", // 初始楼层ID
         "hero": { // 勇士初始数据

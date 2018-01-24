@@ -4412,7 +4412,7 @@ core.prototype.updateStatusBar = function () {
     core.updateFg();
 
     var notCheat=true;
-    notCheat=notCheat && core.status.hero.atk == 1;
+    notCheat=notCheat && (core.status.hero.atk == 1|| (core.status.hero.loc.x==11 && core.status.hero.loc.y==1));
     notCheat=notCheat && core.status.hero.def == 0;
     notCheat=notCheat && core.status.hero.hp <= 78;//76?
     if(!notCheat)core.drawText('数据异常',core.showStartAnimate)
