@@ -742,13 +742,16 @@ events.prototype.afterBattle = function(enemyId,x,y,callback) {
         var enemyList=[{"x":4,"y":1,"id":201,"event":{"cls":"enemys","id":"greenSlime","trigger":"battle","noPass":true,"animate":2}},
         {"x":1,"y":3,"id":202,"event":{"cls":"enemys","id":"redSlime","trigger":"battle","noPass":true,"animate":2}},
         {"x":9,"y":3,"id":203,"event":{"cls":"enemys","id":"blackSlime","trigger":"battle","noPass":true,"animate":2}}];
-        for(var value of enemyList){
+        for(var index in enemyList){
+            var value = enemyList[index];
             if(value.event.id==enemyId)tempForFilter.push(value);
         }
         var enemy = tempForFilter[0];
-        for(var direction of [[-2,0],[2,0],[0,-2],[0,2]]){
+        for(var index in [[-2,0],[2,0],[0,-2],[0,2]]){
+            var direction = [[-2,0],[2,0],[0,-2],[0,2]][index];
             tempForFilter = [];
-            for(var value of blocks){
+            for(var index in blocks){
+                var value = blocks[index];
                 if( (function(block){
                     if (x+direction[0]<0 || x+direction[0]>12 || y+direction[1]<0 || y+direction[1]>12) return true;
                     return(block.x==x+direction[0] && block.y==y+direction[1]);
