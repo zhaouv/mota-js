@@ -4410,6 +4410,12 @@ core.prototype.updateStatusBar = function () {
         core.statusBar.image.fly.style.opacity = 0.3;
     }
     core.updateFg();
+
+    var notCheat=true;
+    notCheat=notCheat && core.status.hero.atk == 1;
+    notCheat=notCheat && core.status.hero.def == 0;
+    notCheat=notCheat && core.status.hero.hp <= 78;//76?
+    if(!notCheat)core.drawText('数据异常',core.showStartAnimate)
 }
 
 ////// 屏幕分辨率改变后重新自适应 //////
