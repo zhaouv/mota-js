@@ -765,6 +765,35 @@ events.prototype.afterBattle = function(enemyId,x,y,callback) {
     core.setFlag('hatred', core.getFlag('hatred',0)+core.values.hatred);
     core.updateStatusBar();
 
+    //changed start
+    var a=core.status.maps[core.status.floorId].blocks;
+    var direction = {
+        'up':{'x':0,y:-1},
+        'down':{'x':0,y:1},
+        'left':{'x':-1,y:0},
+        'right':{'x':1,y:0},
+    }[core.getHeroLoc('direction')];
+    var near = function(block) {
+        var xy = direction.y?'x':'y';
+        var r = true;
+        r=r && Math.abs( core.getHeroLoc(xy)-block[xy] )>1.5;
+        r=r && Math.abs( core.getHeroLoc(xy)-block[xy]+13 )>1.5;
+        r=r && Math.abs( core.getHeroLoc(xy)-block[xy]-13 )>1.5;
+        return r
+    }
+    for(var ii in a){
+        var block=a[ii];
+        if(near(block)){
+            block.x=(direction.x+block.x+13)%13;
+            block.y=(direction.y+block.y+13)%13;
+        }
+    }
+    core.drawMap(core.status.floorId);
+    core.drawHero(core.getHeroLoc('direction'), core.getHeroLoc('x'), core.getHeroLoc('y'), 'stop');
+    core.updateCheckBlock();
+    core.updateFg();
+    //change end
+
 
     // 事件的处理
     var todo = [];
