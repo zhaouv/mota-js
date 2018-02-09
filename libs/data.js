@@ -23,7 +23,9 @@ data.prototype.init = function() {
                     "blueKey": 0,
                     "redKey": 0
                 },
-                "constants": {},
+                "constants": {
+                    'book':1
+                },
                 "tools": {}
             },
             "flyRange": [], // 初始可飞的楼层；一般留空数组即可
@@ -36,9 +38,7 @@ data.prototype.init = function() {
             "steps": 0, // 行走步数统计
         },
         "startText": [ // 游戏开始前剧情。如果无剧情直接留一个空数组即可。
-            "Hi，欢迎来到 HTML5 魔塔样板！\n\n本样板由艾之葵制作，可以让你在不会写任何代码\n的情况下也能做出属于自己的H5魔塔！",
-            "这里游戏开始时的剧情。\n定义在data.js的startText处。\n\n你可以在这里写上自己的内容。",
-            "赶快来试一试吧！"
+
         ],
         "shops": [ // 定义全局商店（即快捷商店）
             {
@@ -164,16 +164,16 @@ data.prototype.init = function() {
         "hatredDecrease": true, // 是否在和仇恨怪战斗后减一半的仇恨值，此项为false则和仇恨怪不会扣减仇恨值。
         "betweenAttackCeil": false, // 夹击方式是向上取整还是向下取整。如果此项为true则为向上取整，为false则为向下取整
         /****** 系统相关 ******/
-        "startDirectly": false, // 点击“开始游戏”后是否立刻开始游戏而不显示难度选择界面
-        "canOpenBattleAnimate": true, // 是否允许用户开启战斗过程；如果此项为false，则下面两项均强制视为false
+        "startDirectly": true, // 点击“开始游戏”后是否立刻开始游戏而不显示难度选择界面
+        "canOpenBattleAnimate": false, // 是否允许用户开启战斗过程；如果此项为false，则下面两项均强制视为false
         "showBattleAnimateConfirm": true, // 是否在游戏开始时提供“是否开启战斗动画”的选项
         "battleAnimate": true, // 是否默认显示战斗动画；用户可以手动在菜单栏中开关
         "displayEnemyDamage": true, // 是否地图怪物显伤；用户可以手动在菜单栏中开关
         "displayExtraDamage": true, // 是否地图高级显伤（领域、夹击等）；用户可以手动在菜单栏中开关
-        "enableGentleClick": true, // 是否允许轻触（获得面前物品）
-        "potionWhileRouting": false, // 寻路算法是否经过血瓶；如果该项为false，则寻路算法会自动尽量绕过血瓶
+        "enableGentleClick": false, // 是否允许轻触（获得面前物品）
+        "potionWhileRouting": true, // 寻路算法是否经过血瓶；如果该项为false，则寻路算法会自动尽量绕过血瓶
         "enableViewMaps": true, // 是否支持在菜单栏中查看所有楼层的地图
-        "portalWithoutTrigger": true, // 是否支持穿透。所谓穿透，即当自动寻路经过楼梯时，不触发楼层转换事件而是穿过它。
+        "portalWithoutTrigger": false, // 是否支持穿透。所谓穿透，即当自动寻路经过楼梯时，不触发楼层转换事件而是穿过它。
         "enableMoveDirectly": true, // 是否允许瞬间移动
     }
 }
