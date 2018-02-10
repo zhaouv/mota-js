@@ -261,7 +261,7 @@ core.prototype.init = function (coreData) {
     core.flags.displayExtraDamage = core.getLocalStorage('extraDamage', core.flags.displayExtraDamage);
 
     core.material.ground = new Image();
-    core.material.ground.src = "images/ground.png";
+    core.material.ground.src = "project/images/ground.png";
 
     core.loader(function () {
         console.log(core.material);
@@ -563,7 +563,7 @@ core.prototype.loadImage = function (imgName, callback) {
         if (name.indexOf(".png")<0) // 不包含"png"
             name=name+".png";
         var image = new Image();
-        image.src = 'images/' + name + "?v=" + main.version;
+        image.src = 'project/images/' + name + "?v=" + main.version;
         if (image.complete) {
             callback(imgName, image);
             return;
@@ -581,7 +581,7 @@ core.prototype.loadImage = function (imgName, callback) {
 core.prototype.loadAnimates = function (callback) {
     core.animates.forEach(function (t) {
         var xhr = new XMLHttpRequest();
-        xhr.open('GET', 'animates/' + t + ".animate", true);
+        xhr.open('GET', 'project/animates/' + t + ".animate", true);
         xhr.overrideMimeType("text/plain; charset=x-user-defined");
         xhr.onload = function (e) {
             var content = this.responseText;
@@ -591,6 +591,7 @@ core.prototype.loadAnimates = function (callback) {
 
                 data.ratio = content.ratio;
                 data.images = [];
+                data.images_rev = [];
                 content.bitmaps.forEach(function (t2) {
                     if (!core.isset(t2) || t2=="") {
                         data.images.push(null);
@@ -615,7 +616,9 @@ core.prototype.loadAnimates = function (callback) {
                             'x': t3[1],
                             'y': t3[2],
                             'zoom': t3[3],
-                            'opacity': t3[4]
+                            'opacity': t3[4],
+                            'mirror': t3[5]||0,
+                            'angle': t3[6]||0,
                         })
                     })
                     data.frames.push(info);
@@ -652,7 +655,7 @@ core.prototype.loadMusic = function (callback) {
             if (core.musicStatus.audioContext!=null) {
                 core.material.bgms[t] = 'loading';
                 var xhr = new XMLHttpRequest();
-                xhr.open('GET', 'sounds/'+t, true);
+                xhr.open('GET', 'project/sounds/'+t, true);
                 xhr.overrideMimeType("text/plain; charset=x-user-defined");
                 xhr.onload = function(e) { //下载完成
                     try {
@@ -689,7 +692,7 @@ core.prototype.loadMusic = function (callback) {
         else {
             var music = new Audio();
             music.preload = core.musicStatus.startDirectly?'auto':'none';
-            music.src = 'sounds/'+t;
+            music.src = 'project/sounds/'+t;
             music.loop = 'loop';
             core.material.bgms[t] = music;
         }
@@ -699,7 +702,7 @@ core.prototype.loadMusic = function (callback) {
 
         if (core.musicStatus.audioContext != null) {
             var xhr = new XMLHttpRequest();
-            xhr.open('GET', 'sounds/'+t, true);
+            xhr.open('GET', 'project/sounds/'+t, true);
             xhr.responseType = 'arraybuffer';
             xhr.onload = function(e) { //下载完成
                 try {
@@ -728,7 +731,7 @@ core.prototype.loadMusic = function (callback) {
         }
         else {
             var music = new Audio();
-            music.src = 'sounds/'+t;
+            music.src = 'project/sounds/'+t;
             core.material.sounds[t] = music;
         }
 
@@ -1687,15 +1690,21 @@ core.prototype.automaticRoute = function (destX, destY) {
         f=f%169;
         var nowX = parseInt(f / 13), nowY = f % 13;
         var nowIsArrow = false, nowId, nowBlock = core.getBlock(nowX,nowY);
+        /*
         if (nowBlock!=null){
             nowId = nowBlock.block.event.id;
             nowIsArrow = nowId.slice(0, 5).toLowerCase() == 'arrow';
         }
+        */
         for (var direction in scan) {
+            /*
             if(nowIsArrow){
                 var nowArrow = nowId.slice(5).toLowerCase();
                 if (direction != nowArrow) continue;
             }
+            */
+            if (!core.canMoveHero(nowX, nowY, direction))
+                continue;
             
             var nx = nowX + scan[direction].x;
             var ny = nowY + scan[direction].y;
@@ -1711,12 +1720,14 @@ core.prototype.automaticRoute = function (destX, destY) {
             var nextId, nextBlock = core.getBlock(nx,ny);
             if (nextBlock!=null){
                 nextId = nextBlock.block.event.id;
+                /*
                 // 遇到单向箭头处理
                 var isArrow = nextId.slice(0, 5).toLowerCase() == 'arrow';
                 if(isArrow){
                     var nextArrow = nextId.slice(5).toLowerCase();
                     if ( (scan[direction].x + scan[nextArrow].x) == 0 && (scan[direction].y + scan[nextArrow].y) == 0 ) continue;
                 }
+                */
                 // 绕过亮灯（因为只有一次通行机会很宝贵）
                 if(nextId == "light") deepAdd=100;
                 // 绕过路障
@@ -1925,9 +1936,18 @@ core.prototype.turnHero = function() {
 }
 
 ////// 勇士能否前往某方向 //////
-core.prototype.canMoveHero = function() {
-    var direction = core.getHeroLoc('direction');
-    var nowBlock = core.getBlock(core.getHeroLoc('x'),core.getHeroLoc('y'));
+core.prototype.canMoveHero = function(x,y,direction,floorId) {
+    if (!core.isset(x)) x=core.getHeroLoc('x');
+    if (!core.isset(y)) y=core.getHeroLoc('y');
+    if (!core.isset(direction)) direction=core.getHeroLoc('direction');
+    if (!core.isset(floorId)) floorId=core.status.floorId;
+
+    // 检查当前块的cannotMove
+    var cannotMove = core.floors[floorId].cannotMove[x+","+y];
+    if (core.isset(cannotMove) && cannotMove instanceof Array && cannotMove.indexOf(direction)>=0)
+        return false;
+
+    var nowBlock = core.getBlock(x,y,floorId);
     if (nowBlock!=null){
         nowId = nowBlock.block.event.id;
         var nowIsArrow = nowId.slice(0, 5).toLowerCase() == 'arrow';
@@ -1944,7 +1964,7 @@ core.prototype.canMoveHero = function() {
         'down': {'x': 0, 'y': 1},
         'right': {'x': 1, 'y': 0}
     };
-    var nextBlock = core.getBlock(core.nextX(),core.nextY());
+    var nextBlock = core.getBlock(x+scan[direction].x,y+scan[direction].y);
     if (nextBlock!=null){
         nextId = nextBlock.block.event.id;
         // 遇到单向箭头处理
@@ -1991,6 +2011,8 @@ core.prototype.canMoveDirectly = function (destX,destY) {
 
 ////// 让勇士开始移动 //////
 core.prototype.moveHero = function (direction, callback) {
+    // 如果正在移动，直接return
+    if (core.status.heroMoving>0) return;
     if (core.isset(direction))
         core.setHeroLoc('direction', direction);
     if (!core.isset(callback)) { // 如果不存在回调函数，则使用heroMoveTrigger
@@ -2607,65 +2629,88 @@ core.prototype.setFillStyle = function (map, style) {
 
 ////// 绘制某张地图 //////
 core.prototype.drawMap = function (mapName, callback) {
-    var mapData = core.status.maps[mapName];
-    var mapBlocks = mapData.blocks;
-    core.status.floorId = mapName;
-    core.status.thisMap = mapData;
     core.clearMap('all');
     core.removeGlobalAnimate(null, null, true);
-    var groundId = core.floors[mapName].defaultGround || "ground";
-    var blockIcon = core.material.icons.terrains[groundId];
-    var blockImage = core.material.images.terrains;
-    for (var x = 0; x < 13; x++) {
-        for (var y = 0; y < 13; y++) {
-            core.canvas.bg.drawImage(blockImage, 0, blockIcon * 32, 32, 32, x * 32, y * 32, 32, 32);
-        }
-    }
-
-    // 如果存在png
-    if (core.isset(core.floors[mapName].png)) {
-
-        var x=0, y=0, size=416;
-
-        var png = core.floors[mapName].png;
-
-        var ratio = size/416;
-
-        if (typeof png == 'string') {
-            if (core.isset(core.material.images.pngs[png])) {
-                core.canvas.bg.drawImage(core.material.images.pngs[png], x, y, size, size);
+    var drawBg = function(){
+        var groundId = core.floors[mapName].defaultGround || "ground";
+        var blockIcon = core.material.icons.terrains[groundId];
+        var blockImage = core.material.images.terrains;
+        for (var x = 0; x < 13; x++) {
+            for (var y = 0; y < 13; y++) {
+                core.canvas.bg.drawImage(blockImage, 0, blockIcon * 32, 32, 32, x * 32, y * 32, 32, 32);
             }
         }
-        else if (png instanceof Array) {
-            png.forEach(function (t) {
-                if (t.length!=3) return;
-                var dx=parseInt(t[0]), dy=parseInt(t[1]), p=t[2];
-                if (core.isset(dx) && core.isset(dy) && core.isset(core.material.images.pngs[p])) {
-                    dx*=32; dy*=32;
-                    var image = core.material.images.pngs[p];
-                    core.canvas.bg.drawImage(image, x+dx*ratio, y+dy*ratio, Math.min(size-dx*ratio, ratio*image.width), Math.min(size-dy*ratio, ratio*image.height));
-                }
-            })
-        }
-    }
-
-    var mapArray = core.maps.getMapArray(mapBlocks);
-    for (var b = 0; b < mapBlocks.length; b++) {
-        // 事件启用
-        var block = mapBlocks[b];
-        if (core.isset(block.event) && !(core.isset(block.enable) && !block.enable)) {
-            if (block.event.cls == 'autotile') {
-                core.drawAutotile(core.canvas.event, mapArray, block, 32, 0, 0);
-            }
-            else {
-                if (block.event.id!='none') {
-                    blockIcon = core.material.icons[block.event.cls][block.event.id];
-                    blockImage = core.material.images[block.event.cls];
-                    core.canvas.event.drawImage(core.material.images[block.event.cls], 0, blockIcon * 32, 32, 32, block.x * 32, block.y * 32, 32, 32);
-                    core.addGlobalAnimate(block.event.animate, block.x * 32, block.y * 32, blockIcon, blockImage);
+        // 如果存在png
+        if (core.isset(core.floors[mapName].png)) {
+            
+            var x=0, y=0, size=416;
+    
+            var png = core.floors[mapName].png;
+    
+            var ratio = size/416;
+    
+            if (typeof png == 'string') {
+                if (core.isset(core.material.images.pngs[png])) {
+                    core.canvas.bg.drawImage(core.material.images.pngs[png], x, y, size, size);
                 }
             }
+            else if (png instanceof Array) {
+                png.forEach(function (t) {
+                    if (t.length!=3) return;
+                    var dx=parseInt(t[0]), dy=parseInt(t[1]), p=t[2];
+                    if (core.isset(dx) && core.isset(dy) && core.isset(core.material.images.pngs[p])) {
+                        dx*=32; dy*=32;
+                        var image = core.material.images.pngs[p];
+                        core.canvas.bg.drawImage(image, x+dx*ratio, y+dy*ratio, Math.min(size-dx*ratio, ratio*image.width), Math.min(size-dy*ratio, ratio*image.height));
+                    }
+                })
+            }
         }
+    }
+    if (main.mode=='editor'){
+        main.editor.drawMapBg = function(){
+            core.clearMap('bg', 0, 0, 416, 416);
+            drawBg();
+        }
+    } else {
+        drawBg();
+    }
+
+    core.status.floorId = mapName;
+    core.status.thisMap = core.status.maps[mapName];
+    var drawEvent = function(){
+        var mapData = core.status.maps[core.status.floorId];
+        var mapBlocks = mapData.blocks;
+        
+        var mapArray = core.maps.getMapArray(mapBlocks);
+        for (var b = 0; b < mapBlocks.length; b++) {
+            // 事件启用
+            var block = mapBlocks[b];
+            if (core.isset(block.event) && !(core.isset(block.enable) && !block.enable)) {
+                if (block.event.cls == 'autotile') {
+                    core.drawAutotile(core.canvas.event, mapArray, block, 32, 0, 0);
+                }
+                else {
+                    if (block.event.id!='none') {
+                        blockIcon = core.material.icons[block.event.cls][block.event.id];
+                        blockImage = core.material.images[block.event.cls];
+                        core.canvas.event.drawImage(core.material.images[block.event.cls], 0, blockIcon * 32, 32, 32, block.x * 32, block.y * 32, 32, 32);
+                        core.addGlobalAnimate(block.event.animate, block.x * 32, block.y * 32, blockIcon, blockImage);
+                    }
+                }
+            }
+        }
+    }
+    
+    if (main.mode=='editor'){
+        main.editor.updateMap = function(){
+            core.removeGlobalAnimate(null, null, true);
+            core.clearMap('event', 0, 0, 416, 416);
+            drawEvent();
+            core.setGlobalAnimate(core.values.animateSpeed);            
+        }
+    } else {
+        drawEvent();
     }
     core.setGlobalAnimate(core.values.animateSpeed);
     if (core.isset(callback))
@@ -2836,8 +2881,8 @@ core.prototype.moveBlock = function(x,y,steps,time,immediateHide,callback) {
     core.setAlpha('ui', 1.0);
 
     block=block.block;
-    blockIcon = core.material.icons[block.event.cls][block.event.id];
-    blockImage = core.material.images[block.event.cls];
+    var blockIcon = core.material.icons[block.event.cls][block.event.id];
+    var blockImage = core.material.images[block.event.cls];
 
     var opacityVal = 1;
     core.setOpacity('animate', opacityVal);
@@ -2978,6 +3023,7 @@ core.prototype.showBlock = function(x, y, floodId) {
             // core.setGlobalAnimate(core.values.animateSpeed);
             core.syncGlobalAnimate();
         }
+        core.updateStatusBar();
     }
 }
 
@@ -3029,6 +3075,7 @@ core.prototype.removeBlockByIds = function (floorId, ids) {
 
 ////// 添加一个全局动画 //////
 core.prototype.addGlobalAnimate = function (animateMore, x, y, loc, image) {
+    if (main.mode=='editor' && main.editor.disableGlobalAnimate) return;
     if (animateMore == 2) {
         core.status.twoAnimateObjs.push({
             'x': x,
@@ -3055,6 +3102,9 @@ core.prototype.removeGlobalAnimate = function (x, y, all) {
         core.status.twoAnimateObjs = [];
         core.status.fourAnimateObjs = [];
     }
+
+    if (main.mode=='editor' && main.editor.disableGlobalAnimate) return;
+
     for (var t = 0; t < core.status.twoAnimateObjs.length; t++) {
         if (core.status.twoAnimateObjs[t].x == x * 32 && core.status.twoAnimateObjs[t].y == y * 32) {
             core.status.twoAnimateObjs.splice(t, 1);
@@ -3071,6 +3121,7 @@ core.prototype.removeGlobalAnimate = function (x, y, all) {
 
 ////// 设置全局动画的显示效果 //////
 core.prototype.setGlobalAnimate = function (speed) {
+    if (main.mode=='editor' && main.editor.disableGlobalAnimate) return;
     /*
     clearInterval(core.interval.twoAnimate);
     clearInterval(core.interval.fourAnimate);
@@ -3160,7 +3211,22 @@ core.prototype.drawAnimate = function (name, x, y, callback) {
             var realWidth = image.width * ratio * t.zoom / 100;
             var realHeight = image.height * ratio * t.zoom / 100;
             core.setAlpha('animate', t.opacity / 255);
-            core.canvas.animate.drawImage(image, centerX+t.x-realWidth/2, centerY+t.y-realHeight/2, realWidth, realHeight);
+
+            var cx = centerX+t.x, cy=centerY+t.y;
+
+            if (!t.mirror && !t.angle) {
+                core.canvas.animate.drawImage(image, cx-realWidth/2, cy-realHeight/2, realWidth, realHeight);
+            }
+            else {
+                core.saveCanvas('animate');
+                core.canvas.animate.translate(cx,cy);
+                if (t.angle)
+                    core.canvas.animate.rotate(-t.angle*Math.PI/180);
+                if (t.mirror)
+                    core.canvas.animate.scale(-1,1);
+                core.canvas.animate.drawImage(image, -realWidth/2, -realHeight/2, realWidth, realHeight);
+                core.loadCanvas('animate');
+            }
         })
     }
 
@@ -3464,13 +3530,13 @@ core.prototype.setWeather = function (type, level) {
 
     // 当前天气：则忽略
     if (type==core.animateFrame.weather.type &&
-        (!core.isset(level) || 16*level==core.animateFrame.weather.level)) {
+        (!core.isset(level) || 20*level==core.animateFrame.weather.level)) {
         return;
     }
 
     if (!core.isset(level)) level=5;
     if (level<1) level=1; if (level>10) level=10;
-    level *= 16;
+    level *= 20;
 
     core.clearMap('weather', 0, 0, 416, 416)
     core.animateFrame.weather.type = type;
@@ -3483,7 +3549,7 @@ core.prototype.setWeather = function (type, level) {
             core.animateFrame.weather.nodes.push({
                 'x': Math.random()*416,
                 'y': Math.random()*416,
-                'l': Math.random() * 1.2,
+                'l': Math.random() * 2.5,
                 'xs': -4 + Math.random() * 4 + 2,
                 'ys': Math.random() * 10 + 10
             })
@@ -3494,7 +3560,7 @@ core.prototype.setWeather = function (type, level) {
             core.animateFrame.weather.nodes.push({
                 'x': Math.random()*416,
                 'y': Math.random()*416,
-                'r': Math.random() * 4 + 1,
+                'r': Math.random() * 5 + 1,
                 'd': Math.random() * level,
             })
         }
@@ -4962,7 +5028,7 @@ core.prototype.copy = function (data) {
 
 ////// 播放背景音乐 //////
 core.prototype.playBgm = function (bgm) {
-
+    if (main.mode!='play')return;
     // 如果不允许播放
     if (!core.musicStatus.bgmStatus) return;
     // 音频不存在
@@ -5013,7 +5079,7 @@ core.prototype.pauseBgm = function () {
 
 ////// 恢复背景音乐的播放 //////
 core.prototype.resumeBgm = function () {
-
+    if (main.mode!='play')return;
     // 如果不允许播放
     if (!core.musicStatus.bgmStatus) return;
 
@@ -5038,7 +5104,7 @@ core.prototype.resumeBgm = function () {
 
 ////// 播放音频 //////
 core.prototype.playSound = function (sound) {
-
+    if (main.mode!='play')return;
     // 如果不允许播放
     if (!core.musicStatus.soundStatus) return;
     // 音频不存在
@@ -5077,6 +5143,11 @@ core.prototype.show = function (obj, speed, callback) {
         return;
     }
     obj.style.display = 'block';
+    if (main.mode!='play'){
+        obj.style.opacity = 1;
+        if (core.isset(callback)) {callback();}
+        return;
+    }
     obj.style.opacity = 0;
     var opacityVal = 0;
     var showAnimate = window.setInterval(function () {
@@ -5095,6 +5166,11 @@ core.prototype.show = function (obj, speed, callback) {
 core.prototype.hide = function (obj, speed, callback) {
     if (!core.isset(speed)) {
         obj.style.display = 'none';
+        return;
+    }
+    if (main.mode!='play'){
+        obj.style.display = 'none';
+        if (core.isset(callback)) {callback();}
         return;
     }
     var opacityVal = 1;
@@ -5214,7 +5290,8 @@ core.prototype.updateStatusBar = function () {
 
 ////// 屏幕分辨率改变后重新自适应 //////
 core.prototype.resize = function(clientWidth, clientHeight) {
-    
+    if (main.mode=='editor')return;
+
     // 默认画布大小
     var DEFAULT_CANVAS_WIDTH = 422;
     // 默认边栏宽度
