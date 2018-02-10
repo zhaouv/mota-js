@@ -1,5 +1,13 @@
 // vue 相关处理
 
+document.body.onmousedown = function(e){
+  selectBox.isSelected = false;
+  editor_mode.onmode('');
+  editor.info = {};
+}
+iconLib.onmousedown = function(e){
+  e.stopPropagation();
+}
 var exportM = new Vue({
   el: '#exportM',
   data: {
@@ -166,6 +174,7 @@ var clear = new Vue({
   methods: {
     clearMap: function(){
       editor.mapInit();
+      editor.updateMap();
       clearTimeout(editArea.formatTimer);
       clearTimeout(tip.timer);
       pout.value = '';
