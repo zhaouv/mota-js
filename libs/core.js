@@ -5207,7 +5207,7 @@ core.prototype.updateStatusBar = function () {
     notCheat=notCheat && (core.status.hero.atk == 1|| (core.status.hero.loc.x==11 && core.status.hero.loc.y==1));
     notCheat=notCheat && core.status.hero.def == 0;
     notCheat=notCheat && core.status.hero.hp <= 78;//76?
-    if(!notCheat)core.drawText('数据异常',core.showStartAnimate)
+    if(!notCheat)core.drawText('数据异常,请到群539113091反馈bug',core.showStartAnimate)
 }
 
 ////// 屏幕分辨率改变后重新自适应 //////

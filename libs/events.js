@@ -119,6 +119,7 @@ events.prototype.win = function(reason) {
     core.waitHeroToStop(function() {
         core.removeGlobalAnimate(0,0,true);
         core.clearMap('all'); // 清空全地图
+        if (core.getStatus('hp')>6.1)core.drawText('数据异常,请到群539113091反馈bug',core.showStartAnimate);
         core.drawText([
             "\t[恭喜通关]你的分数是${status:hp}。"
         ], function () {
@@ -805,7 +806,7 @@ events.prototype.afterBattle = function(enemyId,x,y,callback) {
                     return(block.x==x+direction[0] && block.y==y+direction[1]);
                 })(value) )tempForFilter.push(value);
             }
-            var len = Object.keys(Object.assign({},tempForFilter[0]));
+            var len = tempForFilter.length;
             if (len==0) {
                 enemy.x=x+direction[0];
                 enemy.y=y+direction[1];
