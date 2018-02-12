@@ -119,7 +119,10 @@ events.prototype.win = function(reason) {
     core.waitHeroToStop(function() {
         core.removeGlobalAnimate(0,0,true);
         core.clearMap('all'); // 清空全地图
-        if (core.getStatus('hp')>6.1)core.drawText('数据异常,请到群539113091反馈bug',core.showStartAnimate);
+        if (core.getStatus('hp')>6.1){
+            core.drawText('数据异常,请到群539113091反馈bug',core.showStartAnimate);
+            return;
+        }
         core.drawText([
             "\t[恭喜通关]你的分数是${status:hp}。"
         ], function () {
