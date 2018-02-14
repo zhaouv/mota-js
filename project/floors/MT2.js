@@ -1,6 +1,6 @@
-main.floors.MT0=
+main.floors.MT2=
 {
-"floorId": "MT0",
+"floorId": "MT2",
 "title": "样板 0 层",
 "name": "0",
 "canFlyTo": true,
