@@ -106,17 +106,13 @@ events.prototype.startGame = function (hard) {
 
 ////// 不同难度分别设置初始属性 //////
 events.prototype.setInitData = function (hard) {
-    if (hard=='Easy') { // 简单难度
+    if (hard=='花园') { // 花园难度
         core.setFlag('hard', 1); // 可以用flag:hard来获得当前难度
         // 可以在此设置一些初始福利，比如设置初始生命值可以调用：
         // core.setStatus("hp", 10000);
         // 赠送一把黄钥匙可以调用
         // core.setItem("yellowKey", 1);
-    }
-    if (hard=='Normal') { // 普通难度
-        core.setFlag('hard', 2); // 可以用flag:hard来获得当前难度
-    }
-    if (hard=='Hard') { // 困难难度
+    } else { // 迷宫难度
         core.setFlag('hard', 3); // 可以用flag:hard来获得当前难度
     }
     this.afterLoadData();
@@ -804,32 +800,35 @@ events.prototype.afterBattle = function(enemyId,x,y,callback) {
     core.updateStatusBar();
 
     //changed start
-    var a=core.status.maps[core.status.floorId].blocks;
-    var direction = {
-        'up':{'x':0,y:-1},
-        'down':{'x':0,y:1},
-        'left':{'x':-1,y:0},
-        'right':{'x':1,y:0},
-    }[core.getHeroLoc('direction')];
-    var near = function(block) {
-        var xy = direction.y?'x':'y';
-        var r = true;
-        r=r && Math.abs( core.getHeroLoc(xy)-block[xy] )>1.5;
-        r=r && Math.abs( core.getHeroLoc(xy)-block[xy]+13 )>1.5;
-        r=r && Math.abs( core.getHeroLoc(xy)-block[xy]-13 )>1.5;
-        return r
-    }
-    for(var ii in a){
-        var block=a[ii];
-        if(near(block)){
-            block.x=(direction.x+block.x+13)%13;
-            block.y=(direction.y+block.y+13)%13;
+    floatMap = function(){
+        var a=core.status.maps[core.status.floorId].blocks;
+        var direction = {
+            'up':{'x':0,y:-1},
+            'down':{'x':0,y:1},
+            'left':{'x':-1,y:0},
+            'right':{'x':1,y:0},
+        }[core.getHeroLoc('direction')];
+        var near = function(block) {
+            var xy = direction.y?'x':'y';
+            var r = true;
+            r=r && Math.abs( core.getHeroLoc(xy)-block[xy] )>1.5;
+            r=r && Math.abs( core.getHeroLoc(xy)-block[xy]+13 )>1.5;
+            r=r && Math.abs( core.getHeroLoc(xy)-block[xy]-13 )>1.5;
+            return r
         }
+        for(var ii in a){
+            var block=a[ii];
+            if(near(block)){
+                block.x=(direction.x+block.x+13)%13;
+                block.y=(direction.y+block.y+13)%13;
+            }
+        }
+        core.drawMap(core.status.floorId);
+        core.drawHero(core.getHeroLoc('direction'), core.getHeroLoc('x'), core.getHeroLoc('y'), 'stop');
+        core.updateCheckBlock();
+        core.updateFg();
     }
-    core.drawMap(core.status.floorId);
-    core.drawHero(core.getHeroLoc('direction'), core.getHeroLoc('x'), core.getHeroLoc('y'), 'stop');
-    core.updateCheckBlock();
-    core.updateFg();
+    floatMap();
     //change end
 
 
@@ -1101,9 +1100,6 @@ events.prototype.afterLoadData = function(data) {
 
     switch (core.getFlag('hard')) {
         case 1: 
-        break;
-
-        case 2: 
         break;
 
         case 3: 

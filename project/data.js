@@ -36,12 +36,12 @@ data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d =
         ]
     },
     "firstData": {
-        "title": "魔塔样板",
-        "name": "template",
-        "version": "Ver 1.4.1",
+        "title": "迷踪境",
+        "name": "maze",
+        "version": "Ver 1.0.0",
         "floorId": "MT1",
         "hero": {
-            "name": "阳光",
+            "name": "爱迪生",
             "lv": 1,
             "hp": 1000,
             "atk": 100,
@@ -56,9 +56,13 @@ data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d =
                     "redKey": 0
                 },
                 "constants": {
-                    "book": 1
+                    'book': 1
                 },
-                "tools": {}
+                "tools": {
+                    'centerFly': 3,
+                    'bomb': 1,
+                    'pickaxe': 3
+                }
             },
             "flyRange": [],
             "loc": {
@@ -175,10 +179,10 @@ data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d =
     },
     "flags": {
         "enableFloor": true,
-        "enableLv": true,
+        "enableLv": false,
         "enableMDef": true,
-        "enableMoney": true,
-        "enableExperience": true,
+        "enableMoney": false,
+        "enableExperience": false,
         "enableLevelUp": false,
         "enableDebuff": false,
         "flyNearStair": true,
@@ -187,10 +191,10 @@ data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d =
         "bigKeyIsBox": false,
         "equipment": false,
         "enableDeleteItem": true,
-        "enableNegativeDamage": true,
+        "enableNegativeDamage": false,
         "hatredDecrease": true,
         "betweenAttackCeil": false,
-        "startDirectly": true,
+        "startDirectly": false,
         "canOpenBattleAnimate": false,
         "showBattleAnimateConfirm": true,
         "battleAnimate": true,
@@ -199,7 +203,7 @@ data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d =
         "enableGentleClick": false,
         "potionWhileRouting": true,
         "enableViewMaps": true,
-        "portalWithoutTrigger": false,
+        "portalWithoutTrigger": true,
         "enableMoveDirectly": true
     }
 }

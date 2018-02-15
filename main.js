@@ -456,7 +456,7 @@ main.dom.replayGame.onclick = function () {
 
 ////// 点击“简单难度”时 //////
 main.dom.easyLevel.onclick = function() {
-    core.events.startGame('Easy');
+    core.events.startGame('花园');
 }
 
 ////// 点击“普通难度”时 //////
@@ -466,7 +466,7 @@ main.dom.normalLevel.onclick = function () {
 
 ////// 点击“困难难度”时 //////
 main.dom.hardLevel.onclick = function () {
-    core.events.startGame('Hard');
+    core.events.startGame('迷宫');
 }
 
 }//listen end

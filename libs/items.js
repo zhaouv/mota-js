@@ -134,7 +134,9 @@ items.prototype.useItem = function (itemId, callback) {
         core.drawTip("已装备"+core.material.items[itemId].name);
     }
 
+    /* 
     core.updateStatusBar();
+     */
 
     // 记录路线
     if (itemId!='book' && itemId!='fly') {
@@ -146,6 +148,8 @@ items.prototype.useItem = function (itemId, callback) {
         core.status.hero.items[itemCls][itemId]--;
     if (core.status.hero.items[itemCls][itemId]==0)
         delete core.status.hero.items[itemCls][itemId];
+
+    core.updateStatusBar();
 
     if (core.isset(callback)) callback();
 }
@@ -163,7 +167,7 @@ items.prototype.canUseItem = function (itemId) {
         for (var i in core.status.thisMap.blocks) {
             var block = core.status.thisMap.blocks[i];
             if (core.isset(block.event) && !(core.isset(block.enable) && !block.enable) &&
-                (block.event.id == 'yellowWall' || block.event.id=='whiteWall' || block.event.id=='blueWall')) // 能破哪些墙
+                (block.event.id == 'yellowWall' || block.event.id=='whiteWall' || block.event.id=='blueWall' || block.event.id=='autotile3')) // 能破哪些墙
             {
                 // 四个方向
                 if (core.flags.pickaxeFourDirections) {

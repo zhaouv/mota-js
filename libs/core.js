@@ -5245,9 +5245,16 @@ core.prototype.updateStatusBar = function () {
     }
     else core.statusBar.up.innerHTML = "&nbsp;";
 
+    /* changed
     var keys = ['yellowKey', 'blueKey', 'redKey'];
     keys.forEach(function (key) {
         core.statusBar[key].innerHTML = core.setTwoDigits(core.status.hero.items.keys[key]);
+    }) 
+    */
+    var keys = ['yellowKey', 'blueKey', 'redKey'];
+    var tools = {'yellowKey':'pickaxe', 'blueKey':'bomb', 'redKey':'centerFly'};
+    keys.forEach(function (key) {
+        core.statusBar[key].innerHTML = core.setTwoDigits(core.status.hero.items.tools[tools[key]]||0);
     })
     if(core.flags.enableDebuff){
         core.statusBar.poison.innerHTML = core.hasFlag('poison')?"毒":"";
