@@ -119,7 +119,6 @@ events.prototype.setInitData = function (hard) {
     if (hard=='Hard') { // 困难难度
         core.setFlag('hard', 3); // 可以用flag:hard来获得当前难度
     }
-    //changed
     this.afterLoadData();
 }
 
@@ -978,7 +977,7 @@ events.prototype.pushBox = function (data) {
 
     var direction = core.getHeroLoc('direction'), nx=data.x+scan[direction].x, ny=data.y+scan[direction].y;
 
-    if (nx<0||nx>=12||ny<0||ny>=12) return;
+    if (nx<0||nx>12||ny<0||ny>12) return;
 
     var block = core.getBlock(nx, ny, null, false);
     if (block!=null && !(core.isset(block.block.event) && block.block.event.id=='flower'))
