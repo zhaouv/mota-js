@@ -119,6 +119,8 @@ events.prototype.setInitData = function (hard) {
     if (hard=='Hard') { // 困难难度
         core.setFlag('hard', 3); // 可以用flag:hard来获得当前难度
     }
+    //changed
+    this.afterLoadData();
 }
 
 ////// 游戏获胜事件 //////
@@ -1057,12 +1059,66 @@ events.prototype.afterUseBomb = function () {
 
 ////// 即将存档前可以执行的操作 //////
 events.prototype.beforeSaveData = function(data) {
-
+    //changed
+    core.setFlag('mapsave',core.status.maps);
 }
 
 ////// 读档事件后，载入事件前，可以执行的操作 //////
 events.prototype.afterLoadData = function(data) {
+    //changed
+    teleport = function(tpid,num) {
+        var str_ = tpid+'_'+num;
+        var info = (function(){
+            for(var floorId in core.status.maps){
+                var blocks = core.status.maps[floorId].blocks;
+                for(var ii=0,block;block=blocks[ii];ii++){
+                    if(JSON.stringify(block).indexOf(str_)!==-1)
+                    return [floorId,block.x,block.y];
+                }
+            }
+            return null
+        })();
+        if(!info)return;
+        core.insertAction([{
+            "type": "changeFloor",
+            "floorId": info[0], "loc": [info[1], info[2]] 
+        }]);
+    }
 
+    isEnemyClear = function(floorId){
+        if(!floorId)floorId=core.status.floorId;
+        var hard = core.getFlag('hard');
+        var now = JSON.stringify(core.maps.save(core.status.maps,floorId));
+        if (hard!=3) {
+            if (now.indexOf('169')!==-1)return false;//检查箱子
+            return now.replace(/[^2]/g,'')==='';//检查怪物
+        }
+        var init = {
+            "MT0":"[[0,90,0,0,153,153,0,153,153,0,90,0,0],[0,153,153,0,0,153,90,153,0,0,153,153,153],[0,0,153,153,90,153,0,0,0,0,0,0,153],[153,170,0,0,0,0,0,0,153,0,153,0,0],[153,153,153,0,153,0,153,153,153,0,153,153,0],[90,0,0,0,153,0,0,0,90,0,0,0,90],[153,153,0,153,153,90,153,153,0,153,153,153,0],[153,0,90,0,0,0,153,0,0,170,0,0,0],[153,0,153,153,153,0,153,0,0,0,0,0,0],[0,0,153,0,0,0,90,0,153,0,0,153,153],[153,0,0,90,153,0,153,153,153,0,0,90,153],[153,153,153,0,153,0,0,0,0,0,153,0,153],[0,90,0,0,153,153,90,0,153,153,153,0,0]]",
+            "MT2":"[[0,90,0,0,153,153,0,153,153,0,90,0,0],[0,153,153,0,153,153,0,0,0,0,0,153,153],[0,153,153,0,0,0,0,0,153,153,0,153,153],[0,0,0,0,0,153,153,0,153,153,0,90,0],[90,0,153,153,90,153,153,0,0,90,0,0,153],[153,0,153,153,0,0,90,0,0,153,153,0,153],[153,0,0,0,0,0,153,153,0,153,153,0,0],[0,90,0,153,153,0,153,153,0,0,0,0,0],[153,153,0,153,153,0,0,0,0,0,153,153,90],[153,153,0,0,90,0,0,153,153,90,153,153,0],[90,0,0,0,153,153,0,153,153,0,0,0,0],[0,153,153,90,153,153,0,0,0,0,0,153,153],[0,153,153,0,0,0,90,0,153,153,90,153,153]]",
+        }[floorId].replace(/\D/g,'');
+        return now.replace(/\D/g,'')===init;//检查地图是否完全一致
+    }
+
+    switch (core.getFlag('hard')) {
+        case 1: 
+        break;
+
+        case 2: 
+        break;
+
+        case 3: 
+        break;
+    }
+
+    if(core.getFlag('mapsave')){
+        core.status.maps = core.getFlag('mapsave');
+        core.status.thisMap = core.status.maps[core.status.floorId];
+        core.drawMap(core.status.floorId);
+        core.drawHero(core.getHeroLoc('direction'), core.getHeroLoc('x'), core.getHeroLoc('y'), 'stop');
+        core.updateCheckBlock();
+        core.updateFg();
+    }
 }
 
 
