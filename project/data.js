@@ -3,9 +3,15 @@ data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d =
     "main": {
         "useCompress": false,
         "floorIds": [
-            "MT0",
+            "MT3",
             "MT1",
-            "MT2"
+            "MT5",
+            "MT0",
+            "MT4",
+            "MT2",
+            "MT6",
+            "MT7",
+            "MT8"
         ],
         "pngs": [
             "bg"
@@ -33,7 +39,7 @@ data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d =
         "title": "魔塔样板",
         "name": "template",
         "version": "Ver 1.4.1",
-        "floorId": "MT0",
+        "floorId": "MT1",
         "hero": {
             "name": "阳光",
             "lv": 1,

@@ -1,8 +1,8 @@
 main.floors.MT2=
 {
 "floorId": "MT2",
-"title": "样板 0 层",
-"name": "0",
+"title": "迷境 +0",
+"name": "+0",
 "canFlyTo": true,
 "canUseQuickShop": true,
 "defaultGround": "ground",
@@ -28,7 +28,19 @@ main.floors.MT2=
     "6,12": [
         {
             "type": "function",
-            "function": "function(){\n_id='mt0,6,12_mt2,6,12_1';teleport('mt0,6,12_mt2,6,12',0);\n}"
+            "function": "function(){\nvar _id='mt25_2';teleport('mt25',5);\n}"
+        }
+    ],
+    "0,4": [
+        {
+            "type": "function",
+            "function": "function(){\nvar _id='mt24_2';teleport('mt24',4);\n}"
+        }
+    ],
+    "10,0": [
+        {
+            "type": "function",
+            "function": "function(){\nvar _id='mt28_2';teleport('mt28',8);\n}"
         }
     ]
 },

@@ -1,8 +1,8 @@
-main.floors.MT1=
+main.floors.MT5=
 {
-"floorId": "MT1",
-"title": "迷境 0-",
-"name": "0-",
+"floorId": "MT5",
+"title": "迷境 +-",
+"name": "+-",
 "canFlyTo": true,
 "canUseQuickShop": true,
 "defaultGround": "ground",
@@ -15,7 +15,7 @@ main.floors.MT1=
     [  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0],
     [  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0],
     [  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0],
-    [ 89,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 89],
+    [ 89,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0],
     [  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0],
     [  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0],
     [  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0],
@@ -28,19 +28,13 @@ main.floors.MT1=
     "0,6": [
         {
             "type": "function",
-            "function": "function(){\nvar _id='mt13_1';teleport('mt13',3);\n}"
+            "function": "function(){\nvar _id='mt15_5';teleport('mt15',1);\n}"
         }
     ],
     "6,0": [
         {
             "type": "function",
-            "function": "function(){\nvar _id='mt14_1';teleport('mt14',4);\n}"
-        }
-    ],
-    "12,6": [
-        {
-            "type": "function",
-            "function": "function(){\nvar _id='mt15_1';teleport('mt15',5);\n}"
+            "function": "function(){\nvar _id='mt25_5';teleport('mt25',2);\n}"
         }
     ]
 },

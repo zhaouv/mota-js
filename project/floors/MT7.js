@@ -1,15 +1,15 @@
-main.floors.MT1=
+main.floors.MT7=
 {
-"floorId": "MT1",
-"title": "迷境 0-",
-"name": "0-",
+"floorId": "MT7",
+"title": "迷境 0+",
+"name": "0+",
 "canFlyTo": true,
 "canUseQuickShop": true,
 "defaultGround": "ground",
 "png": [],
 "bgm": "bgm.mp3",
 "map": [
-    [  0,  0,  0,  0,  0,  0, 89,  0,  0,  0,  0,  0,  0],
+    [  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0],
     [  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0],
     [  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0],
     [  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0],
@@ -21,26 +21,26 @@ main.floors.MT1=
     [  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0],
     [  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0],
     [  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0],
-    [  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0]
+    [  0,  0,  0,  0,  0,  0, 89,  0,  0,  0,  0,  0,  0]
 ],
 "firstArrive": [],
 "events": {
     "0,6": [
         {
             "type": "function",
-            "function": "function(){\nvar _id='mt13_1';teleport('mt13',3);\n}"
-        }
-    ],
-    "6,0": [
-        {
-            "type": "function",
-            "function": "function(){\nvar _id='mt14_1';teleport('mt14',4);\n}"
+            "function": "function(){\nvar _id='mt67_7';teleport('mt67',6);\n}"
         }
     ],
     "12,6": [
         {
             "type": "function",
-            "function": "function(){\nvar _id='mt15_1';teleport('mt15',5);\n}"
+            "function": "function(){\nvar _id='mt78_7';teleport('mt78',8);\n}"
+        }
+    ],
+    "6,12": [
+        {
+            "type": "function",
+            "function": "function(){\nvar _id='mt47_7';teleport('mt47',4);\n}"
         }
     ]
 },
