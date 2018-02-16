@@ -941,11 +941,19 @@ ui.prototype.drawBook = function (index) {
             core.fillText('ui', enemy.experience, expOffset + 30, 62 * i + 50, '#DDDDDD', 'bold 13px Verdana');
         }
 
+        //changed
+        core.canvas.ui.textAlign = "left";
+        core.fillText('ui', '加点', expOffset, 62 * i + 50, '#DDDDDD', '13px Verdana');
+        core.fillText('ui', enemy.point||0, expOffset + 30, 62 * i + 50, '#DDDDDD', 'bold 13px Verdana');
+
         var damageOffet = 281;
         if (core.flags.enableMoney && core.flags.enableExperience)
             damageOffet = 361;
         else if (core.flags.enableMoney || core.flags.enableExperience)
             damageOffet = 326;
+
+        //changed
+        damageOffet = 361;
 
 
         core.canvas.ui.textAlign = "center";

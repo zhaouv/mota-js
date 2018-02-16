@@ -44,10 +44,10 @@ data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d =
             "name": "爱迪生",
             "lv": 1,
             "hp": 1000,
-            "atk": 100,
-            "def": 100,
-            "mdef": 100,
-            "money": 100,
+            "atk": 10,
+            "def": 10,
+            "mdef": 0,
+            "money": 0,
             "experience": 0,
             "items": {
                 "keys": {
@@ -56,12 +56,12 @@ data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d =
                     "redKey": 0
                 },
                 "constants": {
-                    'book': 1
+                    "book": 1
                 },
                 "tools": {
-                    'centerFly': 3,
-                    'bomb': 1,
-                    'pickaxe': 3
+                    "centerFly": 1,
+                    "bomb": 1,
+                    "pickaxe": 20
                 }
             },
             "flyRange": [],
@@ -151,8 +151,8 @@ data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d =
         "lavaDamage": 100,
         "poisonDamage": 10,
         "weakValue": 20,
-        "redJewel": 3,
-        "blueJewel": 3,
+        "redJewel": 1,
+        "blueJewel": 1,
         "greenJewel": 5,
         "redPotion": 100,
         "bluePotion": 250,
@@ -181,7 +181,7 @@ data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d =
         "enableFloor": true,
         "enableLv": false,
         "enableMDef": true,
-        "enableMoney": false,
+        "enableMoney": true,
         "enableExperience": false,
         "enableLevelUp": false,
         "enableDebuff": false,

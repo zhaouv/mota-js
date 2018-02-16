@@ -2,30 +2,35 @@ enemys_fcae963b_31c9_42b4_b48c_bb48d09f3f80 =
 {
     "greenSlime": {
         "name": "绿头怪",
-        "hp": 100,
-        "atk": 120,
-        "def": 0,
+        "hp": 70,
+        "atk": 22,
+        "def": 1,
         "money": 1,
         "experience": 1,
-        "special": 0
+        "special": 0,
+        "point": null
     },
     "redSlime": {
         "name": "红头怪",
-        "hp": 0,
-        "atk": 0,
-        "def": 0,
-        "money": 0,
-        "experience": 0,
-        "special": 0
+        "hp": 110,
+        "atk": 25,
+        "def": 3,
+        "money": 2,
+        "experience": 1,
+        "special": 0,
+        "value": 20,
+        "point": null
     },
     "blackSlime": {
         "name": "青头怪",
-        "hp": 0,
-        "atk": 0,
-        "def": 0,
-        "money": 0,
-        "experience": 0,
-        "special": 0
+        "hp": 290,
+        "atk": 30,
+        "def": 6,
+        "money": 4,
+        "experience": 1,
+        "special": 0,
+        "value": 20,
+        "point": 1
     },
     "slimelord": {
         "name": "怪王",
@@ -400,7 +405,7 @@ enemys_fcae963b_31c9_42b4_b48c_bb48d09f3f80 =
     },
     "goldHornSlime": {
         "name": "金角怪",
-        "hp": 0,
+        "hp": 1,
         "atk": 0,
         "def": 0,
         "money": 0,
