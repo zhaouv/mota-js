@@ -751,8 +751,8 @@ events.prototype.addPoint = function (enemy) {
                 {"text": "防御+"+(2*point), "action": [
                     {"type": "setValue", "name": "status:def", "value": "status:def+"+(2*point)}
                 ]},
-                {"text": "生命+"+(200*point), "action": [
-                    {"type": "setValue", "name": "status:hp", "value": "status:hp+"+(200*point)}
+                {"text": "魔防+"+(8*point), "action": [
+                    {"type": "setValue", "name": "status:mdef", "value": "status:mdef+"+(8*point)}
                 ]},
             ]
         }
