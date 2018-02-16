@@ -800,36 +800,7 @@ events.prototype.afterBattle = function(enemyId,x,y,callback) {
     core.updateStatusBar();
 
     //changed start
-    floatMap = function(){
-        var a=core.status.maps[core.status.floorId].blocks;
-        var direction = {
-            'up':{'x':0,y:-1},
-            'down':{'x':0,y:1},
-            'left':{'x':-1,y:0},
-            'right':{'x':1,y:0},
-        }[core.getHeroLoc('direction')];
-        var near = function(block) {
-            var xy = direction.y?'x':'y';
-            var r = true;
-            r=r && Math.abs( core.getHeroLoc(xy)-block[xy] )>1.5;
-            r=r && Math.abs( core.getHeroLoc(xy)-block[xy]+13 )>1.5;
-            r=r && Math.abs( core.getHeroLoc(xy)-block[xy]-13 )>1.5;
-            return r
-        }
-        for(var ii in a){
-            var block=a[ii];
-            if(near(block)){
-                block.x=(direction.x+block.x+13)%13;
-                block.y=(direction.y+block.y+13)%13;
-            }
-        }
-        core.drawMap(core.status.floorId);
-        core.drawHero(core.getHeroLoc('direction'), core.getHeroLoc('x'), core.getHeroLoc('y'), 'stop');
-        core.updateCheckBlock();
-        core.updateFg();
-    }
     floatMap();
-    //change end
 
 
     // 事件的处理
@@ -1065,6 +1036,11 @@ events.prototype.beforeSaveData = function(data) {
 events.prototype.afterLoadData = function(data) {
     //changed
     teleport = function(tpid,num) {
+        if(!core.isset(tpid)){
+            var x=core.status.event.data.x, y=core.status.event.data.y;
+            core.insertAction([{"type": "changePos", "loc": [x,y]}]);
+            return;
+        }
         var str_ = tpid+'_'+num;
         var info = (function(){
             for(var floorId in core.status.maps){
@@ -1083,6 +1059,34 @@ events.prototype.afterLoadData = function(data) {
         }]);
     }
 
+    floatMap = function(){
+        var a=core.status.maps[core.status.floorId].blocks;
+        var direction = {
+            'up':{'x':0,y:-1},
+            'down':{'x':0,y:1},
+            'left':{'x':-1,y:0},
+            'right':{'x':1,y:0},
+        }[core.getHeroLoc('direction')];
+        var near = function(block) {
+            var xy = direction.y?'x':'y';
+            var r = true;
+            r=r && Math.abs( core.getHeroLoc(xy)-block[xy] )>1.5;
+            r=r && Math.abs( core.getHeroLoc(xy)-block[xy]+13 )>1.5;
+            r=r && Math.abs( core.getHeroLoc(xy)-block[xy]-13 )>1.5;
+            return r
+        }
+        for(var ii in a){
+            var block=a[ii];
+            if(near(block)){
+                block.x=(direction.x+block.x+13)%13;
+                block.y=(direction.y+block.y+13)%13;
+            }
+        }
+        core.drawMap(core.status.floorId);
+        core.drawHero(core.getHeroLoc('direction'), core.getHeroLoc('x'), core.getHeroLoc('y'), 'stop');
+        core.updateCheckBlock();
+        core.updateFg();
+    }
     isEnemyClear = function(floorId){
         if(!floorId)floorId=core.status.floorId;
         var hard = core.getFlag('hard');

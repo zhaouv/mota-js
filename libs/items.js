@@ -234,7 +234,7 @@ items.prototype.canUseItem = function (itemId) {
         var ids = []
         for (var i in core.status.thisMap.blocks) {
             var block = core.status.thisMap.blocks[i];
-            if (core.isset(block.event) && !(core.isset(block.enable) && !block.enable) && (block.event.id == 'yellowWall' || block.event.id == 'blueWall' || block.event.id == 'whiteWall' || block.event.id=='autotile3' || block.event.id=='autotile2'))
+            if (core.isset(block.event) && !(core.isset(block.enable) && !block.enable) && (block.event.id == 'yellowWall' || block.event.id == 'blueWall' || block.event.id == 'whiteWall' || block.event.id=='autotile3' || block.event.id=='autotile2' || block.event.id=='autotile1'))
                 ids.push(i);
         }
         if (ids.length>0) {
