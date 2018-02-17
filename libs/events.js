@@ -115,6 +115,7 @@ events.prototype.setInitData = function (hard) {
     } else { // 迷宫难度
         core.setFlag('hard', 3); // 可以用flag:hard来获得当前难度
     }
+    core.setFlag('_isFloorClear',{});
     this.afterLoadData();
 }
 
@@ -799,7 +800,7 @@ events.prototype.afterBattle = function(enemyId,x,y,callback) {
     core.setFlag('hatred', core.getFlag('hatred',0)+core.values.hatred);
     core.updateStatusBar();
 
-    //changed start
+    //changed
     floatMap();
 
 
@@ -1087,19 +1088,22 @@ events.prototype.afterLoadData = function(data) {
         core.updateCheckBlock();
         core.updateFg();
     }
-    isEnemyClear = function(floorId){
+    isFloorClear = function(floorId){
         if(!floorId)floorId=core.status.floorId;
+        if(core.getFlag('_isFloorClear')[floorId])return true;
         var hard = core.getFlag('hard');
-        var now = JSON.stringify(core.maps.save(core.status.maps,floorId));
+        var now = JSON.stringify(core.maps.save(core.status.maps,floorId)).replace(/"\d+:f"/g,'0');
         if (hard!=3) {
             if (now.indexOf('169')!==-1)return false;//检查箱子
-            return now.replace(/[^2]/g,'')==='';//检查怪物
+            core.getFlag('_isFloorClear')[floorId] = now.replace(/[^2]/g,'')==='';//检查怪物
+            return core.getFlag('_isFloorClear')[floorId];
         }
         var init = {
             "MT0":"[[0,90,0,0,153,153,0,153,153,0,90,0,0],[0,153,153,0,0,153,90,153,0,0,153,153,153],[0,0,153,153,90,153,0,0,0,0,0,0,153],[153,170,0,0,0,0,0,0,153,0,153,0,0],[153,153,153,0,153,0,153,153,153,0,153,153,0],[90,0,0,0,153,0,0,0,90,0,0,0,90],[153,153,0,153,153,90,153,153,0,153,153,153,0],[153,0,90,0,0,0,153,0,0,170,0,0,0],[153,0,153,153,153,0,153,0,0,0,0,0,0],[0,0,153,0,0,0,90,0,153,0,0,153,153],[153,0,0,90,153,0,153,153,153,0,0,90,153],[153,153,153,0,153,0,0,0,0,0,153,0,153],[0,90,0,0,153,153,90,0,153,153,153,0,0]]",
             "MT2":"[[0,90,0,0,153,153,0,153,153,0,90,0,0],[0,153,153,0,153,153,0,0,0,0,0,153,153],[0,153,153,0,0,0,0,0,153,153,0,153,153],[0,0,0,0,0,153,153,0,153,153,0,90,0],[90,0,153,153,90,153,153,0,0,90,0,0,153],[153,0,153,153,0,0,90,0,0,153,153,0,153],[153,0,0,0,0,0,153,153,0,153,153,0,0],[0,90,0,153,153,0,153,153,0,0,0,0,0],[153,153,0,153,153,0,0,0,0,0,153,153,90],[153,153,0,0,90,0,0,153,153,90,153,153,0],[90,0,0,0,153,153,0,153,153,0,0,0,0],[0,153,153,90,153,153,0,0,0,0,0,153,153],[0,153,153,0,0,0,90,0,153,153,90,153,153]]",
         }[floorId].replace(/\D/g,'');
-        return now.replace(/\D/g,'')===init;//检查地图是否完全一致
+        core.getFlag('_isFloorClear')[floorId] = now.replace(/\D/g,'')===init;//检查地图是否完全一致
+        return core.getFlag('_isFloorClear')[floorId];
     }
 
     switch (core.getFlag('hard')) {

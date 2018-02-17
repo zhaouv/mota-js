@@ -26,7 +26,7 @@ enemys_fcae963b_31c9_42b4_b48c_bb48d09f3f80 =
         "hp": 290,
         "atk": 30,
         "def": 6,
-        "money": 4,
+        "money": 0,
         "experience": 1,
         "special": 0,
         "value": 20,
