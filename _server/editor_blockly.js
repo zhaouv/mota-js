@@ -70,6 +70,7 @@ initscript=String.raw`
       ]),
       '<label text="数据相关"></label>',
       MotaActionBlocks['setValue_s'].xmlText(),
+      MotaActionBlocks['input_s'].xmlText(),
       MotaActionBlocks['update_s'].xmlText(),
       MotaActionBlocks['moveHero_s'].xmlText(),
       MotaActionBlocks['changeFloor_s'].xmlText(),
@@ -154,12 +155,7 @@ initscript=String.raw`
           }
         ]
       },'event'),
-      '<label text="获取用户输入的字符串"></label>',
-      MotaActionFunctions.actionParser.parseList([
-        {"type": "setValue", "name": "flag:inputMsg", "value": "请输入密码"},
-        {"type": "function", "function": "function(){core.setFlag('input',prompt(core.getFlag('inputMsg','请输入字符串'),'xxx')||'')}"},
-        {"type": "if", "condition": 'flag:input == "123456"',"true": [],"false": []},
-      ]),
+
     ],
   }
   var toolboxgap = '<sep gap="5"></sep>'
@@ -226,15 +222,15 @@ initscript=String.raw`
 var input_='';
 editor_blockly.runOne = function (){
     //var printf = console.log;
-    var printf = function(){};
+    //var printf = function(){};
     var grammerFile = input_;
     converter = new Converter().init();
     converter.generBlocks(grammerFile,[]);
-    printf(converter.blocks);
+    //printf(converter.blocks);
     converter.renderGrammerName();
     converter.generToolbox();
     converter.generMainFile();
-    printf(converter.mainFile.join(''));
+    //printf(converter.mainFile.join(''));
     console.log(converter);
 
 
@@ -340,6 +336,29 @@ editor_blockly.confirm =  function (){
   setvalue(JSON.stringify(obj));
 }
 
+var codeEditor = CodeMirror.fromTextArea(document.getElementById("multiLineCode"), {
+  lineNumbers: true,
+  matchBrackets: true,
+  lineWrapping: true,
+  continueComments: "Enter",
+  extraKeys: {"Ctrl-Q": "toggleComment"}
+});
+
+var multiLineArgs=[null,null,null];
+editor_blockly.multiLineEdit = function(value,b,f,callback){
+  document.getElementById("multiLineDiv").style.display='';
+  codeEditor.setValue(value.split('\\n').join('\n')||'');
+  multiLineArgs[0]=b;
+  multiLineArgs[1]=f;
+  multiLineArgs[2]=callback;
+}
+editor_blockly.multiLineDone = function(){
+  document.getElementById("multiLineDiv").style.display='none';
+  if(!multiLineArgs[0] || !multiLineArgs[1] || !multiLineArgs[2])return;
+  var newvalue = codeEditor.getValue()||'';
+  multiLineArgs[2](newvalue,multiLineArgs[0],multiLineArgs[1])
+}
+
 editor_blockly.doubleClickBlock = function (blockId){
   var b=editor_blockly.workspace.getBlockById(blockId);
   console.log(b);
@@ -349,11 +368,14 @@ editor_blockly.doubleClickBlock = function (blockId){
       'choices_s':'EvalString_0',
       'function_s':'RawEvalString_0',
   }
-  var f=textStringDict[b];
+  var f=textStringDict[b.type];
   if(f){
       var value = b.getFieldValue(f);
       //多行编辑
-      //func(value,function(newvalue,b,f){b.setFieldValue(newvalue,f);})
+      editor_blockly.multiLineEdit(value,b,f,function(newvalue,b,f){
+        if(textStringDict[b.type]!=='RawEvalString_0'){}
+        b.setFieldValue(newvalue.split('\n').join('\\n'),f);
+      });
   }
 }
 

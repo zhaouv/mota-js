@@ -130,6 +130,7 @@ function core() {
             "title": [255,215,0,1],
             "background": [0,0,0,0.85],
             "text": [255,255,255,1],
+            "bold": false,
         },
         'curtainColor': null,
         'usingCenterFly':false,
@@ -215,6 +216,11 @@ core.prototype.init = function (coreData) {
         core.platform.fileReader.onload = function () {
             var content=core.platform.fileReader.result;
             var obj=null;
+            if(content.slice(0,4)==='data'){
+                if (core.isset(core.platform.successCallback))
+                    core.platform.successCallback(content);
+                return;
+            }
             try {
                 obj=JSON.parse(content);
                 if (core.isset(obj)) {
@@ -1982,7 +1988,7 @@ core.prototype.canMoveHero = function(x,y,direction,floorId) {
         'down': {'x': 0, 'y': 1},
         'right': {'x': 1, 'y': 0}
     };
-    var nextBlock = core.getBlock(x+scan[direction].x,y+scan[direction].y);
+    var nextBlock = core.getBlock(x+scan[direction].x,y+scan[direction].y,floorId);
     if (nextBlock!=null){
         nextId = nextBlock.block.event.id;
         // 遇到单向箭头处理
@@ -2978,7 +2984,7 @@ core.prototype.moveBlock = function(x,y,steps,time,immediateHide,callback) {
 }
 
 ////// 显示/隐藏某个块时的动画效果 //////
-core.prototype.animateBlock = function (x,y,type,time,callback) {
+core.prototype.animateBlock = function (loc,type,time,callback) {
     if (type!='hide') type='show';
     core.status.replay.animate=true;
 
@@ -2986,31 +2992,46 @@ core.prototype.animateBlock = function (x,y,type,time,callback) {
     core.saveCanvas('animate');
     core.clearMap('animate', 0, 0, 416, 416);
 
-    var block = core.getBlock(x,y,core.status.floorId,false);
-    if (block==null) {// 不存在
+    if (typeof loc[0] == 'number' && typeof loc[1] == 'number')
+        loc = [loc];
+
+    var list = [];
+    loc.forEach(function (t) {
+        var block = core.getBlock(t[0],t[1],core.status.floorId,false);
+        if (block==null) return;
+        block=block.block;
+        list.push({
+            'x': t[0], 'y': t[1],
+            'blockIcon': core.material.icons[block.event.cls][block.event.id],
+            'blockImage': core.material.images[block.event.cls]
+        })
+    })
+
+    if (list.length==0) {
         if (core.isset(callback)) callback();
         return;
     }
-    // 清空UI
-    //core.clearMap('ui', 0, 0, 416, 416);
-    //core.setAlpha('ui', 1.0);
 
-    block=block.block;
-    blockIcon = core.material.icons[block.event.cls][block.event.id];
-    blockImage = core.material.images[block.event.cls];
+    var draw = function () {
+        list.forEach(function (t) {
+            core.canvas.animate.drawImage(t.blockImage, 0, t.blockIcon * 32, 32, 32, t.x * 32, t.y * 32, 32, 32);
+        })
+    }
 
     var opacityVal = 0;
     if (type=='hide') opacityVal=1;
 
     core.setOpacity('animate', opacityVal);
-    core.canvas.animate.drawImage(blockImage, 0, blockIcon * 32, 32, 32, block.x * 32, block.y * 32, 32, 32);
+    draw();
 
     var animate = window.setInterval(function () {
         if (type=='show') opacityVal += 0.1;
         else opacityVal -= 0.1;
         core.setOpacity('animate', opacityVal);
-        core.clearMap('animate',block.x * 32, block.y * 32, 32, 32);
-        core.canvas.animate.drawImage(blockImage, 0, blockIcon * 32, 32, 32, block.x * 32, block.y * 32, 32, 32);
+        core.clearMap('animate',0,0,416,416);
+
+        // core.canvas.animate.drawImage(blockImage, 0, blockIcon * 32, 32, 32, block.x * 32, block.y * 32, 32, 32);
+        draw();
         if (opacityVal >=1 || opacityVal<=0) {
             clearInterval(animate);
             core.loadCanvas('animate');
@@ -3959,6 +3980,10 @@ core.prototype.splitLines = function(canvas, text, maxLength, font) {
             contents.push(text.substring(last, i));
             last=i+1;
         }
+        else if (text.charAt(i)=='\\' && text.charAt(i+1)=='n') {
+            contents.push(text.substring(last, i));
+            last=i+2;
+        }
         else {
             var toAdd = text.substring(last, i+1);
             var width = core.canvas[canvas].measureText(toAdd).width;
@@ -4441,7 +4466,16 @@ core.prototype.doSL = function (id, type) {
             return;
         }
         if (data.version != core.firstData.version) {
-            core.drawTip("存档版本不匹配");
+            // core.drawTip("存档版本不匹配");
+            if (confirm("存档版本不匹配！\n你想回放此存档的录像吗？")) {
+                core.dom.startPanel.style.display = 'none';
+                core.resetStatus(core.firstData.hero, data.hard, core.firstData.floorId, null, core.initStatus.maps);
+                core.events.setInitData(data.hard);
+                core.changeFloor(core.status.floorId, null, core.firstData.hero.loc, null, function() {
+                    //core.setHeroMoveTriggerInterval();
+                    core.startReplay(core.decodeRoute(data.route));
+                });
+            }
             return;
         }
         core.ui.closePanel();
@@ -4755,8 +4789,10 @@ core.prototype.loadData = function (data, callback) {
 
     // load shop times
     for (var shop in core.status.shops) {
-        core.status.shops[shop].times = data.shops[shop].times;
-        core.status.shops[shop].visited = data.shops[shop].visited;
+        if (core.isset(data.shops[shop])) {
+            core.status.shops[shop].times = data.shops[shop].times;
+            core.status.shops[shop].visited = data.shops[shop].visited;
+        }
     }
 
     core.events.afterLoadData(data);
@@ -4921,7 +4957,7 @@ core.prototype.isset = function (val) {
 }
 
 ////// 读取一个本地文件内容 //////
-core.prototype.readFile = function (success, error) {
+core.prototype.readFile = function (success, error, readType) {
 
     // step 0: 不为http/https，直接不支持
     if (!core.platform.isOnline) {
@@ -4948,7 +4984,8 @@ core.prototype.readFile = function (success, error) {
                     core.platform.errorCallback();
                 return;
             }
-            core.platform.fileReader.readAsText(core.platform.fileInput.files[0]);
+            if(!readType)core.platform.fileReader.readAsText(core.platform.fileInput.files[0]);
+            else core.platform.fileReader.readAsDataURL(core.platform.fileInput.files[0]);
             core.platform.fileInput.value = '';
         }
     }
