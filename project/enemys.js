@@ -34,39 +34,42 @@ enemys_fcae963b_31c9_42b4_b48c_bb48d09f3f80 =
     },
     "slimelord": {
         "name": "怪王",
-        "hp": 100,
-        "atk": 120,
-        "def": 0,
-        "money": 10,
-        "experience": 0,
-        "special": 0
+        "hp": 250,
+        "atk": 60,
+        "def": 3,
+        "money": 0,
+        "experience": 1,
+        "special": 0,
+        "point": 3
     },
     "bat": {
         "name": "小蝙蝠",
-        "hp": 100,
-        "atk": 120,
+        "hp": 80,
+        "atk": 50,
         "def": 0,
         "money": 2,
-        "experience": 0,
-        "special": 1
+        "experience": 1,
+        "special": 0
     },
     "bigBat": {
         "name": "大蝙蝠",
-        "hp": 0,
-        "atk": 0,
-        "def": 0,
+        "hp": 100,
+        "atk": 60,
+        "def": 10,
         "money": 0,
-        "experience": 0,
-        "special": 0
+        "experience": 1,
+        "special": 1,
+        "point": 1
     },
     "redBat": {
         "name": "红蝙蝠",
         "hp": 100,
         "atk": 120,
-        "def": 0,
-        "money": 5,
+        "def": 10,
+        "money": 0,
         "experience": 0,
-        "special": 4
+        "special": 1,
+        "point": 5
     },
     "vampire": {
         "name": "冥灵魔王",
@@ -75,25 +78,26 @@ enemys_fcae963b_31c9_42b4_b48c_bb48d09f3f80 =
         "def": 0,
         "money": 0,
         "experience": 0,
-        "special": 0
+        "special": 1
     },
     "skeleton": {
         "name": "骷髅人",
-        "hp": 0,
-        "atk": 0,
-        "def": 0,
-        "money": 0,
-        "experience": 0,
+        "hp": 200,
+        "atk": 33,
+        "def": 4,
+        "money": 3,
+        "experience": 1,
         "special": 0
     },
     "skeletonSoilder": {
         "name": "骷髅士兵",
-        "hp": 0,
-        "atk": 0,
-        "def": 0,
+        "hp": 305,
+        "atk": 44,
+        "def": 6,
         "money": 0,
-        "experience": 0,
-        "special": 0
+        "experience": 1,
+        "special": 0,
+        "point": 2
     },
     "skeletonCaptain": {
         "name": "骷髅队长",
@@ -101,7 +105,7 @@ enemys_fcae963b_31c9_42b4_b48c_bb48d09f3f80 =
         "atk": 0,
         "def": 0,
         "money": 0,
-        "experience": 0,
+        "experience": 1,
         "special": 0
     },
     "ghostSkeleton": {

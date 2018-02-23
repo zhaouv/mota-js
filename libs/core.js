@@ -1195,12 +1195,12 @@ core.prototype.keyUp = function(keyCode) {
             break;
         case 50: // 快捷键2：炸
             if (core.status.heroStop) {
-                if (core.hasItem('bomb')) {
-                    if (core.canUseItem('bomb')) {
-                        core.useItem('bomb');
+                if (core.hasItem('earthquake')) {
+                    if (core.canUseItem('earthquake')) {
+                        core.useItem('earthquake');
                     }
                     else {
-                        core.drawTip('当前不能使用炸弹');
+                        core.drawTip('当前不能使用地震卷轴');
                     }
                 }
                 else if (core.hasItem('hammer')) {
@@ -5289,7 +5289,7 @@ core.prototype.updateStatusBar = function () {
     }) 
     */
     var keys = ['yellowKey', 'blueKey', 'redKey'];
-    var tools = {'yellowKey':'pickaxe', 'blueKey':'bomb', 'redKey':'centerFly'};
+    var tools = {'yellowKey':'pickaxe', 'blueKey':'earthquake', 'redKey':'centerFly'};
     keys.forEach(function (key) {
         core.statusBar[key].innerHTML = core.setTwoDigits(core.status.hero.items.tools[tools[key]]||0);
     })
