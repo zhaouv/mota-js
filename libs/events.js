@@ -1076,11 +1076,12 @@ events.prototype.afterLoadData = function(data) {
         var getfromfloor = function(floorId){
             var blocks = core.status.maps[floorId].blocks;
             for(var ii=0,block;block=blocks[ii];ii++){
-                if(JSON.stringify(block).indexOf(eid)!==-1)
-                core.setFlag('infoFloorId',floorId);
-                core.setFlag('infoX',block.x);
-                core.setFlag('infoY',block.y);
-                return [floorId,block.x,block.y];
+                if(JSON.stringify(block).indexOf(eid)!==-1){
+                    core.setFlag('infoFloorId',floorId);
+                    core.setFlag('infoX',block.x);
+                    core.setFlag('infoY',block.y);
+                    return [floorId,block.x,block.y];
+                }
             }
             return null;
         }
@@ -1102,10 +1103,11 @@ events.prototype.afterLoadData = function(data) {
         var str_ = tpid+'_'+num;
         var info = getInfoById(str_,floorId);
         if(!info)return;
-        core.insertAction([{
+        if (core.status.floorId === info[0]) core.insertAction([{
+            "type": "changePos", "loc": [info[1], info[2]]}]);
+        else core.insertAction([{
             "type": "changeFloor",
-            "floorId": info[0], "loc": [info[1], info[2]] 
-        }]);
+            "floorId": info[0], "loc": [info[1], info[2]] }]);
     }
 
     floatMap = function(){
