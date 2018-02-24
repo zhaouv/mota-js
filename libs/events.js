@@ -1072,23 +1072,35 @@ events.prototype.beforeSaveData = function(data) {
 ////// 读档事件后，载入事件前，可以执行的操作 //////
 events.prototype.afterLoadData = function(data) {
     //changed
-    teleport = function(tpid,num) {
+    getInfoById = function(eid,floorId){
+        var getfromfloor = function(floorId){
+            var blocks = core.status.maps[floorId].blocks;
+            for(var ii=0,block;block=blocks[ii];ii++){
+                if(JSON.stringify(block).indexOf(eid)!==-1)
+                core.setFlag('infoFloorId',floorId);
+                core.setFlag('infoX',block.x);
+                core.setFlag('infoY',block.y);
+                return [floorId,block.x,block.y];
+            }
+            return null;
+        }
+        if(floorId) return getfromfloor(floorId);
+        var info;
+        for(var floorId in core.status.maps){
+            info = getfromfloor(floorId);
+            if (info) return info;
+        }
+        return null;
+    }
+
+    teleport = function(tpid,num,floorId) {
         if(!core.isset(tpid)){
             var x=core.status.event.data.x, y=core.status.event.data.y;
             core.insertAction([{"type": "changePos", "loc": [x,y]}]);
             return;
         }
         var str_ = tpid+'_'+num;
-        var info = (function(){
-            for(var floorId in core.status.maps){
-                var blocks = core.status.maps[floorId].blocks;
-                for(var ii=0,block;block=blocks[ii];ii++){
-                    if(JSON.stringify(block).indexOf(str_)!==-1)
-                    return [floorId,block.x,block.y];
-                }
-            }
-            return null
-        })();
+        var info = getInfoById(str_,floorId);
         if(!info)return;
         core.insertAction([{
             "type": "changeFloor",
