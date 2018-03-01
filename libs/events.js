@@ -1067,6 +1067,7 @@ events.prototype.afterUseBomb = function () {
 events.prototype.beforeSaveData = function(data) {
     //changed
     core.setFlag('mapsave',core.status.maps);
+    // todo 未完成 待修改
 }
 
 ////// 读档事件后，载入事件前，可以执行的操作 //////
