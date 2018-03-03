@@ -133,7 +133,7 @@ events.prototype.win = function(reason) {
         core.drawText([
             "\t[恭喜通关]你的分数是${status:hp}。"
         ], function () {
-            core.events.gameOver('', replaying);
+            core.events.gameOver(reason||'', replaying);
         })
     });
 }
@@ -266,6 +266,8 @@ events.prototype.doEvents = function (list, x, y, callback) {
 events.prototype.doAction = function() {
     // 清空boxAnimate和UI层
     core.status.boxAnimateObjs = [];
+    clearInterval(core.status.event.interval);
+
     core.clearMap('ui', 0, 0, 416, 416);
     core.setAlpha('ui', 1.0);
 
@@ -301,7 +303,17 @@ events.prototype.doAction = function() {
             if (core.status.replay.replaying)
                 core.events.doAction();
             else
-                core.ui.drawTextBox(data.data);
+                core.ui.drawTextBox(data.text);
+            break;
+        case "autoText":
+            if (core.status.replay.replaying)
+                core.events.doAction();
+            else {
+                core.ui.drawTextBox(data.text);
+                setTimeout(function () {
+                    core.events.doAction();
+                }, data.time || 3000);
+            }
             break;
         case "setText": // 设置文本状态
             if (data.position=='up'||data.position=='down'||data.position=='center') {
@@ -313,6 +325,12 @@ events.prototype.doAction = function() {
                     core.status.textAttribute[t]=data[t];
                 }
             })
+            if (core.isset(data.bold)) {
+                core.status.textAttribute.bold=data.bold;
+            }
+            if (core.isset(data.time)) {
+                core.status.textAttribute.time=data.time;
+            }
             core.events.doAction();
             break;
         case "tip":
@@ -372,9 +390,11 @@ events.prototype.doAction = function() {
                         originBlock.block.id = data.number;
                         originBlock.block.event = block.event;
                     }
-                    core.drawMap(floorId);
-                    core.drawHero(core.getHeroLoc('direction'), core.getHeroLoc('x'), core.getHeroLoc('y'), 'stop');
-                    core.updateStatusBar();
+                    if (floorId==core.status.floorId) {
+                        core.drawMap(floorId);
+                        core.drawHero(core.getHeroLoc('direction'), core.getHeroLoc('x'), core.getHeroLoc('y'), 'stop');
+                        core.updateStatusBar();
+                    }
                 }
                 this.doAction();
                 break;
@@ -1075,10 +1095,15 @@ events.prototype.afterLoadData = function(data) {
 
 ////// 长按 //////
 events.prototype.longClick = function () {
-    core.waitHeroToStop(function () {
-        // 绘制快捷键
-        core.ui.drawKeyBoard();
-    });
+    if (core.status.event.id=='text') {
+        core.drawText();
+        return true;
+    }
+    if (core.status.event.id=='action' && core.status.event.data.type=='text') {
+        this.doAction();
+        return true;
+    }
+    return false;
 }
 
 ////// 按下Ctrl键时（快捷跳过对话） //////
