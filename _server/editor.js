@@ -20,22 +20,28 @@ editor.prototype.init = function(callback){
       if (Boolean(callback))callback();
     });
   }
+
   var afterMainInit = function(){
+    core.floors=JSON.parse(JSON.stringify(core.floors,function(k,v){if(v instanceof Function){return v.toString()}else return v}));
+    core.data=JSON.parse(JSON.stringify(core.data,function(k,v){if(v instanceof Function){return v.toString()}else return v}));
+    data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d=JSON.parse(JSON.stringify(data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d,function(k,v){if(v instanceof Function){return v.toString()}else return v}));
     editor.main=main;
     editor.core=core;
     editor.fs=fs;
-    editor.file=editor_file;
-    editor.material.images=core.material.images;
-    editor.listen(); // 开始监听事件
-    var hard = 'Hard';
-    core.resetStatus(core.firstData.hero, hard, core.firstData.floorId, null, core.initStatus.maps);
-    //core.status.maps = core.clone(core.maps.initMaps(floorIds));
-    core.changeFloor(core.status.floorId, null, core.firstData.hero.loc, null, function() {
-        afterCoreReset();
+    editor_file = editor_file(editor, function() {
+      editor.file=editor_file;
+      editor_mode = editor_mode(editor);
+      editor.mode=editor_mode;
+      editor.material.images=core.material.images;
+      editor.listen(); // 开始监听事件
+      core.resetStatus(core.firstData.hero, null, core.firstData.floorId, null, core.initStatus.maps);
+      core.changeFloor(core.status.floorId, null, core.firstData.hero.loc, null, function() {
+          afterCoreReset();
+      }, true);
+      core.events.setInitData(null);
     });
-    core.events.setInitData(hard);
   }
-  setTimeout(afterMainInit, 500);
+  afterMainInit();
 }
 
 editor.prototype.reset = function(callback){
@@ -47,9 +53,9 @@ editor.prototype.reset = function(callback){
 editor.prototype.idsInit = function(maps, icons){
   editor.ids = [0];
   editor.indexs = [];
-  var MAX_NUM = 400;
+  var MAX_NUM = 1000;
   var getInfoById = function(id){
-    var block = maps.getBlock(0, 0, id);
+    var block = maps.initBlock(0, 0, id);
     if(hasOwnProp(block, 'event')){
       return block;
     }
@@ -80,7 +86,7 @@ editor.prototype.drawInitData = function (icons) {
   var sumWidth=0;
   editor.widthsX={};
   // var imgNames = Object.keys(images);  //还是固定顺序吧；
-  var imgNames = ["terrains", "animates", "enemys", "items", "npcs", "autotile"];
+  var imgNames = ["terrains", "animates", "enemys", "enemy48", "items", "npcs", "npc48", "autotile"];
   
   for(var ii=0; ii<imgNames.length; ii++){
     var img=imgNames[ii], tempy = 0;
@@ -137,6 +143,7 @@ editor.prototype.drawInitData = function (icons) {
 editor.prototype.mapInit = function(){
   var ec = document.getElementById('event').getContext('2d');
   ec.clearRect(0, 0, 416, 416);
+  document.getElementById('event2').getContext('2d').clearRect(0,0,416,416);
   editor.map = [];
   for(var y=0; y<13; y++){
     editor.map[y] = [];
@@ -151,6 +158,7 @@ editor.prototype.mapInit = function(){
   editor.currentFloorData.afterBattle={};
   editor.currentFloorData.afterGetItem={};
   editor.currentFloorData.afterOpenDoor={};
+  editor.currentFloorData.cannotMove={};
 }
 editor.prototype.drawMapBg = function(img){
   var bgc = bg.getContext('2d');
@@ -308,6 +316,17 @@ editor.prototype.changeFloor = function(floorId,callback) {
   });
 }
 
+editor.prototype.guid = function() {
+  return 'id_'+'xxxxxxxx_xxxx_4xxx_yxxx_xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8);
+    return v.toString(16);
+  });
+}
+
+editor.prototype.HTMLescape = function(str_) {
+  return String(str_).split('').map(function(v){return '&#'+v.charCodeAt(0)+';'}).join('');
+}
+
 editor.prototype.listen = function() {
 
   var uc = eui.getContext('2d');
@@ -351,9 +370,9 @@ editor.prototype.listen = function() {
     if(!selectBox.isSelected) {
       var loc = eToLoc(e);
       var pos = locToPos(loc);
-      editor_mode.onmode('');//为了强制触发doAction
+      editor_mode.onmode('nextChange');
       editor_mode.onmode('loc');
-      editor_mode.loc();
+      //editor_mode.loc();
       tip.whichShow = 1;
       return;
     }
@@ -460,19 +479,22 @@ editor.prototype.listen = function() {
     var loc = { 
       'x': scrollLeft + e.clientX + iconLib.scrollLeft - right.offsetLeft-iconLib.offsetLeft, 
       'y': scrollTop + e.clientY + iconLib.scrollTop - right.offsetTop-iconLib.offsetTop, 
-      'size': 32 
+      'size': 32
     };
     editor.loc = loc;
     var pos = locToPos(loc);
     for (var spriter in editor.widthsX){
       if(pos.x>=editor.widthsX[spriter][1] && pos.x<editor.widthsX[spriter][2]){
+        var ysize = spriter.indexOf('48')===-1?32:48;
+        loc.ysize = ysize;
+        pos.y = ~~(loc.y / loc.ysize);
         pos.x=editor.widthsX[spriter][1];
         pos.images = editor.widthsX[spriter][0];
         var autotiles = editor.material.images['autotile'];
         if(pos.images=='autotile'){
           var imNames = Object.keys(autotiles);
-          if((pos.y+1)*32 > editor.widthsX[spriter][3])
-            pos.y = ~~(editor.widthsX[spriter][3]/32)-4;
+          if((pos.y+1)*ysize > editor.widthsX[spriter][3])
+            pos.y = ~~(editor.widthsX[spriter][3]/ysize)-4;
           else{
             for(var i=0; i<imNames.length; i++){
               if(pos.y >= 4*i && pos.y < 4*(i+1)){
@@ -481,13 +503,14 @@ editor.prototype.listen = function() {
               }
             }
           }
-        }else if((pos.y+1)*32 > editor.widthsX[spriter][3])
-          pos.y = ~~(editor.widthsX[spriter][3]/32)-1;
+        }else if((pos.y+1)*ysize > editor.widthsX[spriter][3])
+          pos.y = ~~(editor.widthsX[spriter][3]/ysize)-1;
         
         selectBox.isSelected = true;
         // console.log(pos,editor.material.images[pos.images].height)
         dataSelection.style.left = pos.x*32 +'px';
-        dataSelection.style.top = pos.y*32 +'px';
+        dataSelection.style.top = pos.y*ysize +'px';
+        dataSelection.style.height = ysize-6+'px';
         
         if(pos.x==0&&pos.y==0){
           // editor.info={idnum:0, id:'empty','images':'清除块', 'y':0};
@@ -509,9 +532,9 @@ editor.prototype.listen = function() {
           }
         }
         tip.infos = JSON.parse(JSON.stringify(editor.info));
-        editor_mode.onmode('');//为了强制触发doAction
+        editor_mode.onmode('nextChange');
         editor_mode.onmode('emenyitem');
-        editor_mode.emenyitem();
+        //editor_mode.emenyitem();
       }
     }
   }

@@ -1,5 +1,5 @@
 function enemys() {
-
+    this.init();
 }
 
 ////// 初始化 //////
@@ -59,6 +59,7 @@ enemys.prototype.getSpecialText = function (enemyId) {
     if (this.hasSpecial(special, 20)) text.push("无敌");
     if (this.hasSpecial(special, 21)) text.push("退化");
     if (this.hasSpecial(special, 22)) text.push("固伤");
+    if (this.hasSpecial(special, 23)) text.push("重生");
     return text;
 }
 
@@ -99,9 +100,10 @@ enemys.prototype.getSpecialHint = function (enemy, special) {
         case 20: return "无敌：勇士无法打败怪物，除非拥有十字架";
         case 21: return "退化：战斗后勇士永久下降"+(enemy.atkValue||0)+"点攻击和"+(enemy.defValue||0)+"点防御";
         case 22: return "固伤：战斗前，怪物对勇士造成"+(enemy.damage||0)+"点固定伤害，无视勇士魔防。";
+        case 23: return "重生：怪物被击败后，角色转换楼层则怪物将再次出现";
         default: break;
     }
-    return ""
+    return "";
 }
 
 ////// 获得某个怪物的伤害 //////
@@ -168,6 +170,10 @@ enemys.prototype.getDefDamage = function (monsterId) {
 enemys.prototype.calDamage = function (monster, hero_hp, hero_atk, hero_def, hero_mdef) {
 
     var mon_hp = monster.hp, mon_atk = monster.atk, mon_def = monster.def, mon_special = monster.special;
+    hero_hp=Math.max(0, hero_hp);
+    hero_atk=Math.max(0, hero_atk);
+    hero_def=Math.max(0, hero_def);
+    hero_mdef=Math.max(0, hero_mdef);
 
     if (this.hasSpecial(mon_special, 20) && !core.hasItem("cross")) // 如果是无敌属性，且勇士未持有十字架
         return 999999999; // 返回无限大
@@ -240,19 +246,19 @@ enemys.prototype.getCurrentEnemys = function (floorId) {
     var used = {};
     var mapBlocks = core.status.maps[floorId].blocks;
     for (var b = 0; b < mapBlocks.length; b++) {
-        if (core.isset(mapBlocks[b].event) && !(core.isset(mapBlocks[b].enable) && !mapBlocks[b].enable) && mapBlocks[b].event.cls == 'enemys') {
+        if (core.isset(mapBlocks[b].event) && !(core.isset(mapBlocks[b].enable) && !mapBlocks[b].enable)
+            && mapBlocks[b].event.cls.indexOf('enemy')==0) {
             var monsterId = mapBlocks[b].event.id;
             if (core.isset(used[monsterId])) continue;
 
             var monster = core.material.enemys[monsterId];
             var mon_hp = monster.hp, mon_atk = monster.atk, mon_def = monster.def;
-            // 坚固
-            if (this.hasSpecial(monster.special, 3) && mon_def < core.status.hero.atk - 1)
-                mon_def = core.status.hero.atk - 1;
             if (this.hasSpecial(monster.special, 10)) {
                 mon_atk=core.status.hero.atk;
                 mon_def=core.status.hero.def;
             }
+            if (this.hasSpecial(monster.special, 3) && mon_def < core.status.hero.atk - 1)
+                mon_def = core.status.hero.atk - 1;
 
             var specialText = core.enemys.getSpecialText(monsterId);
             if (specialText.length>=3) specialText = "多属性...";
@@ -286,5 +292,3 @@ enemys.prototype.getCurrentEnemys = function (floorId) {
     });
     return enemys;
 }
-
-main.instance.enemys = new enemys();

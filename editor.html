@@ -4,11 +4,13 @@
     <meta charset="utf-8">
     <link href="_server/css/editor.css" rel="stylesheet">
     <link href="_server/CodeMirror/codemirror.css" rel="stylesheet">
+    <link href="_server/CodeMirror/show-hint.css" rel="stylesheet">
+    <link href="_server/CodeMirror/lint.css" rel="stylesheet">
     <link href="_server/css/editor_mode.css" rel="stylesheet">
   </head>
 <body>
   <div class="main">
-    <div id="left">
+    <div id="left" style="z-index:-1;opacity: 0;"><!-- map -->
       <div id="arrEditor">
         <table class="col" id='arrColMark'></table>
         <table class="row" id='arrRowMark'></table>
@@ -17,11 +19,14 @@
           <p class="warnText" v-if="error">{{ errors[error-1] }}</p>
         </div>
         <div id="editTip" v-cloak>
-          <select id="selectFloor"></select><br>
+          <br>
+          <input type="button" value="当前地图另存为" id='saveFloorAs'/>
           <input id='saveAsName' placeholder="输入新楼层id"/>
-          <input class='btn' type="button" value="save" id='saveFloor'/>
-          <input class='btn' type="button" value="saveAs" id='saveFloorAs'/>
           <input class='btn' type="button" value="复制地图" v-on:click="copyMap"/>
+        </div>
+        <div style="position: absolute;right: 10px;bottom:70px;">
+          <input class='btn' id='clear' type="button" value="清除地图" v-on:click="clearMap"/>
+          <input class='btn' type="button" value="导出地图" id="exportM" v-on:click="exportMap"/>
         </div>
       </div>
       <div id="objDataEditor">
@@ -32,11 +37,12 @@
       </div>
       
     </div>
-    <div id="left1" class='leftTab'><div ><!-- appendpic -->
-      <h3>追加素材</h3>
+    <div id="left1" class='leftTab' style="z-index:-1;opacity: 0;"><!-- appendpic -->
+      <h3 class="leftTabHeader">追加素材</h3>
+      <div class="leftTabContent">
       <p>
         <input id="selectFileBtn" type="button" value="导入文件到画板"/>
-        <select id="selectAppend"></select><!-- ["terrains", "animates", "enemys", "items", "npcs"] -->
+        <select id="selectAppend"></select><!-- ["terrains", "animates", "enemys", "enemy48", "items", "npcs", "npc48"] -->
         <input id="appendConfirm" type="button" value="追加"/>
       </p>
       <div id="appendPicCanvas" style="position:relative;overflow: auto;height:470px;">
@@ -45,16 +51,17 @@
         <canvas style="position:absolute;z-index:100"></canvas><!-- 用于响应鼠标点击 -->
         <canvas style="position:absolute;display:none;"></canvas><!-- 画出追加后的sprite用于储存 -->
         <div id="appendPicSelection">
-          <div class="appendSelection"><span style="font-size:10px">1</span></div>
-          <div class="appendSelection"><span style="font-size:10px">&nbsp;&nbsp;2</span></div>
-          <div class="appendSelection"><span style="font-size:10px">&nbsp;&nbsp;&nbsp;&nbsp;3</span></div>
-          <div class="appendSelection"><span style="font-size:10px">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;4</span></div>
+          <div class="appendSelection"><span style="top: 0; left: 2px;">1</span></div>
+          <div class="appendSelection"><span style="top: 0; left: 14px;">2</span></div>
+          <div class="appendSelection"><span style="top: 12px; left: 2px;">3</span></div>
+          <div class="appendSelection"><span style="top: 12px; left: 14px;">4</span></div>
         </div>
       </div>
     </div></div>
-    <div id="left2" class='leftTab'><div><!-- loc -->
-      <h3>地图选点</h3>
-      <p id='pos_a6771a78_a099_417c_828f_0a24851ebfce'>0,0</p>
+    <div id="left2" class='leftTab' style="z-index:-1;opacity: 0;"><!-- loc -->
+      <h3 class="leftTabHeader">地图选点&nbsp;&nbsp;<button onclick="editor.mode.onmode('save')">save</button></h3>
+      <div class="leftTabContent">
+      <p id='pos_a6771a78_a099_417c_828f_0a24851ebfce' style="margin-left: 15px">0,0</p>
       <div class='etable'>
         <table>
           <tbody id='table_3d846fc4_7644_44d1_aa04_433d266a73df'>
@@ -63,11 +70,13 @@
         </table>
       </div>
     </div></div>
-    <div id="left3" class='leftTab'><div><!-- emenyitem -->
-      <h3>图块属性</h3>
+    <div id="left3" class='leftTab' style="z-index:-1;opacity: 0;"><!-- emenyitem -->
+      <h3 class="leftTabHeader">图块属性&nbsp;&nbsp;<button onclick="editor.mode.onmode('save')">save</button></h3>
+      <div class="leftTabContent">
       <div id='newIdIdnum'><!-- id and idnum -->
         <input placeholder="输入新id"/>
         <input placeholder="输入新idnum"/>
+        <button>save</button>
       </div>
       <div><!-- enemy and item -->
         <div class='etable'>
@@ -79,8 +88,9 @@
         </div>
       </div>
     </div></div>
-    <div id="left4" class='leftTab'><div><!-- floor -->
-      <h3>楼层属性</h3>
+    <div id="left4" class='leftTab' style="z-index:-1;opacity: 0;"><!-- floor -->
+      <h3 class="leftTabHeader">楼层属性&nbsp;&nbsp;<button onclick="editor.mode.onmode('save')">save</button></h3>
+      <div class="leftTabContent">
       <div class='etable'>
         <table>
           <tbody id='table_4a3b1b09_b2fb_4bdf_b9ab_9f4cdac14c74'>
@@ -89,8 +99,9 @@
         </table>
       </div>
     </div></div>
-    <div id="left5" class='leftTab'><div><!-- tower -->
-      <h3>全塔属性</h3>
+    <div id="left5" class='leftTab' style="z-index:-1;opacity: 0;"><!-- tower -->
+      <h3 class="leftTabHeader">全塔属性&nbsp;&nbsp;<button onclick="editor.mode.onmode('save')">save</button></h3>
+      <div class="leftTabContent">
       <div class='etable'>
         <table>
           <tbody id='table_b6a03e4c_5968_4633_ac40_0dfdd2c9cde5'>
@@ -99,7 +110,7 @@
         </table>
       </div>
     </div></div>
-    <div id="left6" class='leftTab'><div><!-- eventsEditor -->
+    <div id="left6" class='leftTab' style="z-index:-1;opacity: 0;"><div style="position: relative; height: 95%"><!-- eventsEditor -->
       <h3>事件编辑器 &nbsp;&nbsp;
         <button onclick="editor_blockly.showXML()">Show XML</button>
         <button onclick="editor_blockly.runCode()">console.log(obj=code)</button>
@@ -115,6 +126,7 @@
         </select>
         <button onclick="editor_blockly.parse()">parse</button>
         <button onclick="editor_blockly.confirm()">confirm</button>
+        <button onclick="editor_blockly.cancel()">cancel</button>
         <xml id="toolbox" style="display:none">
           <category name="entry"></category>
           <category name="statement"></category>
@@ -122,13 +134,25 @@
           <category name="template"></category>
         </xml>
       </h3>
-      <div>
-        <div id="blocklyDiv"></div>
-        <div id="multiLineDiv" style="display:none">
-          <textarea id="multiLineCode" name="multiLineCode"></textarea>
-          <button onclick="editor_blockly.multiLineDone()">done</button>
-        </div>
+      <div style="position: relative;height: 100%">
+        <div id="blocklyArea"><div id="blocklyDiv"></div></div>
         <textarea id="codeArea" spellcheck="false"></textarea>
+      </div>
+    </div></div>
+    <div id="left7" style="z-index:-1;opacity: 0;"><!-- 多行文本编辑器 -->
+      <button onclick="editor_multi.confirm()">confirm</button>
+      <button onclick="editor_multi.cancel()">cancel</button>
+      <textarea id="multiLineCode" name="multiLineCode"></textarea>
+    </div>
+    <div id="left8" class='leftTab' style="z-index:-1;opacity: 0;"><!-- functions -->
+      <h3 class="leftTabHeader">脚本编辑&nbsp;&nbsp;<button onclick="editor.mode.onmode('save')">save</button></h3>
+      <div class="leftTabContent">
+      <div class='etable'>
+        <table>
+          <tbody id='table_e260a2be_5690_476a_b04e_dacddede78b3'>
+            <tr><td>条目</td><td>注释</td><td>值</td></tr>
+          </tbody>
+        </table>
       </div>
     </div></div>
     <div id="mid">
@@ -137,6 +161,7 @@
       <div class="map" id="mapEdit">
         <canvas class='gameCanvas' id='bg' width='416' height='416'></canvas>
         <canvas class='gameCanvas' id='event' width='416' height='416'></canvas>
+        <canvas class='gameCanvas' id='event2' width='416' height='416'></canvas>
         <canvas class='egameCanvas' id='eui' width='416' height='416' style='z-index:100'></canvas>
       </div>
       <div class="tools">
@@ -155,10 +180,22 @@
               <p v-if="whichShow" v-bind:class="[ (whichShow%2) ? 'warnText' : 'successText']">{{ mapMsg }}</p>
           </div>
         </div>
-        <input class='btn' id='clear' type="button" value="清除地图" v-on:click="clearMap"/>
-        <input class='btn' type="button" value="导出地图" id="exportM" v-on:click="exportMap"/>
+        
 
-        <div id="bgSelect" v-cloak>
+        <select id="editModeSelect">
+          <option value="map">地图编辑</option>
+          <option value="loc">地图选点</option>
+          <option value="emenyitem">图块属性</option>
+          <option value="floor">楼层属性</option>
+          <option value="tower">全塔属性</option>
+          <option value="functions">脚本编辑</option>
+          <option value="appendpic">追加素材</option>
+        </select>
+        <br><br><br><br>
+        <select id="selectFloor"></select>
+        <input type="button" value="保存地图" id='saveFloor'/>
+        <!--  -->
+        <div id="bgSelect" v-cloak style="display:none">
           <span>当前地板: </span>
           <select v-model="selectedBg">
             <option disabled value="">请选择地板</option>
@@ -171,6 +208,7 @@
               <input class='btn' type="button" value="确定" v-on:click="updatebg"/>
           </div>
         </div>
+        <!--  -->
       </div>
     </div>
     <div id="right">
@@ -192,20 +230,15 @@
             </div>
             <p id='startTopLoadTips'>资源即将开始加载</p>
         </div>
-        <img id='startBackground' src='project/images/bg.png'>
-        <!-- 标题界面；可以改style的color使标题改变颜色 -->
-        <p id='startLogo' style="color: black"></p>
+        <img id='startBackground'>
+        <p id='startLogo'></p>
         <div id='startButtonGroup'>
             <div id='startButtons'>
                 <span class='startButton' id='playGame'>开始游戏</span>
                 <span class='startButton' id='loadGame'>载入游戏</span>
                 <span class='startButton' id='replayGame'>录像回放</span>
             </div>
-            <div id='levelChooseButtons'>
-                <span class='startButton' id='easyLevel'>简单</span>
-                <span class='startButton' id='normalLevel'>普通</span>
-                <span class='startButton' id='hardLevel'>困难</span>
-            </div>
+            <div id='levelChooseButtons'></div>
         </div>
     </div>
     <div id='floorMsgGroup'>
@@ -221,6 +254,10 @@
         <div class="status" id="lvCol">
             <img src='project/images/lv.png' id="img-lv">
             <p class='statusLabel' id='lv'></p>
+        </div>
+        <div class="status" id='hpmaxCol'>
+            <img src='project/images/hpmax.png' id="img-hpmax">
+            <p class='statusLabel' id='hpmax'></p>
         </div>
         <div class="status">
             <img src='project/images/hp.png' id="img-hp">
@@ -274,8 +311,9 @@
     <div id="curtain"></div>
     <!-- <canvas class='gameCanvas' id='bg' width='416' height='416'></canvas> -->
     <!-- <canvas class='gameCanvas' id='event' width='416' height='416'></canvas> -->
-    <canvas class='gameCanvas' id='fg' width='416' height='416'></canvas>
     <canvas class='gameCanvas' id='hero' width='416' height='416'></canvas>
+    <!-- <canvas class='gameCanvas' id='event2' width='416' height='416'></canvas> -->
+    <canvas class='gameCanvas' id='fg' width='416' height='416'></canvas>
     <canvas class='gameCanvas' id='animate' width='416' height='416'></canvas>
     <canvas class='gameCanvas' id='weather' width='416' height='416'></canvas>
     <canvas class='gameCanvas' id='ui' width='416' height='416'></canvas>
@@ -315,7 +353,7 @@
 <script>
 //所有全局量
 __all__=['Vue','fs','editor_file','editor_mode','main','core','hasOwnProp','printf','printe','editor','converter','ActionParser','MotaActionFunctions','MotaActionBlocks'];
-__id__=['editArea','arrRowMark','mapRowMark','data','bg','dataSelection','blocklyDiv','codeArea','entryType'];
+__id__=['editArea','arrRowMark','mapRowMark','data','bg','dataSelection','blocklyDiv','codeAreaHL','entryType'];
 __Vue__=['exportM','editArea','editTip','clear','tip','selectBox'];
 //var event = document.getElementById('event');
 
@@ -326,22 +364,29 @@ function hasOwnProp (obj, key) {
 </script>
 <script src='_server/editor.js'></script>
 <script>
-main.init('editor');
-editor.init(function(){
-  editor.pos={x: 0, y: 0};
-  editor_mode.loc();
-  editor.info=editor.ids[editor.indexs[201]];
-  editor_mode.emenyitem();
-  editor_mode.floor();
-  editor_mode.tower();
-  editor_mode.listen();
-  editor_blockly=editor_blockly();
+main.init('editor', function() {
+  editor.init(function(){
+    editor.pos={x: 0, y: 0};
+    editor.mode.loc();
+    editor.info=editor.ids[editor.indexs[201]];
+    editor.mode.emenyitem();
+    editor.mode.floor();
+    editor.mode.tower();
+    editor.mode.functions();
+    editor.mode.showMode('floor');
+    editor.mode.listen();
+    editor_multi=editor_multi();
+    editor_blockly=editor_blockly();
+  });
 });
+
 
 
 //main.listen();
 </script>
 
+<!-- hightlight textarea -->
+<script src='_server/editor_multi.js'></script>
 <!-- blockly -->
 <script src="_server/blockly/Converter.bundle.min.js"></script>
 <script src="_server/blockly/blockly_compressed.js"></script>
@@ -350,6 +395,11 @@ editor.init(function(){
 <script src="_server/blockly/zh-hans.js"></script>
 <script src='_server/editor_blockly.js'></script>
 <script src="_server/CodeMirror/codeMirror.bundle.min.js"></script>
+<script src="_server/CodeMirror/show-hint.js"></script>
+<script src="_server/CodeMirror/javascript-hint.js"></script>
+<script src="_server/CodeMirror/jshint.min.js"></script>
+<script src="_server/CodeMirror/lint.js"></script>
+<script src="_server/CodeMirror/javascript-lint.js"></script>
 
 </body>
 </html>

@@ -2,7 +2,12 @@ function main() {
 
     //------------------------ 用户修改内容 ------------------------//
 
-    this.version = "1.4.1"; // 游戏版本号；如果更改了游戏内容建议修改此version以免造成缓存问题。
+    this.version = "2.0"; // 游戏版本号；如果更改了游戏内容建议修改此version以免造成缓存问题。
+
+    this.useCompress = false; // 是否使用压缩文件
+    // 当你即将发布你的塔时，请使用“JS代码压缩工具”将所有js代码进行压缩，然后将这里的useCompress改为true。
+    // 请注意，只有useCompress是false时才会读取floors目录下的文件，为true时会直接读取libs目录下的floors.min.js文件。
+    // 如果要进行剧本的修改请务必将其改成false。
 
     //------------------------ 用户修改内容 END ------------------------//
 
@@ -17,6 +22,7 @@ function main() {
         'startTopProgress': document.getElementById('startTopProgress'),
         'startTopLoadTips': document.getElementById('startTopLoadTips'),
         'startBackground': document.getElementById('startBackground'),
+        'startLogo': document.getElementById('startLogo'),
         'startButtonGroup': document.getElementById('startButtonGroup'),
         'floorMsgGroup': document.getElementById('floorMsgGroup'),
         'logoLabel': document.getElementById('logoLabel'),
@@ -33,13 +39,11 @@ function main() {
         'loadGame': document.getElementById('loadGame'),
         'replayGame': document.getElementById('replayGame'),
         'levelChooseButtons': document.getElementById('levelChooseButtons'),
-        'easyLevel': document.getElementById('easyLevel'),
-        'normalLevel': document.getElementById('normalLevel'),
-        'hardLevel': document.getElementById('hardLevel'),
         'data': document.getElementById('data'),
         'statusLabels': document.getElementsByClassName('statusLabel'),
         'floorCol': document.getElementById('floorCol'),
         'lvCol': document.getElementById('lvCol'),
+        'hpmaxCol': document.getElementById('hpmaxCol'),
         'mdefCol': document.getElementById('mdefCol'),
         'moneyCol': document.getElementById('moneyCol'),
         'expCol': document.getElementById('expCol'),
@@ -49,19 +53,20 @@ function main() {
     };
     this.mode = 'play';
     this.loadList = [
-        'items', 'icons', 'maps', 'enemys', 'events', 'data', 'ui', 'core'
+        'loader', 'control', 'utils', 'items', 'icons', 'maps', 'enemys', 'events', 'actions', 'data', 'ui', 'core'
     ];
     this.pureData = [ 
-        "data","enemys","icons","maps","items"
+        "data","enemys","icons","maps","items","functions"
     ];
-    this.images = [
-        'animates', 'enemys', 'hero', 'items', 'npcs', 'terrains'
+    this.materials = [
+        'animates', 'enemys', 'hero', 'items', 'npcs', 'terrains', 'enemy48', 'npc48'
     ];
 
     this.statusBar = {
         'image': {
             'floor': document.getElementById('img-floor'),
             'lv': document.getElementById('img-lv'),
+            'hpmax': document.getElementById('img-hpmax'),
             'hp': document.getElementById("img-hp"),
             'atk': document.getElementById("img-atk"),
             'def': document.getElementById("img-def"),
@@ -92,6 +97,7 @@ function main() {
         },
         'floor': document.getElementById('floor'),
         'lv': document.getElementById('lv'),
+        'hpmax': document.getElementById('hpmax'),
         'hp': document.getElementById('hp'),
         'atk': document.getElementById('atk'),
         'def': document.getElementById("def"),
@@ -108,15 +114,14 @@ function main() {
         'hard': document.getElementById("hard")
     }
     this.floors = {}
-    this.instance = {};
     this.canvas = {};
 }
 
-main.prototype.init = function (mode) {
+main.prototype.init = function (mode, callback) {
     for (var i = 0; i < main.dom.gameCanvas.length; i++) {
         main.canvas[main.dom.gameCanvas[i].id] = main.dom.gameCanvas[i].getContext('2d');
     }
-    if (({"editor":0,"replay":0}).hasOwnProperty(mode)) {
+    if (({"editor":0}).hasOwnProperty(mode)) {
         main.mode = mode;
         if (mode === 'editor')main.editor = {'disableGlobalAnimate':true};
     }
@@ -125,23 +130,40 @@ main.prototype.init = function (mode) {
         image.src="project/images/"+t+".png";
         main.statusBar.icons[t] = image;
     })
-    main.loadPureData(function(){
+    main.loaderJs('project', main.pureData, function(){
         var mainData = data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d.main;
         for(var ii in mainData)main[ii]=mainData[ii];
-        main.loaderJs(function () {
-            var coreData = {};
+        
+        main.dom.startBackground.src="project/images/"+main.startBackground;
+        main.dom.startLogo.style=main.startLogoStyle;
+        main.levelChoose.forEach(function(value){
+            var span = document.createElement('span');
+            span.setAttribute('class','startButton');
+            span.innerText=value[0];
+            (function(span,str_){
+                span.onclick = function () {
+                    core.events.startGame(str_);
+                }
+            })(span,value[1]);
+            main.dom.levelChooseButtons.appendChild(span);
+        });
+        
+        main.loaderJs('libs', main.loadList, function () {
+            main.core = core;
+
             for (i = 0; i < main.loadList.length; i++) {
                 var name = main.loadList[i];
                 if (name === 'core') continue;
-                main[name].init(main.dom);
-                coreData[name] = main[name];
+                main.core[name] = new (eval(name))();
             }
+
             main.loaderFloors(function() {
-                ["dom", "statusBar", "canvas", "images", "pngs",
+                var coreData = {};
+                ["dom", "statusBar", "canvas", "images", "materials",
                 "animates", "bgms", "sounds", "floorIds", "floors"].forEach(function (t) {
                     coreData[t] = main[t];
                 })
-                main.core.init(coreData);
+                main.core.init(coreData, callback);
                 main.core.resize(main.dom.body.clientWidth, main.dom.body.clientHeight);
             });
         });
@@ -149,23 +171,29 @@ main.prototype.init = function (mode) {
 }
 
 ////// 动态加载所有核心JS文件 //////
-main.prototype.loaderJs = function (callback) {
+main.prototype.loaderJs = function (dir, loadList, callback) {
     var instanceNum = 0;
     // 加载js
     main.setMainTipsText('正在加载核心js文件...')
-    for (var i = 0; i < main.loadList.length; i++) {
-        main.loadMod(main.loadList[i], function (modName) {
-            instanceNum = 0;
+    for (var i = 0; i < loadList.length; i++) {
+        main.loadMod(dir, loadList[i], function (modName) {
             main.setMainTipsText(modName + '.js 加载完毕');
-            for (var key in main.instance) {
-                instanceNum++;
-            }
-            if (instanceNum === main.loadList.length) {
-                delete main.instance;
-                // main.dom.mainTips.style.display = 'none';
+            instanceNum++;
+            if (instanceNum === loadList.length) {
                 callback();
             }
         });
+    }
+}
+
+////// 加载某一个JS文件 //////
+main.prototype.loadMod = function (dir, modName, callback) {
+    var script = document.createElement('script');
+    var name = modName;
+    script.src = dir + '/' + modName + (this.useCompress?".min":"") + '.js?v=' + this.version;
+    main.dom.body.appendChild(script);
+    script.onload = function () {
+        callback(name);
     }
 }
 
@@ -196,18 +224,6 @@ main.prototype.loaderFloors = function (callback) {
     }
 }
 
-////// 加载某一个JS文件 //////
-main.prototype.loadMod = function (modName, callback) {
-    var script = document.createElement('script');
-    var name = modName;
-    script.src = 'libs/' + modName + (this.useCompress?".min":"") + '.js?v=' + this.version;
-    main.dom.body.appendChild(script);
-    script.onload = function () {
-        main[name] = main.instance[name];
-        callback(name);
-    }
-}
-
 ////// 加载某一个楼层 //////
 main.prototype.loadFloor = function(floorId, callback) {
     var script = document.createElement('script');
@@ -218,25 +234,10 @@ main.prototype.loadFloor = function(floorId, callback) {
     }
 }
 
-main.prototype.loadPureData = function(callback) {
-    var loadedNum = 0;
-    main.pureData.forEach(function(name){
-        var script = document.createElement('script');
-        script.src = 'project/' + name +'.js?v=' + main.version;
-        main.dom.body.appendChild(script);
-        script.onload = function () {
-            loadedNum++;
-            if (loadedNum == main.pureData.length)callback();
-        }
-    });
-    
-}
-
 ////// 加载过程提示 //////
 main.prototype.setMainTipsText = function (text) {
     main.dom.mainTips.innerHTML = text;
 }
-
 
 
 main.prototype.listen = function () {
@@ -434,8 +435,9 @@ main.dom.replayGame.onclick = function () {
             return;
         }
         if (core.isset(obj.version) && obj.version!=core.firstData.version) {
-            alert("游戏版本不一致！");
-            return;
+            // alert("游戏版本不一致！");
+            if (!confirm("游戏版本不一致！\n你仍然想播放录像吗？"))
+                return;
         }
         if (!core.isset(obj.route) || !core.isset(obj.hard)) {
             alert("无效的录像！");
@@ -446,28 +448,13 @@ main.dom.replayGame.onclick = function () {
         core.resetStatus(core.firstData.hero, obj.hard, core.firstData.floorId, null, core.initStatus.maps);
         core.events.setInitData(obj.hard);
         core.changeFloor(core.status.floorId, null, core.firstData.hero.loc, null, function() {
-            //core.setHeroMoveTriggerInterval();
             core.startReplay(core.decodeRoute(obj.route));
-        });
+        }, true);
     }, function () {
 
     })
 }
 
-////// 点击“简单难度”时 //////
-main.dom.easyLevel.onclick = function() {
-    core.events.startGame('花园');
-}
-
-////// 点击“普通难度”时 //////
-main.dom.normalLevel.onclick = function () {
-    core.events.startGame('Normal');
-}
-
-////// 点击“困难难度”时 //////
-main.dom.hardLevel.onclick = function () {
-    core.events.startGame('迷宫');
-}
 
 }//listen end
 

@@ -1,7 +1,6 @@
 data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d = 
 {
     "main": {
-        "useCompress": false,
         "floorIds": [
             "MT3",
             "MT1",
@@ -14,7 +13,7 @@ data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d =
             "MT8"
         ],
         "pngs": [
-            "bg"
+            "bg.jpg"
         ],
         "animates": [
             "hand",
@@ -33,7 +32,11 @@ data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d =
             "door.ogg",
             "item.ogg",
             "zone.ogg"
-        ]
+        ],
+		"bgmRemote" : false,
+		"startBackground" : "bg.jpg",
+		"startLogoStyle" : "color: black",
+		"levelChoose" : [["花园难度","花园"],["迷宫难度","迷宫"]],
     },
     "firstData": {
         "title": "迷踪境",
@@ -43,6 +46,7 @@ data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d =
         "hero": {
             "name": "勇士",
             "lv": 1,
+            "hpmax": 9999,
             "hp": 1000,
             "atk": 10,
             "def": 10,
@@ -146,7 +150,6 @@ data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d =
         ]
     },
     "values": {
-        "HPMAX": 999999,
         "lavaDamage": 100,
         "poisonDamage": 10,
         "weakValue": 20,
@@ -179,6 +182,7 @@ data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d =
     "flags": {
         "enableFloor": true,
         "enableLv": false,
+        "enableHPMax": false,
         "enableMDef": true,
         "enableMoney": true,
         "enableExperience": false,
@@ -189,7 +193,8 @@ data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d =
         "bombFourDirections": false,
         "bigKeyIsBox": false,
         "equipment": false,
-        "enableDeleteItem": true,
+        "enableDeleteItem": false,
+        "enableAddPoint": true,
         "enableNegativeDamage": false,
         "hatredDecrease": true,
         "betweenAttackCeil": false,

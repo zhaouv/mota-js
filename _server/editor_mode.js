@@ -1,9 +1,16 @@
+editor_mode = function(editor){
+var core = editor.core;
+
 function editor_mode(){
   this.ids={
     'loc':'left2',
     'emenyitem':'left3',
     'floor':'left4',
-    'tower':'left5'
+    'tower':'left5',
+    'functions':'left8',
+
+    'map':'left',
+    'appendpic':'left1',
   }
   this._ids={}
   this.dom={}
@@ -12,8 +19,11 @@ function editor_mode(){
   this.info={};
   this.appendPic={};
 }
-
 editor_mode.prototype.init = function(callback){
+  if (Boolean(callback))callback();
+}
+
+editor_mode.prototype.init_dom_ids = function(callback){
 
   Object.keys(editor_mode.ids).forEach(function(v){
     editor_mode.dom[v]=document.getElementById(editor_mode.ids[v]);
@@ -24,15 +34,164 @@ editor_mode.prototype.init = function(callback){
 }
 
 /////////////////////////////////////////////////////////////////////////////
+editor_mode.prototype.objToTable_ = function(obj,commentObj){
+  var outstr=["\n<tr><td>条目</td><td>注释</td><td>值</td></tr>\n"];
+  var guids=[];
+  var defaultcobj={
+    _type:'textarea',
+    _data:'',
+    _string:function(args){//object~[field,cfield,vobj,cobj]
+      var thiseval = args.vobj;
+      return (typeof(thiseval) === typeof('')) && thiseval[0]==='"';
+    },
+    _leaf:function(args){//object~[field,cfield,vobj,cobj]
+      var thiseval = args.vobj;
+      if (thiseval == null || thiseval == undefined)return true;//null,undefined
+      if (typeof(thiseval) === typeof(''))return true;//字符串
+      if (Object.keys(thiseval).length === 0)return true;//数字,true,false,空数组,空对象
+      return false;
+    },
+  }
+  var recursionParse = function(pfield,pcfield,pvobj,pcobj) {
+    for(var ii in pvobj){
+      var field = pfield+"['"+ii+"']";
+      var cfield = pcfield+"['_data']['"+ii+"']";
+      var vobj = pvobj[ii];
+      var cobj = null;
+      if(pcobj && pcobj['_data'] && pcobj['_data'][ii]){
+        cobj = Object.assign({},defaultcobj,pcobj['_data'][ii]);
+      } else {
+        if(pcobj && (pcobj['_data'] instanceof Function))cobj = Object.assign({},defaultcobj,pcobj['_data'](ii));
+        else cobj = Object.assign({},defaultcobj);
+      }
+      var args = {field:field,cfield:cfield,vobj:vobj,cobj:cobj}
+      if(cobj._leaf instanceof Function)cobj._leaf=cobj._leaf(args);
+      for(var key in cobj){
+        if(key==='_data')continue;
+        if(cobj[key] instanceof Function)cobj[key]=cobj[key](args);
+      }
+      if (cobj._leaf) {
+        var leafnode = editor_mode.objToTr_(obj,commentObj,field,cfield,vobj,cobj);
+        outstr.push(leafnode[0]);
+        guids.push(leafnode[1]);
+      } else {
+        outstr.push(["<tr><td>----</td><td>----</td><td>",field,"</td></tr>\n"].join(''));
+        recursionParse(field,cfield,vobj,cobj);
+      }
+    }
+  }
+  recursionParse("","",obj,commentObj);
+  var checkRange = function(evalstr,thiseval){
+    if(evalstr){
+      return eval(evalstr);
+    }
+    return true;
+  }
+  var listen = function(guids) {
+    guids.forEach(function(guid){
+      // tr>td[title=field]
+      //   >td[title=comment,cobj=cobj:json]
+      //   >td>div>input[value=thiseval]
+      var thisTr = document.getElementById(guid);
+      var input = thisTr.children[2].children[0].children[0];
+      var field = thisTr.children[0].getAttribute('title');
+      var cobj = JSON.parse(thisTr.children[1].getAttribute('cobj'));
+      input.onchange = function(){
+        var node = thisTr.parentNode;
+        while (!editor_mode._ids.hasOwnProperty(node.getAttribute('id'))) {
+          node = node.parentNode;
+        }
+        editor_mode.onmode(editor_mode._ids[node.getAttribute('id')]);
+        var thiseval=null;
+        if(input.checked!=null)input.value=input.checked;
+        try{
+          thiseval = JSON.parse(input.value);
+        }catch(ee){
+          printe(field+' : '+ee);
+          throw ee;
+        }
+        if(checkRange(cobj._range,thiseval)){
+          editor_mode.addAction(['change',field,thiseval]);
+        } else {
+          printe(field+' : 输入的值不合要求,请鼠标放置在注释上查看说明');
+        }
+      }
+      input.ondblclick = function(){
+        if(cobj._type==='event')editor_blockly.import(guid,{type:cobj._event});
+        if(cobj._type==='textarea')editor_multi.import(guid,{lint:cobj._lint});
+        
+      }
+    });
+  }
+  return {"HTML":outstr.join(''),"guids":guids,"listen":listen};
+}
+
+editor_mode.prototype.objToTr_ = function(obj,commentObj,field,cfield,vobj,cobj){
+  var guid = editor.guid();
+  var thiseval = vobj;
+  var comment = cobj._data;
+
+  var charlength=10;
+
+  var shortField = field.split("']").slice(-2)[0].split("['").slice(-1)[0];
+  shortField = (shortField.length<charlength?shortField:shortField.slice(0,charlength)+'...');
+
+  var commentHTMLescape=editor.HTMLescape(comment);
+  var shortCommentHTMLescape=(comment.length<charlength?commentHTMLescape:editor.HTMLescape(comment.slice(0,charlength))+'...');
+
+  var cobjstr = Object.assign({},cobj);
+  delete cobjstr._data;
+  cobjstr = editor.HTMLescape(JSON.stringify(cobjstr));
+
+  var outstr=['<tr id="',guid,'"><td title="',field,'">',shortField,'</td>',
+  '<td title="',commentHTMLescape,'" cobj="',cobjstr,'">',shortCommentHTMLescape,'</td>',
+  '<td><div class="etableInputDiv">',editor_mode.objToTd_(obj,commentObj,field,cfield,vobj,cobj),'</div></td></tr>\n',
+  ];
+  return [outstr.join(''),guid];
+}
+
+editor_mode.prototype.objToTd_ = function(obj,commentObj,field,cfield,vobj,cobj){
+  var thiseval = vobj;
+  if(cobj._select){
+    var values = cobj._select.values;
+    var outstr = ['<select>\n',"<option value='",JSON.stringify(thiseval),"'>",JSON.stringify(thiseval),'</option>\n'];
+    values.forEach(function(v){
+      outstr.push(["<option value='",JSON.stringify(v),"'>",JSON.stringify(v),'</option>\n'].join(''))
+    });
+    outstr.push('</select>');
+    return outstr.join('');
+  } else if(cobj._input){
+    return ["<input type='text' spellcheck='false' value='",JSON.stringify(thiseval),"'/>\n"].join('');
+  } else if(cobj._bool){
+    return ["<input type='checkbox' ",(thiseval?'checked ':''),"/>\n"].join('');
+  } else {
+    var num = 0;//editor_mode.indent(field);
+    return ["<textarea spellcheck='false' >",JSON.stringify(thiseval,null,num),'</textarea>\n'].join('');
+  }
+}
 
 editor_mode.prototype.objToTable = function(obj,commentObj){
   var outstr=["\n<tr><td>条目</td><td>注释</td><td>值</td></tr>\n"];
   var guids=[];
+  var checkIsLeaf = function(obj,commentObj,field){
+    var thiseval = eval('obj'+field);
+    if (thiseval == null || thiseval == undefined)return true;//null,undefined
+    if (typeof(thiseval) == typeof(''))return true;//字符串
+    if (Object.keys(thiseval).length == 0)return true;//数字,true,false,空数组,空对象
+    try {
+      var comment = eval('commentObj'+field);
+      if( comment.indexOf('$leaf') != -1){
+        evalstr = comment.split('$leaf')[1].split('$end')[0];
+        if(eval(evalstr) === true)return true;
+      }
+    } catch (error) {}
+    return false;
+  }
   //深度优先遍历
   var recursionParse = function(tfield) {
     for(var ii in eval("obj"+tfield)){
       var field = tfield+"['"+ii+"']";
-      var isleaf = editor_mode.checkIsLeaf(obj,commentObj,field);
+      var isleaf = checkIsLeaf(obj,commentObj,field);
       if (isleaf) {
         var leafnode = editor_mode.objToTr(obj,commentObj,field);
         outstr.push(leafnode[0]);
@@ -44,6 +203,13 @@ editor_mode.prototype.objToTable = function(obj,commentObj){
     }
   }
   recursionParse("");
+  var checkRange = function(comment,thiseval){
+    if( comment.indexOf('$range') !== -1){
+      var evalstr = comment.split('$range')[1].split('$end')[0];
+      return eval(evalstr);
+    }
+    return true;
+  }
   var listen = function(guids) {
     guids.forEach(function(guid){
       // tr>td[title=field]
@@ -59,38 +225,31 @@ editor_mode.prototype.objToTable = function(obj,commentObj){
           node = node.parentNode;
         }
         editor_mode.onmode(editor_mode._ids[node.getAttribute('id')]);
-        editor_mode.addAction(['change',field,JSON.parse(input.value)]);
-        //尚未完成,不完善,目前还没做$range的检查
-        
-        /*临时*/editor_mode.onmode('');/*临时*/
-        //临时改为立刻写入文件,删去此句的时,切换模式才会真正写入
-        //现阶段这样会更实用,20180218
+        var thiseval=null;
+        try{
+          thiseval = JSON.parse(input.value);
+        }catch(ee){
+          printe(field+' : '+ee);
+          throw ee;
+        }
+        if(checkRange(comment,thiseval)){
+          editor_mode.addAction(['change',field,thiseval]);
+        } else {
+          printe(field+' : 输入的值不合要求,请鼠标放置在注释上查看说明');
+        }
       }
       input.ondblclick = function(){
-        editor_blockly.import(guid);
+        if(!editor_blockly.import(guid))
+        if(!editor_multi.import(guid)){}
+        
       }
     });
   }
   return {"HTML":outstr.join(''),"guids":guids,"listen":listen};
 }
 
-editor_mode.prototype.checkIsLeaf = function(obj,commentObj,field){
-  var thiseval = eval('obj'+field);
-  if (thiseval == null || thiseval == undefined)return true;//null,undefined
-  if (typeof(thiseval) == typeof(''))return true;//字符串
-  if (Object.keys(thiseval).length == 0)return true;//数字,true,false,空数组,空对象
-  try {
-    var comment = eval('commentObj'+field);
-    if( comment.indexOf('$leaf') != -1){
-      evalstr = comment.split('$leaf')[1].split('$end')[0];
-      if(eval(evalstr) === true)return true;
-    }
-  } catch (error) {}
-  return false;
-}
-
 editor_mode.prototype.objToTr = function(obj,commentObj,field){
-  var guid = editor_mode.guid();
+  var guid = editor.guid();
   var thiseval = eval('obj'+field);
   var comment = '';
   try {
@@ -103,17 +262,17 @@ editor_mode.prototype.objToTr = function(obj,commentObj,field){
   var shortField = field.split("']").slice(-2)[0].split("['").slice(-1)[0];
   shortField = (shortField.length<charlength?shortField:shortField.slice(0,charlength)+'...');
 
-  var commentHTMLescape=comment.split('').map(function(v){return '&#'+v.charCodeAt(0)+';'}).join('');
-  var shortCommentHTMLescape=(comment.length<charlength?commentHTMLescape:comment.slice(0,charlength).split('').map(function(v){return '&#'+v.charCodeAt(0)+';'}).join('')+'...');
+  var commentHTMLescape=editor.HTMLescape(comment);
+  var shortCommentHTMLescape=(comment.length<charlength?commentHTMLescape:editor.HTMLescape(comment.slice(0,charlength))+'...');
 
   var outstr=['<tr id="',guid,'"><td title="',field,'">',shortField,'</td>',
   '<td title="',commentHTMLescape,'">',shortCommentHTMLescape,'</td>',
-  '<td><div>',editor_mode.objToTd(thiseval,comment),'</div></td></tr>\n',
+  '<td><div class="etableInputDiv">',editor_mode.objToTd(thiseval,comment,field),'</div></td></tr>\n',
   ];
   return [outstr.join(''),guid];
 }
 
-editor_mode.prototype.objToTd = function(thiseval,comment){
+editor_mode.prototype.objToTd = function(thiseval,comment,field){
   if( comment.indexOf('$select') != -1){
     var evalstr = comment.split('$select')[1].split('$end')[0];
     var values = eval(evalstr)['values'];
@@ -127,15 +286,17 @@ editor_mode.prototype.objToTd = function(thiseval,comment){
     return ["<input spellcheck='false' value='",JSON.stringify(thiseval),"'/>\n"].join('');
   } else {
     //rows='",rows,"'
-    return ["<textarea spellcheck='false' >",JSON.stringify(thiseval,null,4),'</textarea>\n'].join('');
+    var num = 0;//editor_mode.indent(field);
+    return ["<textarea spellcheck='false' >",JSON.stringify(thiseval,null,num),'</textarea>\n'].join('');
   }
 }
 
-editor_mode.prototype.guid = function() {
-  return 'id_'+'xxxxxxxx_xxxx_4xxx_yxxx_xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-    var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8);
-    return v.toString(16);
-  });
+editor_mode.prototype.indent = function(field){
+  var num = '\t';
+  if(field.indexOf("['main']")===0)return 0;
+  if(field.indexOf("['flyRange']")!==-1)return 0;
+  if(field==="['special']")return 0;
+  return num;
 }
 
 editor_mode.prototype.addAction = function(action){
@@ -144,26 +305,33 @@ editor_mode.prototype.addAction = function(action){
 
 editor_mode.prototype.doActionList = function(mode,actionList){
   if (actionList.length==0)return;
+  printf('修改中...');
   switch (mode) {
     case 'loc':
 
-      editor_file.editLoc(editor,editor_mode.pos.x,editor_mode.pos.y,actionList,function(objs_){console.log(objs_);if(objs_.slice(-1)[0]!=null){printe(objs_.slice(-1)[0]);throw(objs_.slice(-1)[0])};printf('修改成功')});
+      editor.file.editLoc(editor_mode.pos.x,editor_mode.pos.y,actionList,function(objs_){/*console.log(objs_);*/if(objs_.slice(-1)[0]!=null){printe(objs_.slice(-1)[0]);throw(objs_.slice(-1)[0])};printf('修改成功')});
       break;
     case 'emenyitem':
 
-      if (editor_mode.info.images=='enemys'){
-        editor_file.editEnemy(editor,editor_mode.info.id,actionList,function(objs_){console.log(objs_);if(objs_.slice(-1)[0]!=null){printe(objs_.slice(-1)[0]);throw(objs_.slice(-1)[0])};printf('修改成功')});
+      if (editor_mode.info.images=='enemys'||editor_mode.info.images=='enemy48'){
+        editor.file.editEnemy(editor_mode.info.id,actionList,function(objs_){/*console.log(objs_);*/if(objs_.slice(-1)[0]!=null){printe(objs_.slice(-1)[0]);throw(objs_.slice(-1)[0])};printf('修改成功')});
       } else if (editor_mode.info.images=='items'){
-        editor_file.editItem(editor,editor_mode.info.id,actionList,function(objs_){console.log(objs_);if(objs_.slice(-1)[0]!=null){printe(objs_.slice(-1)[0]);throw(objs_.slice(-1)[0])};printf('修改成功')});
+        editor.file.editItem(editor_mode.info.id,actionList,function(objs_){/*console.log(objs_);*/if(objs_.slice(-1)[0]!=null){printe(objs_.slice(-1)[0]);throw(objs_.slice(-1)[0])};printf('修改成功')});
+      } else {
+        editor.file.editMapBlocksInfo(editor_mode.info.idnum,actionList,function(objs_){/*console.log(objs_);*/if(objs_.slice(-1)[0]!=null){printe(objs_.slice(-1)[0]);throw(objs_.slice(-1)[0])};printf('修改成功')});
       }
       break;
     case 'floor':
       
-      editor_file.editFloor(editor,actionList,function(objs_){console.log(objs_);if(objs_.slice(-1)[0]!=null){printe(objs_.slice(-1)[0]);throw(objs_.slice(-1)[0])};printf('修改成功')});
+      editor.file.editFloor(actionList,function(objs_){/*console.log(objs_);*/if(objs_.slice(-1)[0]!=null){printe(objs_.slice(-1)[0]);throw(objs_.slice(-1)[0])};printf('修改成功')});
       break;
     case 'tower':
       
-      editor.file.editTower(editor,actionList,function(objs_){console.log(objs_);if(objs_.slice(-1)[0]!=null){printe(objs_.slice(-1)[0]);throw(objs_.slice(-1)[0])};printf('修改成功')});
+      editor.file.editTower(actionList,function(objs_){/*console.log(objs_);*/if(objs_.slice(-1)[0]!=null){printe(objs_.slice(-1)[0]);throw(objs_.slice(-1)[0])};printf('修改成功')});
+      break;
+    case 'functions':
+      
+      editor.file.editFunctions(actionList,function(objs_){/*console.log(objs_);*/if(objs_.slice(-1)[0]!=null){printe(objs_.slice(-1)[0]);throw(objs_.slice(-1)[0])};printf('修改成功')});
       break;
     default:
       break;
@@ -172,11 +340,22 @@ editor_mode.prototype.doActionList = function(mode,actionList){
 
 editor_mode.prototype.onmode = function (mode) {
   if (editor_mode.mode!=mode) {
-    console.log('change mode into : '+mode);
-    editor_mode.doActionList(editor_mode.mode,editor_mode.actionList);
+    if(mode==='save')editor_mode.doActionList(editor_mode.mode,editor_mode.actionList);
+    if(editor_mode.mode==='nextChange' && mode)editor_mode.showMode(mode);
     editor_mode.mode=mode;
     editor_mode.actionList=[];
   }
+}
+
+editor_mode.prototype.showMode = function (mode) {
+  for(var name in this.dom){
+    editor_mode.dom[name].style='z-index:-1;opacity: 0;';
+  }
+  editor_mode.dom[mode].style='';
+  if(editor_mode[mode])editor_mode[mode]();
+  document.getElementById('editModeSelect').value=mode;
+  var tips = tip_in_showMode;
+  if(!selectBox.isSelected)printf('tips: '+tips[~~(tips.length*Math.random())]);
 }
 
 editor_mode.prototype.loc = function(callback){
@@ -186,9 +365,9 @@ editor_mode.prototype.loc = function(callback){
   document.getElementById('pos_a6771a78_a099_417c_828f_0a24851ebfce').innerText=editor_mode.pos.x+','+editor_mode.pos.y;
 
   var objs=[];
-  editor_file.editLoc(editor,editor_mode.pos.x,editor_mode.pos.y,[],function(objs_){objs=objs_;console.log(objs_)});
+  editor.file.editLoc(editor_mode.pos.x,editor_mode.pos.y,[],function(objs_){objs=objs_;/*console.log(objs_)*/});
   //只查询不修改时,内部实现不是异步的,所以可以这么写
-  var tableinfo=editor_mode.objToTable(objs[0],objs[1]);
+  var tableinfo=editor_mode.objToTable_(objs[0],objs[1]);
   document.getElementById('table_3d846fc4_7644_44d1_aa04_433d266a73df').innerHTML=tableinfo.HTML;
   tableinfo.listen(tableinfo.guids);
 
@@ -198,7 +377,8 @@ editor_mode.prototype.loc = function(callback){
 editor_mode.prototype.emenyitem = function(callback){
   //editor.info=editor.ids[editor.indexs[201]];
   if (!core.isset(editor.info))return;
-  editor_mode.info=editor.info;//避免editor.info被清空导致无法获得是物品还是怪物
+  
+  if(Object.keys(editor.info).length!==0)editor_mode.info=editor.info;//避免editor.info被清空导致无法获得是物品还是怪物
 
   if (!core.isset(editor_mode.info.id)){
     document.getElementById('table_a3f03d4c_55b8_4ef6_b362_b345783acd72').innerHTML='';
@@ -208,16 +388,17 @@ editor_mode.prototype.emenyitem = function(callback){
   document.getElementById('newIdIdnum').style.display='none';
 
   var objs=[];
-  if (editor_mode.info.images=='enemys'){
-    editor_file.editEnemy(editor,editor_mode.info.id,[],function(objs_){objs=objs_;console.log(objs_)});
+  if (editor_mode.info.images=='enemys' || editor_mode.info.images=='enemy48'){
+    editor.file.editEnemy(editor_mode.info.id,[],function(objs_){objs=objs_;/*console.log(objs_)*/});
   } else if (editor_mode.info.images=='items'){
-    editor_file.editItem(editor,editor_mode.info.id,[],function(objs_){objs=objs_;console.log(objs_)});
+    editor.file.editItem(editor_mode.info.id,[],function(objs_){objs=objs_;/*console.log(objs_)*/});
   } else {
-    document.getElementById('table_a3f03d4c_55b8_4ef6_b362_b345783acd72').innerHTML='';
-    return;
+    /* document.getElementById('table_a3f03d4c_55b8_4ef6_b362_b345783acd72').innerHTML='';
+    return; */
+    editor.file.editMapBlocksInfo(editor_mode.info.idnum,[],function(objs_){objs=objs_;/*console.log(objs_)*/});
   }
   //只查询不修改时,内部实现不是异步的,所以可以这么写
-  var tableinfo=editor_mode.objToTable(objs[0],objs[1]);
+  var tableinfo=editor_mode.objToTable_(objs[0],objs[1]);
   document.getElementById('table_a3f03d4c_55b8_4ef6_b362_b345783acd72').innerHTML=tableinfo.HTML;
   tableinfo.listen(tableinfo.guids);
 
@@ -226,9 +407,9 @@ editor_mode.prototype.emenyitem = function(callback){
 
 editor_mode.prototype.floor = function(callback){
   var objs=[];
-  editor_file.editFloor(editor,[],function(objs_){objs=objs_;console.log(objs_)});
+  editor.file.editFloor([],function(objs_){objs=objs_;/*console.log(objs_)*/});
   //只查询不修改时,内部实现不是异步的,所以可以这么写
-  var tableinfo=editor_mode.objToTable(objs[0],objs[1]);
+  var tableinfo=editor_mode.objToTable_(objs[0],objs[1]);
   document.getElementById('table_4a3b1b09_b2fb_4bdf_b9ab_9f4cdac14c74').innerHTML=tableinfo.HTML;
   tableinfo.listen(tableinfo.guids);
   if (Boolean(callback))callback();
@@ -236,10 +417,20 @@ editor_mode.prototype.floor = function(callback){
 
 editor_mode.prototype.tower = function(callback){
   var objs=[];
-  editor.file.editTower(editor,[],function(objs_){objs=objs_;console.log(objs_)});
+  editor.file.editTower([],function(objs_){objs=objs_;/*console.log(objs_)*/});
   //只查询不修改时,内部实现不是异步的,所以可以这么写
-  var tableinfo=editor_mode.objToTable(objs[0],objs[1]);
+  var tableinfo=editor_mode.objToTable_(objs[0],objs[1]);
   document.getElementById('table_b6a03e4c_5968_4633_ac40_0dfdd2c9cde5').innerHTML=tableinfo.HTML;
+  tableinfo.listen(tableinfo.guids);
+  if (Boolean(callback))callback();
+}
+
+editor_mode.prototype.functions = function(callback){
+  var objs=[];
+  editor.file.editFunctions([],function(objs_){objs=objs_;/*console.log(objs_)*/});
+  //只查询不修改时,内部实现不是异步的,所以可以这么写
+  var tableinfo=editor_mode.objToTable_(objs[0],objs[1]);
+  document.getElementById('table_e260a2be_5690_476a_b04e_dacddede78b3').innerHTML=tableinfo.HTML;
   tableinfo.listen(tableinfo.guids);
   if (Boolean(callback))callback();
 }
@@ -249,19 +440,25 @@ editor_mode.prototype.tower = function(callback){
 editor_mode.prototype.listen = function(callback){
 
   var newIdIdnum = document.getElementById('newIdIdnum');
-  newIdIdnum.children[0].onchange = newIdIdnum.children[1].onchange = function(){
+  newIdIdnum.children[2].onclick = function(){
     if (newIdIdnum.children[0].value && newIdIdnum.children[1].value){
       var id = newIdIdnum.children[0].value;
       var idnum = parseInt(newIdIdnum.children[1].value);
-      editor_file.changeIdAndIdnum(editor,id,idnum,editor_mode.info,function(err){
+      if (!core.isset(idnum)) {
+          printe('不合法的idnum');
+          return;
+      }
+      editor.file.changeIdAndIdnum(id,idnum,editor_mode.info,function(err){
         if(err){printe(err);throw(err)}
         printe('添加id的idnum成功,请F5刷新编辑器');
       });
+    } else {
+      printe('请输入id和idnum');
     }
   }
 
   var selectFloor = document.getElementById('selectFloor');
-  editor_file.getFloorFileList(editor,function(floors){
+  editor.file.getFloorFileList(function(floors){
     var outstr=[];
     floors[0].forEach(function(floor){
       outstr.push(["<option value='",floor,"'>",floor,'</option>\n'].join(''));
@@ -269,7 +466,8 @@ editor_mode.prototype.listen = function(callback){
     selectFloor.innerHTML=outstr.join('');
     selectFloor.value=core.status.floorId;
     selectFloor.onchange = function(){
-      editor_mode.onmode('');
+      editor_mode.onmode('nextChange');
+      editor_mode.onmode('floor');
       editor.changeFloor(selectFloor.value);
     }
   });
@@ -277,7 +475,7 @@ editor_mode.prototype.listen = function(callback){
   var saveFloor = document.getElementById('saveFloor');
   saveFloor.onclick = function(){
     editor_mode.onmode('');
-    editor_file.saveFloorFile(editor,function(err){if(err){printe(err);throw(err)}});
+    editor.file.saveFloorFile(function(err){if(err){printe(err);throw(err)};printf('保存成功');});
   }
 
   var saveFloorAs = document.getElementById('saveFloorAs');
@@ -285,10 +483,10 @@ editor_mode.prototype.listen = function(callback){
   saveFloorAs.onclick = function(){
     if (!saveAsName.value)return;
     editor_mode.onmode('');
-    editor_file.saveFloorFileAs(editor,saveAsName.value,function(err){
+    editor.file.saveFloorFileAs(saveAsName.value,function(err){
       if(err){printe(err);throw(err)}
       core.floorIds.push(saveAsName.value);
-      editor.file.editTower(editor,[['change',"['main']['floorIds']",core.floorIds]],function(objs_){console.log(objs_);if(objs_.slice(-1)[0]!=null){printe(objs_.slice(-1)[0]);throw(objs_.slice(-1)[0])}});
+      editor.file.editTower([['change',"['main']['floorIds']",core.floorIds]],function(objs_){/*console.log(objs_);*/if(objs_.slice(-1)[0]!=null){printe(objs_.slice(-1)[0]);throw(objs_.slice(-1)[0])};printe('另存为成功,请F5刷新编辑器生效');});
     });
   }
 
@@ -302,12 +500,13 @@ editor_mode.prototype.listen = function(callback){
 
   var selectAppend = document.getElementById('selectAppend');
   var selectAppend_str=[];
-  ["terrains", "animates", "enemys", "items", "npcs"].forEach(function(image){
+  ["terrains", "animates", "enemys", "enemy48", "items", "npcs", "npc48"].forEach(function(image){
     selectAppend_str.push(["<option value='",image,"'>",image,'</option>\n'].join(''));
   });
   selectAppend.innerHTML=selectAppend_str.join('');
   selectAppend.onchange = function(){
     var value = selectAppend.value;
+    var ysize = selectAppend.value.indexOf('48')===-1?32:48;
     editor_mode.appendPic.imageName = value;
     var img = editor.material.images[value];
     editor_mode.appendPic.toImg = img;
@@ -316,7 +515,7 @@ editor_mode.prototype.listen = function(callback){
     editor_mode.appendPic.index = 0;
     var selectStr = '';
     for(var ii=0;ii<num;ii++){
-      appendPicSelection.children[ii].style='left:0;top:0';
+      appendPicSelection.children[ii].style='left:0;top:0;height:'+(ysize-6)+'px';
       selectStr+='{"x":0,"y":0},'
     }
     editor_mode.appendPic.selectPos = eval('['+selectStr+']');
@@ -324,13 +523,12 @@ editor_mode.prototype.listen = function(callback){
       appendPicSelection.children[jj].style='display:none';
     }
     sprite.style.width = (sprite.width = img.width)/ratio + 'px';
-    sprite.style.height = (sprite.height = img.height+32)/ratio + 'px';
+    sprite.style.height = (sprite.height = img.height+ysize)/ratio + 'px';
     sprite.getContext('2d').drawImage(img, 0, 0);
   }
   selectAppend.onchange();
 
   var selectFileBtn = document.getElementById('selectFileBtn');
-  var selectFileStr = document.getElementById('selectFileStr');
   selectFileBtn.onclick = function(){
     var loadImage = function (content, callback) {
       var image = new Image();
@@ -353,10 +551,11 @@ editor_mode.prototype.listen = function(callback){
         editor_mode.appendPic.img = image;
         editor_mode.appendPic.width = image.width;
         editor_mode.appendPic.height = image.height;
+        var ysize = selectAppend.value.indexOf('48')===-1?32:48;
         for(var ii=0;ii<3;ii++){
           var newsprite = appendPicCanvas.children[ii];
           newsprite.style.width = (newsprite.width = Math.floor(image.width/32)*32)/ratio + 'px';
-          newsprite.style.height = (newsprite.height = Math.floor(image.height/32)*32)/ratio + 'px';
+          newsprite.style.height = (newsprite.height = Math.floor(image.height/ysize)*ysize)/ratio + 'px';
         }
 
         //画灰白相间的格子
@@ -391,20 +590,21 @@ editor_mode.prototype.listen = function(callback){
     var loc = { 
       'x': scrollLeft+e.clientX + appendPicCanvas.scrollLeft  - left1.offsetLeft-appendPicCanvas.offsetLeft, 
       'y': scrollTop+e.clientY + appendPicCanvas.scrollTop - left1.offsetTop-appendPicCanvas.offsetTop, 
-      'size': 32 
+      'size': 32, 
+      'ysize': selectAppend.value.indexOf('48')===-1?32:48
     };
     return loc; 
   }//返回可用的组件内坐标
 
   var locToPos = function (loc) {
-    var pos = { 'x': ~~(loc.x / loc.size), 'y': ~~(loc.y / loc.size) }
+    var pos = { 'x': ~~(loc.x / loc.size), 'y': ~~(loc.y / loc.ysize) ,'ysize': loc.ysize}
     return pos;
   }
   
   picClick.onclick = function(e){
     var loc = eToLoc(e);
     var pos = locToPos(loc);
-    console.log(e,loc,pos);
+    /*console.log(e,loc,pos);*/
     var num = editor_mode.appendPic.num;
     var ii = editor_mode.appendPic.index;
     if(ii+1>=num)editor_mode.appendPic.index=ii+1-num;
@@ -412,29 +612,41 @@ editor_mode.prototype.listen = function(callback){
     editor_mode.appendPic.selectPos[ii]=pos;
     appendPicSelection.children[ii].style=[
       'left:',pos.x*32,'px;',
-      'top:',pos.y*32,'px'
+      'top:',pos.y*pos.ysize,'px;',
+      'height:',pos.ysize-6,'px;'
     ].join('');
   }
 
   var appendConfirm = document.getElementById('appendConfirm');
   appendConfirm.onclick = function(){
+    var ysize = selectAppend.value.indexOf('48')===-1?32:48;
     var sprited = sprite.getContext('2d');
     //sprited.drawImage(img, 0, 0);
     var height = editor_mode.appendPic.toImg.height;
     var sourced = source.getContext('2d');
     for(var ii=0,v;v=editor_mode.appendPic.selectPos[ii];ii++){
-      var imgData=sourced.getImageData(v.x*32,v.y*32,32,32);
+      var imgData=sourced.getImageData(v.x*32,v.y*ysize,32,ysize);
       sprited.putImageData(imgData,ii*32,height);
     }
     var imgbase64 = sprite.toDataURL().split(',')[1];
     fs.writeFile('./project/images/'+editor_mode.appendPic.imageName+'.png',imgbase64,'base64',function(err,data){
       if(err){printe(err);throw(err)}
-      printe('追加素材成功,请刷新编辑器');
+      printe('追加素材成功,请F5刷新编辑器');
     });
+  }
+
+  var editModeSelect = document.getElementById('editModeSelect');
+  editModeSelect.onchange = function(){
+    editor_mode.onmode('nextChange');
+    editor_mode.onmode(editModeSelect.value);
   }
 
   if (Boolean(callback))callback();
 }
 
-editor_mode = new editor_mode();
-editor_mode.init();
+var editor_mode = new editor_mode();
+editor_mode.init_dom_ids();
+
+return editor_mode;
+}
+//editor_mode = editor_mode(editor);

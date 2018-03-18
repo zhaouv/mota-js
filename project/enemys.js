@@ -8,7 +8,7 @@ enemys_fcae963b_31c9_42b4_b48c_bb48d09f3f80 =
         "money": 1,
         "experience": 1,
         "special": 0,
-        "point": null
+        "point": 0
     },
     "redSlime": {
         "name": "红头怪",
@@ -19,7 +19,7 @@ enemys_fcae963b_31c9_42b4_b48c_bb48d09f3f80 =
         "experience": 1,
         "special": 0,
         "value": 20,
-        "point": null
+        "point": 0
     },
     "blackSlime": {
         "name": "青头怪",
@@ -49,7 +49,8 @@ enemys_fcae963b_31c9_42b4_b48c_bb48d09f3f80 =
         "def": 0,
         "money": 2,
         "experience": 1,
-        "special": 0
+        "special": 0,
+        "point": 0
     },
     "bigBat": {
         "name": "大蝙蝠",
@@ -78,7 +79,8 @@ enemys_fcae963b_31c9_42b4_b48c_bb48d09f3f80 =
         "def": 0,
         "money": 0,
         "experience": 0,
-        "special": 1
+        "special": 1,
+        "point": 0
     },
     "skeleton": {
         "name": "骷髅人",
@@ -87,7 +89,8 @@ enemys_fcae963b_31c9_42b4_b48c_bb48d09f3f80 =
         "def": 4,
         "money": 3,
         "experience": 1,
-        "special": 0
+        "special": 0,
+        "point": 0
     },
     "skeletonSoilder": {
         "name": "骷髅士兵",
@@ -106,7 +109,8 @@ enemys_fcae963b_31c9_42b4_b48c_bb48d09f3f80 =
         "def": 0,
         "money": 0,
         "experience": 1,
-        "special": 0
+        "special": 0,
+        "point": 0
     },
     "ghostSkeleton": {
         "name": "冥队长",
@@ -115,7 +119,8 @@ enemys_fcae963b_31c9_42b4_b48c_bb48d09f3f80 =
         "def": 0,
         "money": 8,
         "experience": 0,
-        "special": 7
+        "special": 7,
+        "point": 0
     },
     "zombie": {
         "name": "兽人",
@@ -124,7 +129,8 @@ enemys_fcae963b_31c9_42b4_b48c_bb48d09f3f80 =
         "def": 0,
         "money": 0,
         "experience": 0,
-        "special": 0
+        "special": 0,
+        "point": 0
     },
     "zombieKnight": {
         "name": "兽人武士",
@@ -133,7 +139,8 @@ enemys_fcae963b_31c9_42b4_b48c_bb48d09f3f80 =
         "def": 0,
         "money": 0,
         "experience": 0,
-        "special": 0
+        "special": 0,
+        "point": 0
     },
     "rock": {
         "name": "石头人",
@@ -142,7 +149,8 @@ enemys_fcae963b_31c9_42b4_b48c_bb48d09f3f80 =
         "def": 0,
         "money": 4,
         "experience": 0,
-        "special": 3
+        "special": 3,
+        "point": 0
     },
     "slimeMan": {
         "name": "影子战士",
@@ -156,7 +164,8 @@ enemys_fcae963b_31c9_42b4_b48c_bb48d09f3f80 =
             21
         ],
         "atkValue": 2,
-        "defValue": 3
+        "defValue": 3,
+        "point": 0
     },
     "bluePriest": {
         "name": "初级法师",
@@ -175,7 +184,8 @@ enemys_fcae963b_31c9_42b4_b48c_bb48d09f3f80 =
         "def": 0,
         "money": 0,
         "experience": 0,
-        "special": 0
+        "special": 0,
+        "point": 0
     },
     "brownWizard": {
         "name": "初级巫师",
@@ -186,7 +196,8 @@ enemys_fcae963b_31c9_42b4_b48c_bb48d09f3f80 =
         "experience": 0,
         "special": 15,
         "value": 100,
-        "range": 2
+        "range": 2,
+        "point": 0
     },
     "redWizard": {
         "name": "高级巫师",
@@ -197,7 +208,8 @@ enemys_fcae963b_31c9_42b4_b48c_bb48d09f3f80 =
         "experience": 0,
         "special": 15,
         "value": 200,
-        "zoneSquare": true
+        "zoneSquare": true,
+        "point": 0
     },
     "yellowGuard": {
         "name": "初级卫兵",
@@ -206,7 +218,8 @@ enemys_fcae963b_31c9_42b4_b48c_bb48d09f3f80 =
         "def": 0,
         "money": 10,
         "experience": 0,
-        "special": 0
+        "special": 0,
+        "point": 0
     },
     "blueGuard": {
         "name": "中级卫兵",
@@ -215,7 +228,8 @@ enemys_fcae963b_31c9_42b4_b48c_bb48d09f3f80 =
         "def": 0,
         "money": 0,
         "experience": 0,
-        "special": 0
+        "special": 0,
+        "point": 0
     },
     "redGuard": {
         "name": "高级卫兵",
@@ -224,7 +238,8 @@ enemys_fcae963b_31c9_42b4_b48c_bb48d09f3f80 =
         "def": 0,
         "money": 0,
         "experience": 0,
-        "special": 0
+        "special": 0,
+        "point": 0
     },
     "swordsman": {
         "name": "双手剑士",
@@ -233,7 +248,8 @@ enemys_fcae963b_31c9_42b4_b48c_bb48d09f3f80 =
         "def": 0,
         "money": 6,
         "experience": 0,
-        "special": 5
+        "special": 5,
+        "point": 0
     },
     "soldier": {
         "name": "冥战士",
@@ -242,7 +258,8 @@ enemys_fcae963b_31c9_42b4_b48c_bb48d09f3f80 =
         "def": 0,
         "money": 0,
         "experience": 0,
-        "special": 0
+        "special": 0,
+        "point": 0
     },
     "yellowKnight": {
         "name": "金骑士",
@@ -251,7 +268,8 @@ enemys_fcae963b_31c9_42b4_b48c_bb48d09f3f80 =
         "def": 0,
         "money": 0,
         "experience": 0,
-        "special": 0
+        "special": 0,
+        "point": 0
     },
     "redKnight": {
         "name": "红骑士",
@@ -260,7 +278,8 @@ enemys_fcae963b_31c9_42b4_b48c_bb48d09f3f80 =
         "def": 0,
         "money": 0,
         "experience": 0,
-        "special": 0
+        "special": 0,
+        "point": 0
     },
     "darkKnight": {
         "name": "黑骑士",
@@ -269,7 +288,8 @@ enemys_fcae963b_31c9_42b4_b48c_bb48d09f3f80 =
         "def": 0,
         "money": 0,
         "experience": 0,
-        "special": 0
+        "special": 0,
+        "point": 0
     },
     "blackKing": {
         "name": "黑衣魔王",
@@ -279,7 +299,8 @@ enemys_fcae963b_31c9_42b4_b48c_bb48d09f3f80 =
         "money": 1000,
         "experience": 1000,
         "special": 0,
-        "bomb": false
+        "bomb": false,
+        "point": 0
     },
     "yellowKing": {
         "name": "黄衣魔王",
@@ -288,7 +309,8 @@ enemys_fcae963b_31c9_42b4_b48c_bb48d09f3f80 =
         "def": 0,
         "money": 0,
         "experience": 0,
-        "special": 0
+        "special": 0,
+        "point": 0
     },
     "greenKing": {
         "name": "青衣武士",
@@ -297,7 +319,8 @@ enemys_fcae963b_31c9_42b4_b48c_bb48d09f3f80 =
         "def": 0,
         "money": 0,
         "experience": 0,
-        "special": 0
+        "special": 0,
+        "point": 0
     },
     "blueKnight": {
         "name": "蓝骑士",
@@ -306,7 +329,8 @@ enemys_fcae963b_31c9_42b4_b48c_bb48d09f3f80 =
         "def": 0,
         "money": 9,
         "experience": 0,
-        "special": 8
+        "special": 8,
+        "point": 0
     },
     "goldSlime": {
         "name": "黄头怪",
@@ -315,7 +339,8 @@ enemys_fcae963b_31c9_42b4_b48c_bb48d09f3f80 =
         "def": 0,
         "money": 0,
         "experience": 0,
-        "special": 0
+        "special": 0,
+        "point": 0
     },
     "poisonSkeleton": {
         "name": "紫骷髅",
@@ -324,7 +349,8 @@ enemys_fcae963b_31c9_42b4_b48c_bb48d09f3f80 =
         "def": 0,
         "money": 0,
         "experience": 0,
-        "special": 0
+        "special": 0,
+        "point": 0
     },
     "poisonBat": {
         "name": "紫蝙蝠",
@@ -333,7 +359,8 @@ enemys_fcae963b_31c9_42b4_b48c_bb48d09f3f80 =
         "def": 0,
         "money": 14,
         "experience": 0,
-        "special": 13
+        "special": 13,
+        "point": 0
     },
     "steelRock": {
         "name": "铁面人",
@@ -342,7 +369,8 @@ enemys_fcae963b_31c9_42b4_b48c_bb48d09f3f80 =
         "def": 0,
         "money": 0,
         "experience": 0,
-        "special": 0
+        "special": 0,
+        "point": 0
     },
     "skeletonPriest": {
         "name": "骷髅法师",
@@ -352,7 +380,8 @@ enemys_fcae963b_31c9_42b4_b48c_bb48d09f3f80 =
         "money": 0,
         "experience": 0,
         "special": 18,
-        "value": 20
+        "value": 20,
+        "point": 0
     },
     "skeletonKing": {
         "name": "骷髅王",
@@ -361,7 +390,8 @@ enemys_fcae963b_31c9_42b4_b48c_bb48d09f3f80 =
         "def": 0,
         "money": 0,
         "experience": 0,
-        "special": 0
+        "special": 0,
+        "point": 0
     },
     "skeletonWizard": {
         "name": "骷髅巫师",
@@ -370,7 +400,8 @@ enemys_fcae963b_31c9_42b4_b48c_bb48d09f3f80 =
         "def": 0,
         "money": 0,
         "experience": 0,
-        "special": 0
+        "special": 0,
+        "point": 0
     },
     "redSkeletonCaption": {
         "name": "骷髅武士",
@@ -378,7 +409,8 @@ enemys_fcae963b_31c9_42b4_b48c_bb48d09f3f80 =
         "atk": 0,
         "def": 0,
         "money": 0,
-        "special": 0
+        "special": 0,
+        "point": 0
     },
     "badHero": {
         "name": "迷失勇者",
@@ -387,7 +419,8 @@ enemys_fcae963b_31c9_42b4_b48c_bb48d09f3f80 =
         "def": 0,
         "money": 0,
         "experience": 0,
-        "special": 0
+        "special": 0,
+        "point": 0
     },
     "demon": {
         "name": "魔神武士",
@@ -396,7 +429,8 @@ enemys_fcae963b_31c9_42b4_b48c_bb48d09f3f80 =
         "def": 0,
         "money": 0,
         "experience": 0,
-        "special": 0
+        "special": 0,
+        "point": 0
     },
     "demonPriest": {
         "name": "魔神法师",
@@ -405,7 +439,8 @@ enemys_fcae963b_31c9_42b4_b48c_bb48d09f3f80 =
         "def": 0,
         "money": 0,
         "experience": 0,
-        "special": 0
+        "special": 0,
+        "point": 0
     },
     "goldHornSlime": {
         "name": "金角怪",
@@ -414,7 +449,8 @@ enemys_fcae963b_31c9_42b4_b48c_bb48d09f3f80 =
         "def": 0,
         "money": 0,
         "experience": 0,
-        "special": 0
+        "special": 0,
+        "point": 0
     },
     "redKing": {
         "name": "红衣魔王",
@@ -423,7 +459,8 @@ enemys_fcae963b_31c9_42b4_b48c_bb48d09f3f80 =
         "def": 0,
         "money": 0,
         "experience": 0,
-        "special": 0
+        "special": 0,
+        "point": 0
     },
     "whiteKing": {
         "name": "白衣武士",
@@ -432,7 +469,8 @@ enemys_fcae963b_31c9_42b4_b48c_bb48d09f3f80 =
         "def": 0,
         "money": 17,
         "experience": 0,
-        "special": 16
+        "special": 16,
+        "point": 0
     },
     "blackMagician": {
         "name": "黑暗大法师",
@@ -444,7 +482,8 @@ enemys_fcae963b_31c9_42b4_b48c_bb48d09f3f80 =
         "special": 11,
         "value": 0.3333333333333333,
         "add": true,
-        "bomb": false
+        "bomb": false,
+        "point": 0
     },
     "silverSlime": {
         "name": "银头怪",
@@ -453,7 +492,8 @@ enemys_fcae963b_31c9_42b4_b48c_bb48d09f3f80 =
         "def": 0,
         "money": 15,
         "experience": 0,
-        "special": 14
+        "special": 14,
+        "point": 0
     },
     "swordEmperor": {
         "name": "剑圣",
@@ -462,7 +502,8 @@ enemys_fcae963b_31c9_42b4_b48c_bb48d09f3f80 =
         "def": 0,
         "money": 0,
         "experience": 0,
-        "special": 0
+        "special": 0,
+        "point": 0
     },
     "whiteHornSlime": {
         "name": "尖角怪",
@@ -471,7 +512,8 @@ enemys_fcae963b_31c9_42b4_b48c_bb48d09f3f80 =
         "def": 0,
         "money": 0,
         "experience": 0,
-        "special": 0
+        "special": 0,
+        "point": 0
     },
     "badPrincess": {
         "name": "痛苦魔女",
@@ -480,7 +522,8 @@ enemys_fcae963b_31c9_42b4_b48c_bb48d09f3f80 =
         "def": 0,
         "money": 0,
         "experience": 0,
-        "special": 0
+        "special": 0,
+        "point": 0
     },
     "badFairy": {
         "name": "黑暗仙子",
@@ -489,7 +532,8 @@ enemys_fcae963b_31c9_42b4_b48c_bb48d09f3f80 =
         "def": 0,
         "money": 0,
         "experience": 0,
-        "special": 0
+        "special": 0,
+        "point": 0
     },
     "grayPriest": {
         "name": "中级法师",
@@ -498,7 +542,8 @@ enemys_fcae963b_31c9_42b4_b48c_bb48d09f3f80 =
         "def": 0,
         "money": 0,
         "experience": 0,
-        "special": 0
+        "special": 0,
+        "point": 0
     },
     "redSwordsman": {
         "name": "剑王",
@@ -508,7 +553,8 @@ enemys_fcae963b_31c9_42b4_b48c_bb48d09f3f80 =
         "money": 7,
         "experience": 0,
         "special": 6,
-        "n": 8
+        "n": 8,
+        "point": 0
     },
     "whiteGhost": {
         "name": "水银战士",
@@ -517,7 +563,8 @@ enemys_fcae963b_31c9_42b4_b48c_bb48d09f3f80 =
         "def": 0,
         "money": 0,
         "experience": 0,
-        "special": 0
+        "special": 0,
+        "point": 0
     },
     "poisonZombie": {
         "name": "绿兽人",
@@ -526,7 +573,8 @@ enemys_fcae963b_31c9_42b4_b48c_bb48d09f3f80 =
         "def": 0,
         "money": 13,
         "experience": 0,
-        "special": 12
+        "special": 12,
+        "point": 0
     },
     "magicDragon": {
         "name": "魔龙",
@@ -535,7 +583,8 @@ enemys_fcae963b_31c9_42b4_b48c_bb48d09f3f80 =
         "def": 0,
         "money": 0,
         "experience": 0,
-        "special": 0
+        "special": 0,
+        "point": 0
     },
     "octopus": {
         "name": "血影",
@@ -544,7 +593,8 @@ enemys_fcae963b_31c9_42b4_b48c_bb48d09f3f80 =
         "def": 0,
         "money": 0,
         "experience": 0,
-        "special": 0
+        "special": 0,
+        "point": 0
     },
     "darkFairy": {
         "name": "仙子",
@@ -553,7 +603,8 @@ enemys_fcae963b_31c9_42b4_b48c_bb48d09f3f80 =
         "def": 0,
         "money": 0,
         "experience": 0,
-        "special": 0
+        "special": 0,
+        "point": 0
     },
     "greenKnight": {
         "name": "强盾骑士",
@@ -562,6 +613,51 @@ enemys_fcae963b_31c9_42b4_b48c_bb48d09f3f80 =
         "def": 0,
         "money": 0,
         "experience": 0,
+        "special": 0,
+        "point": 0
+    },
+    "angel": {
+        "name": "天使",
+        "hp": 0,
+        "atk": 0,
+        "def": 0,
+        "money": 0,
+        "experience": 0,
+        "point": 0,
         "special": 0
+    },
+    "elemental": {
+        "name": "元素生物",
+        "hp": 0,
+        "atk": 0,
+        "def": 0,
+        "money": 0,
+        "experience": 0,
+        "point": 0,
+        "special": 0
+    },
+    "steelGuard": {
+        "name": "铁守卫",
+        "hp": 0,
+        "atk": 0,
+        "def": 0,
+        "money": 0,
+        "experience": 0,
+        "point": 0,
+        "special": 18,
+        "value": 20
+    },
+    "evilBat": {
+        "name": "邪恶蝙蝠",
+        "hp": 1000,
+        "atk": 1,
+        "def": 0,
+        "money": 0,
+        "experience": 0,
+        "point": 0,
+        "special": [
+            2,
+            3
+        ]
     }
 }

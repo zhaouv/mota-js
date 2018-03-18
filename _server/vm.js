@@ -1,8 +1,21 @@
 // vue 相关处理
 
 document.body.onmousedown = function(e){
-  selectBox.isSelected = false;
-  editor_mode.onmode('');
+  //console.log(e);
+  var eid=[];
+  e.path.forEach(function(node){
+    if(!node.getAttribute)return;
+    var id_ = node.getAttribute('id');
+    if (id_){
+      if(['left','left1','left2','left3','left4','left5','left8'].indexOf(id_)!==-1)eid.push('edit');
+      eid.push(id_);
+    }
+  });
+  //console.log(eid);
+  if(eid.indexOf('edit')===-1){
+    if(eid.indexOf('tip')===-1)selectBox.isSelected = false;
+  }
+  //editor.mode.onmode('');
   editor.info = {};
 }
 iconLib.onmousedown = function(e){
@@ -99,7 +112,7 @@ var editArea = new Vue({
           var num = mapArray[y][x];
           if(num == 0 )
             editor.map[y][x] = 0;
-          else if(num >= 400){
+          else if(num >= 1000){
             that.error = 3;
             editor.map[y][x] = undefined;
           }else if(typeof(editor.indexs[num][0]) == 'undefined'){
@@ -185,15 +198,29 @@ var clear = new Vue({
   }
 })
 printf = function(str_,type) {
+  selectBox.isSelected = false;
   if(!type){
-    tip.msgs[11]=String(str_);
-    tip.whichShow=12;
-  } else {
-    tip.msgs[10]=String(str_);
     tip.whichShow=11;
+  } else {
+    tip.whichShow=12;
   }
+  setTimeout(function(){
+    if(!type){
+      tip.msgs[11]=String(str_);
+      tip.whichShow=12;
+    } else {
+      tip.msgs[10]=String(str_);
+      tip.whichShow=11;
+    }
+  },1);
 }
 printe = function(str_){printf(str_,'error')}
+tip_in_showMode = [
+  '涉及图片的更改需要F5刷新浏览器来生效',
+  '文本域可以通过双击,在文本编辑器或事件编辑器中编辑',
+  '事件编辑器中的显示文本和自定义脚本的方块也可以双击',
+  "画出的地图要点击\"保存地图\"才会写入到文件中",
+];
 var tip = new Vue({
   el: '#tip',
   data: {

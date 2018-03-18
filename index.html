@@ -25,20 +25,15 @@
             </div>
             <p id='startTopLoadTips'>资源即将开始加载</p>
         </div>
-        <img id='startBackground' src='project/images/bg.png'>
-        <!-- 标题界面；可以改style的color使标题改变颜色 -->
-        <p id='startLogo' style="color: black"></p>
+        <img id='startBackground'>
+        <p id='startLogo'></p>
         <div id='startButtonGroup'>
             <div id='startButtons'>
                 <span class='startButton' id='playGame'>开始游戏</span>
                 <span class='startButton' id='loadGame'>载入游戏</span>
                 <span class='startButton' id='replayGame'>录像回放</span>
             </div>
-            <div id='levelChooseButtons'>
-                <span class='startButton' id='easyLevel'>花园</span>
-                <span class='startButton' id='normalLevel' style="display:none">普通</span>
-                <span class='startButton' id='hardLevel'>迷宫</span>
-            </div>
+            <div id='levelChooseButtons'></div>
         </div>
     </div>
     <div id='floorMsgGroup'>
@@ -54,6 +49,10 @@
         <div class="status" id="lvCol">
             <img src='project/images/lv.png' id="img-lv">
             <p class='statusLabel' id='lv'></p>
+        </div>
+        <div class="status" id='hpmaxCol'>
+            <img src='project/images/hpmax.png' id="img-hpmax">
+            <p class='statusLabel' id='hpmax'></p>
         </div>
         <div class="status">
             <img src='project/images/hp.png' id="img-hp">
@@ -107,8 +106,9 @@
     <div id="curtain"></div>
     <canvas class='gameCanvas' id='bg' width='416' height='416'></canvas>
     <canvas class='gameCanvas' id='event' width='416' height='416'></canvas>
-    <canvas class='gameCanvas' id='fg' width='416' height='416'></canvas>
     <canvas class='gameCanvas' id='hero' width='416' height='416'></canvas>
+    <canvas class='gameCanvas' id='event2' width='416' height='416'></canvas>
+    <canvas class='gameCanvas' id='fg' width='416' height='416'></canvas>
     <canvas class='gameCanvas' id='animate' width='416' height='416'></canvas>
     <canvas class='gameCanvas' id='weather' width='416' height='416'></canvas>
     <canvas class='gameCanvas' id='ui' width='416' height='416'></canvas>
