@@ -56,12 +56,12 @@ main.floors.MT4=
             "type": "hide",
             "time": 500
         },
-        "获得神圣剑,攻击+80",
+        "获得神圣剑,攻击+${core.values.sword5}",
         {
             "type": "setValue",
             "name": "status:atk",
-            "value": "status:atk+80"
-        },
+            "value": "status:atk+${core.values.sword5}"
+        }
     ]
 },
 "changeFloor": {},
