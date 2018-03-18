@@ -439,7 +439,7 @@ functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
         core.updateCheckBlock();
         core.updateFg();
 	}
-	var firstClear = function(floorId){
+	/* var  */firstClear = function(floorId){
 		if(floorId=="MT0"){
 			core.insertAction([
 				{"type": "setValue", "name": "status:atk", "value": "status:atk+3"},

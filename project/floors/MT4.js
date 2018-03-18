@@ -60,7 +60,7 @@ main.floors.MT4=
         {
             "type": "setValue",
             "name": "status:atk",
-            "value": "status:atk+${core.values.sword5}"
+            "value": "status:atk+core.values.sword5"
         }
     ]
 },
