@@ -1,8 +1,7 @@
 functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a = 
 {
-"events":{
-////// 游戏开始前的一些初始化操作 //////
-"initGame": function() {
+    "events": {
+        "initGame": function () {
 	// 游戏开始前的一些初始化操作
 
 	// 根据flag来对道具进行修改
@@ -28,8 +27,7 @@ functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 
 
 },
-////// 不同难度分别设置初始属性 //////
-"setInitData":function (hard) {
+        "setInitData": function (hard) {
 	// 不同难度分别设置初始属性
 	if (hard=='花园') { // 花园难度
         core.setFlag('hard', 1); // 可以用flag:hard来获得当前难度
@@ -38,13 +36,12 @@ functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
         // 赠送一把黄钥匙可以调用
         // core.setItem("yellowKey", 1);
     } else { // 迷宫难度
-        core.setFlag('hard', 3); // 可以用flag:hard来获得当前难度
+        core.setFlag('hard', 2); // 可以用flag:hard来获得当前难度
     }
     core.setFlag('_isFloorClear',{});
 	core.events.afterLoadData();
 },
-////// 游戏获胜事件 //////
-"win" : function(reason) {
+        "win": function (reason) {
 	// 游戏获胜事件 
 	core.ui.closePanel();
 	var replaying = core.status.replay.replaying;
@@ -59,8 +56,7 @@ functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 		})
 	});
 },
-////// 游戏失败事件 //////
-"lose" : function(reason) {
+        "lose": function (reason) {
 	// 游戏失败事件
 	core.ui.closePanel();
 	var replaying = core.status.replay.replaying;
@@ -73,16 +69,14 @@ functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 		});
 	})
 },
-////// 转换楼层结束的事件 //////
-"afterChangeFloor" : function (floorId) {
+        "afterChangeFloor": function (floorId) {
 	// 转换楼层结束的事件
 	if (!core.hasFlag("visited_"+floorId)) {
 		core.insertAction(core.floors[floorId].firstArrive);
 		core.setFlag("visited_"+floorId, true);
 	}
 },
-////// 加点事件 //////
-"addPoint" : function (enemy) {
+        "addPoint": function (enemy) {
 	// 加点事件
 	var point = enemy.point;
 	if (!core.flags.enableAddPoint || !core.isset(point) || point<=0) return [];
@@ -104,8 +98,7 @@ functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 	}
 	];
 },
-////// 战斗结束后触发的事件 //////
-"afterBattle" : function(enemyId,x,y,callback) {
+        "afterBattle": function (enemyId,x,y,callback) {
 	// 战斗结束后触发的事件
 
 	var enemy = core.material.enemys[enemyId];
@@ -209,8 +202,7 @@ functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 	if (core.isset(callback)) callback();
 
 },
-////// 开一个门后触发的事件 //////
-"afterOpenDoor" : function(doorId,x,y,callback) {
+        "afterOpenDoor": function (doorId,x,y,callback) {
 	// 开一个门后触发的事件
 	
 	var todo = [];
@@ -233,13 +225,11 @@ functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 	}
 	if (core.isset(callback)) callback();
 },
-////// 改变亮灯之后，可以触发的事件 //////
-"afterChangeLight" : function(x,y) {
+        "afterChangeLight": function (x,y) {
 	// 改变亮灯之后，可以触发的事件
 
 },
-////// 推箱子后的事件 //////
-"afterPushBox" : function () {
+        "afterPushBox": function () {
 	// 推箱子后的事件
 
 	var noBoxLeft = function () {
@@ -262,8 +252,7 @@ functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 		*/
 	}
 },
-////// 使用炸弹/圣锤后的事件 //////
-"afterUseBomb" : function () {
+        "afterUseBomb": function () {
 	// 使用炸弹/圣锤后的事件
 
 	// 这是一个使用炸弹也能开门的例子
@@ -278,107 +267,21 @@ functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 	*/
 
 },
-////// 即将存档前可以执行的操作 //////
-"beforeSaveData" : function(data) {
+        "beforeSaveData": function (data) {
 	// 即将存档前可以执行的操作
 	//changed
-    core.setFlag('mapsave',core.status.maps);
-    // todo 未完成  待修改
+	data.hero.flags.mapsave = core.status.maps;
 },
-////// 读档事件后，载入事件前，可以执行的操作 //////
-"afterLoadData" : function(data) {
+        "afterLoadData": function (data) {
 	// 读档事件后，载入事件前，可以执行的操作
 	// 可以在这里对怪物数据进行动态修改，详见文档——事件——怪物数据的动态修改
-	    //changed
-    getInfoById = function(eid,floorId){
-        var getfromfloor = function(floorId){
-            var blocks = core.status.maps[floorId].blocks;
-            for(var ii=0,block;block=blocks[ii];ii++){
-                if(JSON.stringify(block).indexOf(eid)!==-1){
-                    core.setFlag('infoFloorId',floorId);
-                    core.setFlag('infoX',block.x);
-                    core.setFlag('infoY',block.y);
-                    return [floorId,block.x,block.y];
-                }
-            }
-            return null;
-        }
-        if(floorId) return getfromfloor(floorId);
-        var info;
-        for(var floorId in core.status.maps){
-            info = getfromfloor(floorId);
-            if (info) return info;
-        }
-        return null;
-    }
-
-    teleport = function(tpid,num,floorId) {
-        if(!core.isset(tpid)){
-            var x=core.status.event.data.x, y=core.status.event.data.y;
-            core.insertAction([{"type": "changePos", "loc": [x,y]}]);
-            return;
-        }
-        var str_ = tpid+'_'+num;
-        var info = getInfoById(str_,floorId);
-        if(!info)return;
-        if (core.status.floorId === info[0]) core.insertAction([{
-            "type": "changePos", "loc": [info[1], info[2]]}]);
-        else core.insertAction([{
-            "type": "changeFloor",
-            "floorId": info[0], "loc": [info[1], info[2]] }]);
-    }
-
-    floatMap = function(){
-        var a=core.status.maps[core.status.floorId].blocks;
-        var direction = {
-            'up':{'x':0,y:-1},
-            'down':{'x':0,y:1},
-            'left':{'x':-1,y:0},
-            'right':{'x':1,y:0},
-        }[core.getHeroLoc('direction')];
-        var near = function(block) {
-            var xy = direction.y?'x':'y';
-            var r = true;
-            r=r && Math.abs( core.getHeroLoc(xy)-block[xy] )>1.5;
-            r=r && Math.abs( core.getHeroLoc(xy)-block[xy]+13 )>1.5;
-            r=r && Math.abs( core.getHeroLoc(xy)-block[xy]-13 )>1.5;
-            return r
-        }
-        for(var ii in a){
-            var block=a[ii];
-            if(near(block)){
-                block.x=(direction.x+block.x+13)%13;
-                block.y=(direction.y+block.y+13)%13;
-            }
-        }
-        core.drawMap(core.status.floorId);
-        core.drawHero(core.getHeroLoc('direction'), core.getHeroLoc('x'), core.getHeroLoc('y'), 'stop');
-        core.updateCheckBlock();
-        core.updateFg();
-    }
-    isFloorClear = function(floorId){
-        if(!floorId)floorId=core.status.floorId;
-        if(core.getFlag('_isFloorClear')[floorId])return true;
-        var hard = core.getFlag('hard');
-        var now = JSON.stringify(core.maps.save(core.status.maps,floorId)).replace(/"\d+:f"/g,'0');
-        if (hard!=3) {
-            if (now.indexOf('169')!==-1)return false;//检查箱子
-            core.getFlag('_isFloorClear')[floorId] = now.replace(/[^2]/g,'')==='';//检查怪物
-            return core.getFlag('_isFloorClear')[floorId];
-        }
-        var init = {
-            "MT0":"[[0,90,0,0,153,153,0,153,153,0,90,0,0],[0,153,153,0,0,153,90,153,0,0,153,153,153],[0,0,153,153,90,153,0,0,0,0,0,0,153],[153,170,0,0,0,0,0,0,153,0,153,0,0],[153,153,153,0,153,0,153,153,153,0,153,153,0],[90,0,0,0,153,0,0,0,90,0,0,0,90],[153,153,0,153,153,90,153,153,0,153,153,153,0],[153,0,90,0,0,0,153,0,0,170,0,0,0],[153,0,153,153,153,0,153,0,0,0,0,0,0],[0,0,153,0,0,0,90,0,153,0,0,153,153],[153,0,0,90,153,0,153,153,153,0,0,90,153],[153,153,153,0,153,0,0,0,0,0,153,0,153],[0,90,0,0,153,153,90,0,153,153,153,0,0]]",
-            "MT2":"[[0,90,0,0,153,153,0,153,153,0,90,0,0],[0,153,153,0,153,153,0,0,0,0,0,153,153],[0,153,153,0,0,0,0,0,153,153,0,153,153],[0,0,0,0,0,153,153,0,153,153,0,90,0],[90,0,153,153,90,153,153,0,0,90,0,0,153],[153,0,153,153,0,0,90,0,0,153,153,0,153],[153,0,0,0,0,0,153,153,0,153,153,0,0],[0,90,0,153,153,0,153,153,0,0,0,0,0],[153,153,0,153,153,0,0,0,0,0,153,153,90],[153,153,0,0,90,0,0,153,153,90,153,153,0],[90,0,0,0,153,153,0,153,153,0,0,0,0],[0,153,153,90,153,153,0,0,0,0,0,153,153],[0,153,153,0,0,0,90,0,153,153,90,153,153]]",
-        }[floorId].replace(/\D/g,'');
-        core.getFlag('_isFloorClear')[floorId] = now.replace(/\D/g,'')===init;//检查地图是否完全一致
-        return core.getFlag('_isFloorClear')[floorId];
-    }
+		
 
     switch (core.getFlag('hard')) {
         case 1: 
         break;
 
-        case 3: 
+        case 2: 
         break;
     }
 
@@ -392,10 +295,9 @@ functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
     }
 
 }
-},
-"ui":{
-////// 绘制“关于”界面 //////
-"drawAbout" : function() {
+    },
+    "ui": {
+        "drawAbout": function () {
 	// 绘制“关于”界面
 	if (!core.isPlaying()) {
 		core.status.event = {'id': null, 'data': null};
@@ -422,9 +324,9 @@ functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 	core.fillText('ui', 'HTML5魔塔交流群：539113091', text_start, top+112+32);
 	// TODO: 写自己的“关于”页面，每次增加32像素即可
 }
-},
-"plugins": {
-"plugin": function () {
+    },
+    "plugins": {
+        "plugin": function () {
 	////// 插件编写，可以在这里写自己额外需要执行的脚本 //////
 
 	// 在这里写的代码，在所有模块加载完毕后，游戏开始前会被执行
@@ -462,6 +364,117 @@ functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 	
 	// 可以在任何地方（如afterXXX或自定义脚本事件）调用函数，方法为  core.plugin.xxx();
 
+	//changed
+		
+	/*
+    6 7 8
+    0 4 2
+    3 1 5
+	*/
+	
+    getBlockInfoById = function(eid,floorId){
+        var getfromfloor = function(floorId){
+            var blocks = core.status.maps[floorId].blocks;
+            for(var ii=0,block;block=blocks[ii];ii++){
+                if(JSON.stringify(block).indexOf(eid)!==-1){
+                    core.setFlag('infoFloorId',floorId);
+                    core.setFlag('infoX',block.x);
+					core.setFlag('infoY',block.y);
+					core.setFlag('infoBlock',block);
+                    return [floorId,block.x,block.y,block];
+                }
+            }
+            return null;
+        }
+        if(floorId) return getfromfloor(floorId);
+        var info;
+        for(var floorId in core.status.maps){
+            info = getfromfloor(floorId);
+            if (info) return info;
+        }
+        return null;
+    }
+
+    teleport = function(tpid,num,floorId) {
+        if(!core.isset(tpid)){
+            var x=core.status.event.data.x, y=core.status.event.data.y;
+            core.insertAction([{"type": "changePos", "loc": [x,y]}]);
+            return;
+        }
+        var str_ = tpid+'_'+num;
+        var info = getBlockInfoById(str_,floorId);
+        if(!info)return;
+        if (core.status.floorId === info[0]) core.insertAction([{
+            "type": "changePos", "loc": [info[1], info[2]]}]);
+        else core.insertAction([{
+            "type": "changeFloor",
+            "floorId": info[0], "loc": [info[1], info[2]] }]);
+    }
+
+    floatMap = function(){
+        var a=core.status.maps[core.status.floorId].blocks;
+        var direction = {
+            'up':{'x':0,y:-1},
+            'down':{'x':0,y:1},
+            'left':{'x':-1,y:0},
+            'right':{'x':1,y:0},
+        }[core.getHeroLoc('direction')];
+        var near = function(block) {
+            var xy = direction.y?'x':'y';
+            var r = true;
+            r=r && Math.abs( core.getHeroLoc(xy)-block[xy] )>1.5;
+            r=r && Math.abs( core.getHeroLoc(xy)-block[xy]+13 )>1.5;
+            r=r && Math.abs( core.getHeroLoc(xy)-block[xy]-13 )>1.5;
+            return r
+        }
+        for(var ii in a){
+            var block=a[ii];
+            if(near(block)){
+                block.x=(direction.x+block.x+13)%13;
+                block.y=(direction.y+block.y+13)%13;
+            }
+        }
+        core.drawMap(core.status.floorId);
+        core.drawHero(core.getHeroLoc('direction'), core.getHeroLoc('x'), core.getHeroLoc('y'), 'stop');
+        core.updateCheckBlock();
+        core.updateFg();
+	}
+	var firstClear = function(floorId){
+		if(floorId=="MT0"){
+			core.insertAction([
+				{"type": "setValue", "name": "status:atk", "value": "status:atk+3"},
+				{"type": "setValue", "name": "status:def", "value": "status:def+3"},
+				'清空 迷境 -0,攻守+3',
+			]);
+		}
+		if(floorId=="MT2"){
+			core.insertAction([
+				{"type": "setValue", "name": "status:atk", "value": "status:atk+3"},
+				{"type": "setValue", "name": "status:def", "value": "status:def+3"},
+				'清空 迷境 +0,攻守+3',
+			]);
+		}
+	}
+    isFloorClear = function(floorId){
+        if(!floorId)floorId=core.status.floorId;
+        if(core.getFlag('_isFloorClear')[floorId])return true;
+        var hard = core.getFlag('hard');
+        var now = JSON.stringify(core.maps.save(core.status.maps,floorId)).replace(/"\d+:f"/g,'0');
+        if (hard!=2) {
+            if (now.indexOf('169')!==-1)return false;//检查箱子
+			core.getFlag('_isFloorClear')[floorId] = now.replace(/[^2]/g,'')==='';//检查怪物
+			if(core.getFlag('_isFloorClear')[floorId])firstClear(floorId);
+            return core.getFlag('_isFloorClear')[floorId];
+        }
+        var init = {
+            "MT0":"[[0,0,0,0,153,153,0,153,153,0,0,0,0],[0,153,153,0,0,153,0,153,0,0,153,153,153],[0,0,153,153,0,153,0,0,0,0,0,0,153],[153,170,0,0,0,0,0,0,153,0,153,0,0],[153,153,153,0,153,0,153,153,153,0,153,153,0],[0,0,0,0,153,0,0,0,0,0,0,0,0],[153,153,0,153,153,0,153,153,0,153,153,153,0],[153,0,0,0,0,0,153,0,0,170,0,0,0],[153,0,153,153,153,0,153,0,0,0,0,0,0],[0,0,153,0,0,0,0,0,153,0,0,153,153],[153,0,0,0,153,0,153,153,153,0,0,0,153],[153,153,153,0,153,0,0,0,0,0,153,0,153],[0,0,0,0,153,153,0,0,153,153,153,0,0]]",
+            "MT2":"[[0,0,0,0,153,153,0,153,153,0,0,0,0],[0,153,153,0,153,153,0,0,0,0,0,153,153],[0,153,153,0,0,0,0,0,153,153,0,153,153],[0,0,0,0,0,153,153,0,153,153,0,0,0],[0,0,153,153,0,153,153,0,0,0,0,0,153],[153,0,153,153,0,0,0,0,0,153,153,0,153],[153,0,0,0,0,0,153,153,0,153,153,0,0],[0,0,0,153,153,0,153,153,0,0,0,0,0],[153,153,0,153,153,0,0,0,0,0,153,153,0],[153,153,0,0,0,0,0,153,153,0,153,153,0],[0,0,0,0,153,153,0,153,153,0,0,0,0],[0,153,153,0,153,153,0,0,0,0,0,153,153],[0,153,153,0,0,0,0,0,153,153,0,153,153]]",
+        }[floorId].replace(/\D/g,'');
+		core.getFlag('_isFloorClear')[floorId] = now.replace(/\D/g,'')===init;//检查地图是否完全一致
+		if(core.getFlag('_isFloorClear')[floorId])firstClear(floorId);
+        return core.getFlag('_isFloorClear')[floorId];
+    }
+
 }
-}
+    }
 }
