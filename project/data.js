@@ -33,23 +33,32 @@ data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d =
             "item.ogg",
             "zone.ogg"
         ],
-		"bgmRemote" : false,
-		"startBackground" : "bg.jpg",
-		"startLogoStyle" : "color: black",
-		"levelChoose" : [["花园难度","花园"],["迷宫难度","迷宫"]],
+        "bgmRemote": false,
+        "startBackground": "bg.jpg",
+        "startLogoStyle": "color: black",
+        "levelChoose": [
+            [
+                "花园难度",
+                "花园"
+            ],
+            [
+                "迷宫难度",
+                "迷宫"
+            ]
+        ]
     },
     "firstData": {
         "title": "迷踪境",
         "name": "maze",
         "version": "Ver 1.0.0",
-        "floorId": "MT1",
+        "floorId": "MT6",
         "hero": {
             "name": "勇士",
             "lv": 1,
             "hpmax": 9999,
-            "hp": 1000,
-            "atk": 10,
-            "def": 10,
+            "hp": 711,
+            "atk": 40,
+            "def": 45,
             "mdef": 0,
             "money": 0,
             "experience": 0,
@@ -64,7 +73,7 @@ data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d =
                 },
                 "tools": {
                     "centerFly": 1,
-                    "pickaxe": 20
+                    "pickaxe": 21
                 }
             },
             "flyRange": [],

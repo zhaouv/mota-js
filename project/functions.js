@@ -38,7 +38,8 @@ functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
     } else { // 迷宫难度
         core.setFlag('hard', 2); // 可以用flag:hard来获得当前难度
     }
-    core.setFlag('_isFloorClear',{});
+	core.setFlag('_isFloorClear',{});
+	core.setFlag('deadNum',{});
 	core.events.afterLoadData();
 },
         "win": function (reason) {
@@ -181,6 +182,14 @@ functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 			core.unshift(todo, event);
 		}
 	}
+
+	//changed
+	var event = findAfterBattleById(enemyId);
+	if (core.isset(event)) {
+		// 插入事件
+		core.unshift(todo, event);
+	}
+
 	// 如果有加点
 	var point = core.material.enemys[enemyId].point;
 	if (core.isset(point) && point>0) {
@@ -409,8 +418,8 @@ functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
         else core.insertAction([{
             "type": "changeFloor",
             "floorId": info[0], "loc": [info[1], info[2]] }]);
-    }
-
+	}
+	
     floatMap = function(){
         var a=core.status.maps[core.status.floorId].blocks;
         var direction = {
@@ -473,7 +482,25 @@ functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 		core.getFlag('_isFloorClear')[floorId] = now.replace(/\D/g,'')===init;//检查地图是否完全一致
 		if(core.getFlag('_isFloorClear')[floorId])firstClear(floorId);
         return core.getFlag('_isFloorClear')[floorId];
-    }
+	}
+
+	findAfterBattleById = function(enemyId){
+		console.log(enemyId)
+		var deadNum = core.getFlag('deadNum');
+		var eids={
+			'skeletonCaptain':[4,'红血瓶已可以拾取'],
+			'zombie':[4,'蓝血瓶已可以拾取'],
+			'bluePriest':[4,'银剑已可以拾取'],
+			'yellowGuard':[4,'银盾已可以拾取'],
+			//'zombieKnight':[4],
+		};
+		if(eids[enemyId]){
+			deadNum[enemyId]=~~deadNum[enemyId]+1;
+			if(deadNum[enemyId]===eids[enemyId][0])return eids[enemyId][1];
+			return eids[enemyId][2];
+		}
+		return null
+	}
 
 }
     }
