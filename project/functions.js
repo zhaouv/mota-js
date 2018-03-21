@@ -488,11 +488,14 @@ functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 		console.log(enemyId)
 		var deadNum = core.getFlag('deadNum');
 		var eids={
-			'skeletonCaptain':[4,'红血瓶已可以拾取'],
-			'zombie':[4,'蓝血瓶已可以拾取'],
+
+			//-+
+			'skeletonCaptain':[4,'蓝血瓶已可以拾取'],
+			'zombie':[4,'黄血瓶已可以拾取'],
 			'bluePriest':[4,'银剑已可以拾取'],
 			'yellowGuard':[4,'银盾已可以拾取'],
-			//'zombieKnight':[4],
+
+			'vampire':[1,'0-通往+-区的传送门已打开'],
 		};
 		if(eids[enemyId]){
 			deadNum[enemyId]=~~deadNum[enemyId]+1;
