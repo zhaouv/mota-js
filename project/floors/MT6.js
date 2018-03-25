@@ -82,6 +82,269 @@ main.floors.MT6=
                 "false": []
             }
         ]
+    },
+    "0,6": [
+        {
+            "type": "choices",
+            "text": "\t[神秘商人,woman]以下每个交易各能进行一次",
+            "choices": [
+                {
+                    "text": "地震卷轴（100金币）",
+                    "action": [
+                        {
+                            "type": "if",
+                            "condition": "status:money>=100",
+                            "true": [
+                                {
+                                    "type": "setValue",
+                                    "name": "status:money",
+                                    "value": "status:money-100"
+                                },
+                                {
+                                    "type": "setValue",
+                                    "name": "item:yellowKey",
+                                    "value": "item:yellowKey+1"
+                                }
+                            ],
+                            "false": [
+                                "\t[神秘商人,woman]",
+                                {
+                                    "type": "revisit"
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "text": "神圣盾（50防,200金币）",
+                    "action": [
+                        {
+                            "type": "if",
+                            "condition": "status:money>=100",
+                            "true": [
+                                {
+                                    "type": "setValue",
+                                    "name": "status:money",
+                                    "value": "status:money-100"
+                                },
+                                {
+                                    "type": "setValue",
+                                    "name": "item:yellowKey",
+                                    "value": "item:yellowKey+1"
+                                }
+                            ],
+                            "false": [
+                                "\t[神秘商人,woman]",
+                                {
+                                    "type": "revisit"
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "text": "给我所有金币和破墙镐,回复10*a+200*b的血量",
+                    "action": [
+                        {
+                            "type": "setValue",
+                            "name": "flag:shop_times",
+                            "value": "flag:shop_times+1"
+                        },
+                        "\t[神秘商人,woman]",
+                        {
+                            "type": "revisit"
+                        }
+                    ]
+                },
+                {
+                    "text": "离开",
+                    "action": [
+                        {
+                            "type": "exit"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "revisit"
+        }
+    ],
+    "2,0": {
+        "trigger": "action",
+        "enable": true,
+        "noPass": null,
+        "displayDamage": true,
+        "data": [
+            {
+                "type": "if",
+                "condition": "core.getFlag('deadNum').skeletonCaptain>=4",
+                "true": [
+                    {
+                        "type": "function",
+                        "function": "function(){\ncore.getItem('bluePotion')\n}"
+                    },
+                    {
+                        "type": "hide"
+                    }
+                ],
+                "false": []
+            }
+        ]
+    },
+    "3,0": {
+        "trigger": "action",
+        "enable": true,
+        "noPass": null,
+        "displayDamage": true,
+        "data": [
+            {
+                "type": "if",
+                "condition": "core.getFlag('deadNum').skeletonCaptain>=4",
+                "true": [
+                    {
+                        "type": "function",
+                        "function": "function(){\ncore.getItem('bluePotion')\n}"
+                    },
+                    {
+                        "type": "hide"
+                    }
+                ],
+                "false": []
+            }
+        ]
+    },
+    "4,0": {
+        "trigger": "action",
+        "enable": true,
+        "noPass": null,
+        "displayDamage": true,
+        "data": [
+            {
+                "type": "if",
+                "condition": "core.getFlag('deadNum').skeletonCaptain>=4",
+                "true": [
+                    {
+                        "type": "function",
+                        "function": "function(){\ncore.getItem('bluePotion')\n}"
+                    },
+                    {
+                        "type": "hide"
+                    }
+                ],
+                "false": []
+            }
+        ]
+    },
+    "5,0": {
+        "trigger": "action",
+        "enable": true,
+        "noPass": null,
+        "displayDamage": true,
+        "data": [
+            {
+                "type": "if",
+                "condition": "core.getFlag('deadNum').skeletonCaptain>=4",
+                "true": [
+                    {
+                        "type": "function",
+                        "function": "function(){\ncore.getItem('bluePotion')\n}"
+                    },
+                    {
+                        "type": "hide"
+                    }
+                ],
+                "false": []
+            }
+        ]
+    },
+    "7,0": {
+        "trigger": "action",
+        "enable": true,
+        "noPass": null,
+        "displayDamage": true,
+        "data": [
+            {
+                "type": "if",
+                "condition": "core.getFlag('deadNum').zombie>=4",
+                "true": [
+                    {
+                        "type": "function",
+                        "function": "function(){\ncore.getItem('yellowPotion')\n}"
+                    },
+                    {
+                        "type": "hide"
+                    }
+                ],
+                "false": []
+            }
+        ]
+    },
+    "8,0": {
+        "trigger": "action",
+        "enable": true,
+        "noPass": null,
+        "displayDamage": true,
+        "data": [
+            {
+                "type": "if",
+                "condition": "core.getFlag('deadNum').zombie>=4",
+                "true": [
+                    {
+                        "type": "function",
+                        "function": "function(){\ncore.getItem('yellowPotion')\n}"
+                    },
+                    {
+                        "type": "hide"
+                    }
+                ],
+                "false": []
+            }
+        ]
+    },
+    "9,0": {
+        "trigger": "action",
+        "enable": true,
+        "noPass": null,
+        "displayDamage": true,
+        "data": [
+            {
+                "type": "if",
+                "condition": "core.getFlag('deadNum').zombie>=4",
+                "true": [
+                    {
+                        "type": "function",
+                        "function": "function(){\ncore.getItem('yellowPotion')\n}"
+                    },
+                    {
+                        "type": "hide"
+                    }
+                ],
+                "false": []
+            }
+        ]
+    },
+    "10,0": {
+        "trigger": "action",
+        "enable": true,
+        "noPass": null,
+        "displayDamage": true,
+        "data": [
+            {
+                "type": "if",
+                "condition": "core.getFlag('deadNum').zombie>=4",
+                "true": [
+                    {
+                        "type": "function",
+                        "function": "function(){\ncore.getItem('yellowPotion')\n}"
+                    },
+                    {
+                        "type": "hide"
+                    }
+                ],
+                "false": []
+            }
+        ]
     }
 },
 "changeFloor": {},

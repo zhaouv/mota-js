@@ -51,14 +51,14 @@ data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d =
 		"title": "迷踪境",
 		"name": "maze",
 		"version": "Ver 1.0.0",
-		"floorId": "MT6",
+		"floorId": "MT5",
 		"hero": {
 			"name": "勇士",
 			"lv": 1,
 			"hpmax": 9999,
-			"hp": 711,
-			"atk": 40,
-			"def": 45,
+			"hp": 1112,
+			"atk": 68,
+			"def": 79,
 			"mdef": 0,
 			"money": 0,
 			"experience": 0,
@@ -73,14 +73,14 @@ data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d =
 				},
 				"tools": {
 					"centerFly": 1,
-					"pickaxe": 21
+					"pickaxe": 20
 				}
 			},
 			"flyRange": [],
 			"loc": {
 				"direction": "up",
-				"x": 6,
-				"y": 11
+				"x": 0,
+				"y": 6
 			},
 			"flags": {
 				"poison": false,

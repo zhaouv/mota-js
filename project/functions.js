@@ -465,6 +465,7 @@ functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 		}
 	}
     isFloorClear = function(floorId){
+		return true;
         if(!floorId)floorId=core.status.floorId;
         if(core.getFlag('_isFloorClear')[floorId])return true;
         var hard = core.getFlag('hard');
