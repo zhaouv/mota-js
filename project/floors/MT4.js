@@ -69,4 +69,5 @@ main.floors.MT4=
 "afterGetItem": {},
 "afterOpenDoor": {},
 "cannotMove": {},
+"item_ratio": 2,
 }

@@ -56,10 +56,10 @@ data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d =
 			"name": "勇士",
 			"lv": 1,
 			"hpmax": 9999,
-			"hp": 1112,
-			"atk": 68,
-			"def": 79,
-			"mdef": 0,
+			"hp": 3731,
+			"atk": 106,
+			"def": 70,
+			"mdef": 88,
 			"money": 0,
 			"experience": 0,
 			"items": {
@@ -73,7 +73,7 @@ data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d =
 				},
 				"tools": {
 					"centerFly": 1,
-					"pickaxe": 20
+					"pickaxe": 2
 				}
 			},
 			"flyRange": [],
@@ -177,10 +177,10 @@ data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d =
 		"shield2": 20,
 		"sword3": 30,
 		"shield3": 30,
-		"sword4": 40,
-		"shield4": 40,
-		"sword5": 50,
-		"shield5": 50,
+		"sword4": 30,
+		"shield4": 30,
+		"sword5": 40,
+		"shield5": 40,
 		"moneyPocket": 500,
 		"breakArmor": 0.9,
 		"counterAttack": 0.1,
