@@ -9,7 +9,7 @@ main.floors.MT6=
 "png": [],
 "bgm": "bgm.mp3",
 "map": [
-    [ 57,  0, 32, 32, 32, 32,  0, 34, 34, 34, 34,  0,  0],
+    [  0,  0, 32, 32, 32, 32,  0, 34, 34, 34, 34,  0,  0],
     [  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0],
     [  0,  0,  0,  0,153,213,153,213,153,  0,  0,  0,  0],
     [  0,  0,  0,153,217,153,221,153,217,153,  0,  0,  0],
@@ -86,28 +86,32 @@ main.floors.MT6=
     "0,6": [
         {
             "type": "choices",
-            "text": "\t[神秘商人,woman]以下每个交易各能进行一次",
+            "text": "\t[神秘商人,woman]以下每个交易各能进行一次,第三个选项是给我所有金币和破墙镐,回复7*a+100*b的生命值",
             "choices": [
                 {
                     "text": "地震卷轴（150金币）",
                     "action": [
                         {
                             "type": "if",
-                            "condition": "status:money>=100",
+                            "condition": "status:money>=150 && !flag:earthquake_times",
                             "true": [
                                 {
                                     "type": "setValue",
                                     "name": "status:money",
-                                    "value": "status:money-100"
+                                    "value": "status:money-150"
                                 },
                                 {
                                     "type": "setValue",
-                                    "name": "item:yellowKey",
-                                    "value": "item:yellowKey+1"
+                                    "name": "flag:earthquake_times",
+                                    "value": "1"
+                                },
+                                {
+                                    "type": "function",
+                                    "function": "function(){\ncore.getItem('earthquake');\n}"
                                 }
                             ],
                             "false": [
-                                "\t[神秘商人,woman]",
+                                "\t[神秘商人,woman]金币不足或已经进行过此项交易",
                                 {
                                     "type": "revisit"
                                 }
@@ -120,21 +124,25 @@ main.floors.MT6=
                     "action": [
                         {
                             "type": "if",
-                            "condition": "status:money>=100",
+                            "condition": "status:money>=170 && !flag:shield_times",
                             "true": [
                                 {
                                     "type": "setValue",
                                     "name": "status:money",
-                                    "value": "status:money-100"
+                                    "value": "status:money-170"
                                 },
                                 {
                                     "type": "setValue",
-                                    "name": "item:yellowKey",
-                                    "value": "item:yellowKey+1"
+                                    "name": "flag:shield_times",
+                                    "value": "1"
+                                },
+                                {
+                                    "type": "function",
+                                    "function": "function(){\ncore.getItem('shield5');\n}"
                                 }
                             ],
                             "false": [
-                                "\t[神秘商人,woman]",
+                                "\t[神秘商人,woman]金币不足或已经进行过此项交易",
                                 {
                                     "type": "revisit"
                                 }
@@ -143,16 +151,39 @@ main.floors.MT6=
                     ]
                 },
                 {
-                    "text": "给我所有金币和破墙镐,回复7*a+100*b的血量",
+                    "text": "回复${7*status:money+100*item:pickaxe}生命值",
                     "action": [
                         {
-                            "type": "setValue",
-                            "name": "flag:shop_times",
-                            "value": "flag:shop_times+1"
-                        },
-                        "\t[神秘商人,woman]",
-                        {
-                            "type": "revisit"
+                            "type": "if",
+                            "condition": "!flag:heal_times",
+                            "true": [
+                                {
+                                    "type": "setValue",
+                                    "name": "flag:heal_times",
+                                    "value": "1"
+                                },
+                                {
+                                    "type": "setValue",
+                                    "name": "status:hp",
+                                    "value": "status:hp+7*status:money+100*item:pickaxe"
+                                },
+                                {
+                                    "type": "setValue",
+                                    "name": "status:money",
+                                    "value": "0"
+                                },
+                                {
+                                    "type": "setValue",
+                                    "name": "item:pickaxe",
+                                    "value": "0"
+                                }
+                            ],
+                            "false": [
+                                "\t[神秘商人,woman]已经进行过此项交易",
+                                {
+                                    "type": "revisit"
+                                }
+                            ]
                         }
                     ]
                 },

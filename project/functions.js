@@ -92,8 +92,8 @@ functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 			{"text": "防御+"+(2*point), "action": [
 				{"type": "setValue", "name": "status:def", "value": "status:def+"+(2*point)}
 			]},
-			{"text": "魔防+"+(8*point), "action": [
-				{"type": "setValue", "name": "status:mdef", "value": "status:mdef+"+(8*point)}
+			{"text": "魔防+"+(12*point), "action": [
+				{"type": "setValue", "name": "status:mdef", "value": "status:mdef+"+(12*point)}
 			]},
 		]
 	}
@@ -499,7 +499,7 @@ functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 			//+-
 			'blueGuard':[2,'圣盾已可以拾取'],
 			'ghostSkeleton':[4,'圣剑已可以拾取'],
-			'swordsman':[1,'离开+-区的传送门已打开'],
+			'swordsman':[1,'离开+-区的传送门已打开,++区已经可以进入'],
 		};
 		if(eids[enemyId]){
 			deadNum[enemyId]=~~deadNum[enemyId]+1;

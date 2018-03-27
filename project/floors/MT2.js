@@ -71,7 +71,7 @@ main.floors.MT2=
             "true": [
                 {
                     "type": "function",
-                    "function": "function(){\nvar _id='mt28_2';teleport('mt28',8);\n}"
+                    "function": "function(){\nif(core.getFlag('deadNum').swordsman>=1){\n\tvar _id='mt28_2';teleport('mt28',8);\n}else{\n\tcore.insertAction('需要击败吸血鬼或双手剑士');\n}\n}"
                 }
             ],
             "false": []
