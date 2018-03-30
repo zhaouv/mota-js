@@ -107,7 +107,7 @@ main.floors.MT6=
                                 },
                                 {
                                     "type": "function",
-                                    "function": "function(){\ncore.getItem('earthquake');\n}"
+                                    "function": "function(){\ncore.getItem('earthquake',1);\n}"
                                 }
                             ],
                             "false": [

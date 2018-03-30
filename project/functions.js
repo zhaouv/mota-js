@@ -92,8 +92,8 @@ functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 			{"text": "防御+"+(2*point), "action": [
 				{"type": "setValue", "name": "status:def", "value": "status:def+"+(2*point)}
 			]},
-			{"text": "魔防+"+(12*point), "action": [
-				{"type": "setValue", "name": "status:mdef", "value": "status:mdef+"+(12*point)}
+			{"text": "魔防+"+(20*point), "action": [
+				{"type": "setValue", "name": "status:mdef", "value": "status:mdef+"+(20*point)}
 			]},
 		]
 	}

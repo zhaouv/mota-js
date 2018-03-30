@@ -36,7 +36,7 @@ main.floors.MT5=
     "6,0": [
         {
             "type": "function",
-            "function": "function(){\nif(core.getFlag('deadNum').swordsman>=1){\n\tvar _id='mt25_5';teleport('mt25',2);\n}else{\n\tcore.insertAction('需要击败吸血鬼或双手剑士');\n}\n}"
+            "function": "function(){\nif(core.getFlag('deadNum').swordsman>=1){\n\tvar _id='mt25_5';teleport('mt25',2);\n}else{\n\tcore.insertAction('需要击败双手剑士');\n}\n}"
         }
     ],
     "6,1": {
