@@ -14,7 +14,7 @@ enemys_fcae963b_31c9_42b4_b48c_bb48d09f3f80 =
 	"ghostSkeleton": {"name":"鬼战士","hp":420,"atk":150,"def":30,"money":5,"experience":0,"special":0,"point":0},
 	"zombie": {"name":"兽人","hp":225,"atk":77,"def":12,"money":4,"experience":0,"special":0,"point":0},
 	"zombieKnight": {"name":"兽人武士","hp":235,"atk":85,"def":18,"money":0,"experience":0,"special":0,"point":2},
-	"rock": {"name":"石头人","hp":20,"atk":220,"def":280,"money":50,"experience":0,"special":0,"point":0},
+	"rock": {"name":"石头人","hp":20,"atk":220,"def":270,"money":50,"experience":0,"special":0,"point":0},
 	"slimeMan": {"name":"影子战士","hp":500,"atk":220,"def":160,"money":0,"experience":0,"special":0,"atkValue":2,"defValue":3,"point":4},
 	"bluePriest": {"name":"初级法师","hp":95,"atk":30,"def":30,"money":4,"experience":0,"special":2,"point":0},
 	"redPriest": {"name":"高级法师","hp":380,"atk":120,"def":120,"money":0,"experience":0,"special":2,"point":4},

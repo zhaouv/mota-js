@@ -120,16 +120,16 @@ main.floors.MT6=
                     ]
                 },
                 {
-                    "text": "神圣盾（${core.values.shield5}防,155金币）",
+                    "text": "神圣盾（${core.values.shield5}防,145金币）",
                     "action": [
                         {
                             "type": "if",
-                            "condition": "status:money>=155 && !flag:shield_times",
+                            "condition": "status:money>=145 && !flag:shield_times",
                             "true": [
                                 {
                                     "type": "setValue",
                                     "name": "status:money",
-                                    "value": "status:money-155"
+                                    "value": "status:money-145"
                                 },
                                 {
                                     "type": "setValue",
