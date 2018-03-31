@@ -184,6 +184,7 @@ functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 	}
 
 	//changed
+	console.log(enemyId+' ('+x+','+y+','+core.status.hero.loc.direction+')');
 	var event = findAfterBattleById(enemyId);
 	if (core.isset(event)) {
 		// 插入事件
@@ -486,7 +487,7 @@ functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 	}
 
 	findAfterBattleById = function(enemyId){
-		console.log(enemyId)
+		
 		var deadNum = core.getFlag('deadNum');
 		var eids={
 
@@ -508,6 +509,21 @@ functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 		}
 		return null
 	}
+
+
+	rs=function(speed){
+		if(!speed)speed=3.0;
+		setTimeout(function(){
+			setTimeout(() => {
+				core.status.replay.speed=speed;
+				core.forwardReplay();
+			}, 500); 
+			core.getItem('earthquake',1);
+			var c = core.decodeRoute(str_);
+			core.startReplay(c);
+		},30);
+	}
+	rss=function(ss,speed){str_=ss;rs(speed)}
 
 }
     }
