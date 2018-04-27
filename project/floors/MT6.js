@@ -86,7 +86,7 @@ main.floors.MT6=
     "0,6": [
         {
             "type": "choices",
-            "text": "\t[神秘商人,woman]以下每个交易各能进行一次,第三个选项是给我所有金币和破墙镐,回复8*a+300*b的生命值",
+            "text": "\t[神秘商人,woman]以下每个交易各能进行一次,第三个选项是给我所有金币和破墙镐,回复5*a+100*b的生命值",
             "choices": [
                 {
                     "text": "地震卷轴（135金币）",
@@ -151,7 +151,7 @@ main.floors.MT6=
                     ]
                 },
                 {
-                    "text": "回复${8*status:money+300*item:pickaxe}生命值",
+                    "text": "回复${5*status:money+100*item:pickaxe}生命值",
                     "action": [
                         {
                             "type": "if",
@@ -165,7 +165,7 @@ main.floors.MT6=
                                 {
                                     "type": "setValue",
                                     "name": "status:hp",
-                                    "value": "status:hp+8*status:money+300*item:pickaxe"
+                                    "value": "status:hp+5*status:money+100*item:pickaxe"
                                 },
                                 {
                                     "type": "setValue",

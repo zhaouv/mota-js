@@ -216,9 +216,115 @@ main.floors.MT7=
         {
             "type": "function",
             "function": "function(){\nteleport();\n}"
-        },
-        "需要先击败黑暗大法师,测试版暂时不做检查"
-    ]
+        }
+    ],
+    "6,5": {
+        "trigger": "action",
+        "enable": true,
+        "noPass": null,
+        "displayDamage": true,
+        "data": [
+            {
+                "type": "sleep",
+                "time": 300
+            },
+            {
+                "type": "changePos",
+                "loc": [
+                    6,
+                    6
+                ],
+                "direction": "up"
+            },
+            {
+                "type": "sleep",
+                "time": 500
+            },
+            "\t[hero](被一股奇怪的气息笼罩着...)",
+            {
+                "type": "sleep",
+                "time": 500
+            },
+            {
+                "type": "animate",
+                "name": "zone",
+                "loc": "hero"
+            },
+            {
+                "type": "battle",
+                "id": "blackKing"
+            },
+            {
+                "type": "hide",
+                "time": 1000
+            },
+            {
+                "type": "sleep",
+                "time": 700
+            },
+            "\t[blackKing]你以为就这样结束了吗?",
+            "\t[hero](寒意愈发强烈了...)",
+            {
+                "type": "animate",
+                "name": "zone",
+                "loc": "hero"
+            },
+            {
+                "type": "sleep",
+                "time": 300
+            },
+            {
+                "type": "showImage",
+                "name": "forshow.png",
+                "loc": [
+                    0,
+                    0
+                ]
+            },
+            {
+                "type": "sleep",
+                "time": 1000
+            },
+            {
+                "type": "changePos",
+                "direction": "down"
+            },
+            {
+                "type": "sleep",
+                "time": 700
+            },
+            {
+                "type": "changePos",
+                "direction": "left"
+            },
+            {
+                "type": "sleep",
+                "time": 700
+            },
+            {
+                "type": "changePos",
+                "direction": "right"
+            },
+            {
+                "type": "sleep",
+                "time": 700
+            },
+            {
+                "type": "changePos",
+                "direction": "down"
+            },
+            {
+                "type": "sleep",
+                "time": 700
+            },
+            "Bad End\n勇士迷失了",
+            {
+                "type": "win",
+                "reason": "Bad End"
+            }
+        ]
+    },
+    "6,6": null
 },
 "changeFloor": {},
 "afterBattle": {},
