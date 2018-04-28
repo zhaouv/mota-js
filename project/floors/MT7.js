@@ -240,15 +240,26 @@ main.floors.MT7=
                 "type": "sleep",
                 "time": 500
             },
-            "\t[hero](被一股奇怪的气息笼罩着...)",
             {
-                "type": "sleep",
-                "time": 500
+                "type": "if",
+                "condition": "flag:te",
+                "true": [],
+                "false": [
+                    "\t[hero](被一股奇怪的气息笼罩着...)",
+                    {
+                        "type": "sleep",
+                        "time": 500
+                    }
+                ]
             },
             {
                 "type": "animate",
                 "name": "zone",
                 "loc": "hero"
+            },
+            {
+                "type": "sleep",
+                "time": 500
             },
             {
                 "type": "battle",
@@ -262,65 +273,78 @@ main.floors.MT7=
                 "type": "sleep",
                 "time": 700
             },
-            "\t[blackKing]你以为就这样结束了吗?",
-            "\t[hero](寒意愈发强烈了...)",
             {
-                "type": "animate",
-                "name": "zone",
-                "loc": "hero"
-            },
-            {
-                "type": "sleep",
-                "time": 300
-            },
-            {
-                "type": "showImage",
-                "name": "forshow.png",
-                "loc": [
-                    0,
-                    0
+                "type": "if",
+                "condition": "flag:te",
+                "true": [
+                    "True End\n勇士击败了黑衣魔王",
+                    {
+                        "type": "win",
+                        "reason": "True End"
+                    }
+                ],
+                "false": [
+                    "\t[blackKing]你以为就这样结束了吗?",
+                    "\t[hero](寒意愈发强烈了...)",
+                    {
+                        "type": "animate",
+                        "name": "hand",
+                        "loc": "hero"
+                    },
+                    {
+                        "type": "sleep",
+                        "time": 400
+                    },
+                    {
+                        "type": "showImage",
+                        "name": "forshow.png",
+                        "loc": [
+                            0,
+                            0
+                        ]
+                    },
+                    {
+                        "type": "sleep",
+                        "time": 1000
+                    },
+                    {
+                        "type": "changePos",
+                        "direction": "down"
+                    },
+                    {
+                        "type": "sleep",
+                        "time": 700
+                    },
+                    {
+                        "type": "changePos",
+                        "direction": "left"
+                    },
+                    {
+                        "type": "sleep",
+                        "time": 700
+                    },
+                    {
+                        "type": "changePos",
+                        "direction": "right"
+                    },
+                    {
+                        "type": "sleep",
+                        "time": 700
+                    },
+                    {
+                        "type": "changePos",
+                        "direction": "down"
+                    },
+                    {
+                        "type": "sleep",
+                        "time": 700
+                    },
+                    "Bad End\n勇士迷失了",
+                    {
+                        "type": "win",
+                        "reason": "Bad End"
+                    }
                 ]
-            },
-            {
-                "type": "sleep",
-                "time": 1000
-            },
-            {
-                "type": "changePos",
-                "direction": "down"
-            },
-            {
-                "type": "sleep",
-                "time": 700
-            },
-            {
-                "type": "changePos",
-                "direction": "left"
-            },
-            {
-                "type": "sleep",
-                "time": 700
-            },
-            {
-                "type": "changePos",
-                "direction": "right"
-            },
-            {
-                "type": "sleep",
-                "time": 700
-            },
-            {
-                "type": "changePos",
-                "direction": "down"
-            },
-            {
-                "type": "sleep",
-                "time": 700
-            },
-            "Bad End\n勇士迷失了",
-            {
-                "type": "win",
-                "reason": "Bad End"
             }
         ]
     },

@@ -29,6 +29,7 @@ functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 },
         "setInitData": function (hard) {
 	// 不同难度分别设置初始属性
+	//changed
 	if (hard=='花园') { // 花园难度
         core.setFlag('hard', 1); // 可以用flag:hard来获得当前难度
         // 可以在此设置一些初始福利，比如设置初始生命值可以调用：
@@ -39,6 +40,7 @@ functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
         core.setFlag('hard', 2); // 可以用flag:hard来获得当前难度
     }
 	core.setFlag('_isFloorClear',{});
+	core.setFlag('_isFloorClearPerfect',{});
 	core.setFlag('deadNum',{});
 	core.events.afterLoadData();
 },
@@ -83,6 +85,7 @@ functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 	if (!core.flags.enableAddPoint || !core.isset(point) || point<=0) return [];
 
 	// 加点，返回一个choices事件
+	//changed
 	return [
 		{"type": "choices",
 		"choices": [
@@ -381,8 +384,14 @@ functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
     0 4 2
     3 1 5
 	*/
+	if(main.mode=='play'){
+		var ca = core.material.images.autotile;
+		var ta = ca.autotile;
+		ca.autotile=ca.autotile1;
+		ca.autotile1=ta;
+	}
 	
-    getBlockInfoById = function(eid,floorId){
+	getBlockInfoById = function(eid,floorId){
         var getfromfloor = function(floorId){
             var blocks = core.status.maps[floorId].blocks;
             for(var ii=0,block;block=blocks[ii];ii++){
@@ -449,41 +458,41 @@ functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
         core.updateCheckBlock();
         core.updateFg();
 	}
-	/* var  */firstClear = function(floorId){
-		if(floorId=="MT0"){
+	/* var  */firstClear = function(status){
+		if(status=="clear"){
 			core.insertAction([
 				{"type": "setValue", "name": "status:atk", "value": "status:atk+3"},
 				{"type": "setValue", "name": "status:def", "value": "status:def+3"},
-				'清空 迷境 -0,攻守+3',
+				'完成迷题 ,攻守+3',
 			]);
 		}
-		if(floorId=="MT2"){
+		if(status=="perfect"){
 			core.insertAction([
-				{"type": "setValue", "name": "status:atk", "value": "status:atk+3"},
-				{"type": "setValue", "name": "status:def", "value": "status:def+3"},
-				'清空 迷境 +0,攻守+3',
+				{"type": "setValue", "name": "status:hp", "value": "status:hp+1000"},
+				'复原迷题地形 ,生命+1000',
 			]);
 		}
 	}
     isFloorClear = function(floorId){
-		return true;
+		//return true;
         if(!floorId)floorId=core.status.floorId;
         if(core.getFlag('_isFloorClear')[floorId])return true;
-        var hard = core.getFlag('hard');
+        //var hard = core.getFlag('hard');
         var now = JSON.stringify(core.maps.save(core.status.maps,floorId)).replace(/"\d+:f"/g,'0');
-        if (hard!=2) {
+        var fclear = function() {
             if (now.indexOf('169')!==-1)return false;//检查箱子
 			core.getFlag('_isFloorClear')[floorId] = now.replace(/[^2]/g,'')==='';//检查怪物
-			if(core.getFlag('_isFloorClear')[floorId])firstClear(floorId);
+			//if(core.getFlag('_isFloorClear')[floorId])firstClear("clear");
             return core.getFlag('_isFloorClear')[floorId];
-        }
+		}
+		fclear();
         var init = {
             "MT0":"[[0,0,0,0,153,153,0,153,153,0,0,0,0],[0,153,153,0,0,153,0,153,0,0,153,153,153],[0,0,153,153,0,153,0,0,0,0,0,0,153],[153,170,0,0,0,0,0,0,153,0,153,0,0],[153,153,153,0,153,0,153,153,153,0,153,153,0],[0,0,0,0,153,0,0,0,0,0,0,0,0],[153,153,0,153,153,0,153,153,0,153,153,153,0],[153,0,0,0,0,0,153,0,0,170,0,0,0],[153,0,153,153,153,0,153,0,0,0,0,0,0],[0,0,153,0,0,0,0,0,153,0,0,153,153],[153,0,0,0,153,0,153,153,153,0,0,0,153],[153,153,153,0,153,0,0,0,0,0,153,0,153],[0,0,0,0,153,153,0,0,153,153,153,0,0]]",
             "MT2":"[[0,0,0,0,153,153,0,153,153,0,0,0,0],[0,153,153,0,153,153,0,0,0,0,0,153,153],[0,153,153,0,0,0,0,0,153,153,0,153,153],[0,0,0,0,0,153,153,0,153,153,0,0,0],[0,0,153,153,0,153,153,0,0,0,0,0,153],[153,0,153,153,0,0,0,0,0,153,153,0,153],[153,0,0,0,0,0,153,153,0,153,153,0,0],[0,0,0,153,153,0,153,153,0,0,0,0,0],[153,153,0,153,153,0,0,0,0,0,153,153,0],[153,153,0,0,0,0,0,153,153,0,153,153,0],[0,0,0,0,153,153,0,153,153,0,0,0,0],[0,153,153,0,153,153,0,0,0,0,0,153,153],[0,153,153,0,0,0,0,0,153,153,0,153,153]]",
         }[floorId].replace(/\D/g,'');
-		core.getFlag('_isFloorClear')[floorId] = now.replace(/\D/g,'')===init;//检查地图是否完全一致
-		if(core.getFlag('_isFloorClear')[floorId])firstClear(floorId);
-        return core.getFlag('_isFloorClear')[floorId];
+		core.getFlag('_isFloorClearPerfect')[floorId] = now.replace(/\D/g,'')===init;//检查地图是否完全一致
+		if(core.getFlag('_isFloorClearPerfect')[floorId])firstClear("perfect");
+        return true;
 	}
 
 	findAfterBattleById = function(enemyId){
