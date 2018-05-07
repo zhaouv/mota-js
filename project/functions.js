@@ -528,7 +528,7 @@ functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 	rs=function(speed){
 		if(!speed)speed=1.0;
 		setTimeout(function(){
-			setTimeout(() => {
+			setTimeout(function(){
 				core.status.replay.speed=speed;
 				core.forwardReplay();
 			}, 500); 
