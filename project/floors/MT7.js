@@ -225,6 +225,18 @@ main.floors.MT7=
         "displayDamage": true,
         "data": [
             {
+                "type": "if",
+                "condition": "core.status.hero.flags.hatred>=248",
+                "true": [
+                    {
+                        "type": "setValue",
+                        "name": "flag:te",
+                        "value": "1"
+                    }
+                ],
+                "false": []
+            },
+            {
                 "type": "sleep",
                 "time": 300
             },
@@ -278,6 +290,10 @@ main.floors.MT7=
                 "condition": "flag:te",
                 "true": [
                     "True End\n勇士击败了黑衣魔王",
+                    {
+                        "type": "function",
+                        "function": "function(){\nvar perfect = core.getFlag('_isFloorClearPerfect');\nif(perfect[\"MT0\"])core.status.hero.hp+=1000;\nif(perfect[\"MT2\"])core.status.hero.hp+=1000;\n}"
+                    },
                     {
                         "type": "win",
                         "reason": "True End"

@@ -90,13 +90,16 @@ functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 		{"type": "choices",
 		"choices": [
 			{"text": "攻击+"+(1*point), "action": [
-				{"type": "setValue", "name": "status:atk", "value": "status:atk+"+(1*point)}
+				{"type": "setValue", "name": "status:atk", "value": "status:atk+"+(1*point)},
+				{"type": "function", "function": "function(){\nconsole.log('atk')\n}"}
 			]},
 			{"text": "防御+"+(2*point), "action": [
-				{"type": "setValue", "name": "status:def", "value": "status:def+"+(2*point)}
+				{"type": "setValue", "name": "status:def", "value": "status:def+"+(2*point)},
+				{"type": "function", "function": "function(){\nconsole.log('def')\n}"}
 			]},
 			{"text": "魔防+"+(20*point), "action": [
-				{"type": "setValue", "name": "status:mdef", "value": "status:mdef+"+(20*point)}
+				{"type": "setValue", "name": "status:mdef", "value": "status:mdef+"+(20*point)},
+				{"type": "function", "function": "function(){\nconsole.log('mdef')\n}"}
 			]},
 		]
 	}
@@ -187,7 +190,8 @@ functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 	}
 
 	//changed
-	console.log(enemyId+' ('+x+','+y+','+core.status.hero.loc.direction+')');
+	var hero=core.status.hero;
+	console.log(enemyId+' ('+x+','+y+','+hero.loc.direction+') ['+[hero.hp,hero.atk,hero.def,hero.mdef].join(',')+']');
 	var event = findAfterBattleById(enemyId);
 	if (core.isset(event)) {
 		// 插入事件
@@ -461,15 +465,15 @@ functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 	/* var  */firstClear = function(status){
 		if(status=="clear"){
 			core.insertAction([
-				{"type": "setValue", "name": "status:atk", "value": "status:atk+3"},
-				{"type": "setValue", "name": "status:def", "value": "status:def+3"},
-				'完成迷题 ,攻守+3',
+				//{"type": "setValue", "name": "status:atk", "value": "status:atk+3"},
+				//{"type": "setValue", "name": "status:def", "value": "status:def+3"},
+				'完成迷题 ,消灭所有怪物后可进入True End',
 			]);
 		}
 		if(status=="perfect"){
 			core.insertAction([
-				{"type": "setValue", "name": "status:hp", "value": "status:hp+1000"},
-				'复原迷题地形 ,生命+1000',
+				//{"type": "setValue", "name": "status:hp", "value": "status:hp+1000"},
+				'复原迷题地形 ,通过True End后的得分+1000',
 			]);
 		}
 	}
@@ -482,7 +486,7 @@ functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
         var fclear = function() {
             if (now.indexOf('169')!==-1)return false;//检查箱子
 			core.getFlag('_isFloorClear')[floorId] = now.replace(/[^2]/g,'')==='';//检查怪物
-			//if(core.getFlag('_isFloorClear')[floorId])firstClear("clear");
+			if(core.getFlag('_isFloorClear')[floorId])firstClear("clear");
             return core.getFlag('_isFloorClear')[floorId];
 		}
 		fclear();
@@ -521,7 +525,7 @@ functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 
 
 	rs=function(speed){
-		if(!speed)speed=3.0;
+		if(!speed)speed=1.0;
 		setTimeout(function(){
 			setTimeout(() => {
 				core.status.replay.speed=speed;

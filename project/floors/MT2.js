@@ -24,7 +24,6 @@ main.floors.MT2=
     [  0,153,153,  0,  0,  0, 89,  0,153,153,  0,153,153]
 ],
 "firstArrive": [
-    "消灭所有怪物才能离开,同时攻守+3,迷宫难度下还需要使地形恢复原貌",
     {
         "type": "setValue",
         "name": "status:atk",
@@ -35,7 +34,7 @@ main.floors.MT2=
         "name": "status:def",
         "value": "status:def+3"
     },
-    "测试版直接加攻守"
+    "攻守+3,消灭此处所有怪物并使地形恢复原貌可以使得True End的得分+1000"
 ],
 "events": {
     "6,12": [
