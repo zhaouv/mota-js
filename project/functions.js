@@ -175,6 +175,18 @@ functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 	if (core.enemys.hasSpecial(special, 19)) {
 		core.status.hero.hp = 1;
 	}
+	// 退化系数
+	if (core.enemys.hasSpecial(special, 51)) {
+		core.status.hero.lv += (enemy.dratio||0)
+	}
+	if (core.enemys.hasSpecial(special, 52)) {
+		core.status.hero.lv *= (enemy.dratio||0)
+	}
+	if (core.enemys.hasSpecial(special, 53)) {
+		core.status.hero.lv = (enemy.dratio||0)
+	}
+	core.status.hero.atk -= (enemy.datk||0)*core.status.hero.lv;
+	core.status.hero.def -= (enemy.ddef||0)*core.status.hero.lv;
 	// 退化
 	if (core.enemys.hasSpecial(special, 21)) {
 		core.status.hero.atk -= (enemy.atkValue||0);
@@ -381,6 +393,22 @@ functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 	}
 	
 	// 可以在任何地方（如afterXXX或自定义脚本事件）调用函数，方法为  core.plugin.xxx();
+
+	this.tp = function(){
+		var loc = core.status.hero.loc;
+		var fid = core.status.floorId;
+		if(loc.x==12){
+			loc.x=0
+			fid=fid[0]+(~~fid[1]+1);
+		} else if (loc.x==0) {
+			loc.x=12
+			fid=fid[0]+(~~fid[1]-1)
+		}
+		core.insertAction([
+			{"type": "changeFloor", "floorId": fid, "loc": [loc.x,loc.y], "time": 500 },
+			{"type": "sleep", "time": 50},
+		])
+	}
 
 }
 }
