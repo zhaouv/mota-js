@@ -6,7 +6,7 @@ enemys_fcae963b_31c9_42b4_b48c_bb48d09f3f80 =
 	"slimelord": {"name":"怪王","hp":3440,"atk":510,"def":220,"money":10,"experience":0,"point":0,"special":0,"dratio":0,"datk":2,"ddef":2},
 	"bat": {"name":"小蝙蝠","hp":1020,"atk":300,"def":70,"money":2,"experience":0,"point":0,"special":53,"dratio":16,"datk":1,"ddef":3},
 	"bigBat": {"name":"大蝙蝠","hp":1300,"atk":400,"def":10,"money":0,"experience":0,"point":0,"special":0,"datk":3,"ddef":1},
-	"redBat": {"name":"红蝙蝠","hp":400,"atk":500,"def":100,"money":5,"experience":0,"point":0,"special":53,"datk":6,"ddef":3,"dratio":4},
+	"redBat": {"name":"红蝙蝠","hp":70,"atk":500,"def":305,"money":5,"experience":0,"point":0,"special":53,"datk":6,"ddef":3,"dratio":4},
 	"vampire": {"name":"冥灵魔王","hp":2340,"atk":500,"def":250,"money":0,"experience":0,"point":0,"special":0,"datk":9,"ddef":0},
 	"skeleton": {"name":"骷髅人","hp":1,"atk":1000,"def":0,"money":0,"experience":0,"point":0,"special":[1,2,52],"datk":1,"ddef":3,"dratio":2},
 	"skeletonSoilder": {"name":"骷髅士兵","hp":1,"atk":1000,"def":0,"money":0,"experience":0,"point":0,"special":[1,2,52],"datk":0,"ddef":4,"dratio":3},

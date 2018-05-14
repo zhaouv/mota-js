@@ -146,6 +146,7 @@ enemys.prototype.nextCriticals = function (monsterId, number) {
     var monster = core.material.enemys[monsterId];
     // 坚固、模仿怪物没有临界！
     if (this.hasSpecial(monster.special, 3) || this.hasSpecial(monster.special, 10)) return [];
+    if (this.hasSpecial(monster.special, 1)) return [];
 
     var info = this.getDamageInfo(monster, core.status.hero.hp, core.status.hero.atk, core.status.hero.def, core.status.hero.mdef);
 
