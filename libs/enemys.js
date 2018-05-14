@@ -104,9 +104,9 @@ enemys.prototype.getSpecialHint = function (enemy, special) {
         case 21: return "退化：战斗后勇士永久下降"+(enemy.atkValue||0)+"点攻击和"+(enemy.defValue||0)+"点防御";
         case 22: return "固伤：战斗前，怪物对勇士造成"+(enemy.damage||0)+"点固定伤害，无视勇士魔防。";
         case 23: return "重生：怪物被击败后，角色转换楼层则怪物将再次出现";
-        case 51: return "退化系数：退化系数加"+(enemy.dratio||0)+",先改变退化系数后减少攻防";
-        case 52: return "退化系数：退化系数乘"+(enemy.dratio||0)+",先改变退化系数后减少攻防";
-        case 53: return "退化系数：退化系数设置为"+(enemy.dratio||0)+",先改变退化系数后减少攻防";
+        case 51: return "+="+(enemy.dratio||0)+"：退化等级加"+(enemy.dratio||0)+",先改变退化等级后减少攻防,攻击此怪物勇士的退化等级变为"+(core.status.hero.lv + (enemy.dratio||0));
+        case 52: return "*="+(enemy.dratio||0)+"：退化等级乘"+(enemy.dratio||0)+",先改变退化等级后减少攻防,攻击此怪物勇士的退化等级变为"+(core.status.hero.lv * (enemy.dratio||0));
+        case 53: return "="+(enemy.dratio||0)+"：退化等级设置为"+(enemy.dratio||0)+",先改变退化等级后减少攻防,攻击此怪物勇士的退化等级变为"+(enemy.dratio||0);
         default: break;
     }
     return "";
@@ -159,13 +159,13 @@ enemys.prototype.nextCriticals = function (monsterId, number) {
 
     var mon_hp = info.mon_hp, hero_atk = core.status.hero.atk, mon_def = monster.def, turn = info.turn;
 
-    if (turn<=1) return [];
+    //if (turn<=1) return [];
 
     var list = [], pre = null;
 
-    for (var t = turn-1;t>=1;t--) {
+    for (var t = turn+1;t>=-9;t++) {
         var nextAtk = Math.ceil(mon_hp/t) + mon_def;
-        if (nextAtk<=hero_atk) break;
+        if (nextAtk>=hero_atk) break;
         if (nextAtk!=pre) {
             var nextInfo = this.getDamageInfo(monster, core.status.hero.hp, nextAtk, core.status.hero.def, core.status.hero.mdef);
             if (nextInfo==null) break;
@@ -192,17 +192,17 @@ enemys.prototype.getCritical = function (monsterId) {
             return monster.def+1-core.status.hero.atk;
         return '???';
     }
-    if (info.damage <= 0) return 0;
+    if (info.damage < 0) return 0;
 
     var mon_hp = info.mon_hp, hero_atk = core.status.hero.atk, mon_def = monster.def, turn = info.turn;
 
     // turn 是勇士攻击次数
-    if (turn<=1) return 0; // 攻杀
+    if (turn<=1) turn= 1; // 攻杀
 
     // 每回合最小伤害 = ⎡怪物生命/勇士攻击次数⎤
-    var nextAtk = Math.ceil(mon_hp/(turn-1)) + mon_def;
+    var nextAtk = Math.ceil(mon_hp/(turn+1)) + mon_def;
 
-    if (nextAtk <= hero_atk) return 0;
+    if (nextAtk >= hero_atk) return 0;
     return nextAtk - hero_atk;
 
 }
@@ -211,7 +211,7 @@ enemys.prototype.getCritical = function (monsterId) {
 enemys.prototype.getCriticalDamage = function (monsterId) {
     var c = this.getCritical(monsterId);
     if (c == '???') return '???';
-    if (c <= 0) return 0;
+    if (c >= 0) return 0;
     var monster = core.material.enemys[monsterId];
     var last = this.calDamage(monster, core.status.hero.hp, core.status.hero.atk, core.status.hero.def, core.status.hero.mdef);
     var now = this.calDamage(monster, core.status.hero.hp, core.status.hero.atk+c, core.status.hero.def, core.status.hero.mdef);
@@ -232,10 +232,10 @@ enemys.prototype.getDefDamage = function (monsterId) {
 enemys.prototype.getDamageInfo = function(monster, hero_hp, hero_atk, hero_def, hero_mdef) {
 
     var mon_hp = monster.hp, mon_atk = monster.atk, mon_def = monster.def, mon_special = monster.special;
-    hero_hp=Math.max(0, hero_hp);
-    hero_atk=Math.max(0, hero_atk);
-    hero_def=Math.max(0, hero_def);
-    hero_mdef=Math.max(0, hero_mdef);
+    //hero_hp=Math.max(0, hero_hp);
+    //hero_atk=Math.max(0, hero_atk);
+    //hero_def=Math.max(0, hero_def);
+    //hero_mdef=Math.max(0, hero_mdef);
 
     if (this.hasSpecial(mon_special, 20) && !core.hasItem("cross")) // 如果是无敌属性，且勇士未持有十字架
         return null; // 返回不可战斗
@@ -353,6 +353,8 @@ enemys.prototype.getCurrentEnemys = function (floorId) {
                 'hp': mon_hp,
                 'atk': mon_atk,
                 'def': mon_def,
+                'datk': monster.datk,
+                'ddef': monster.ddef,
                 'money': monster.money,
                 'experience': monster.experience,
                 'point': monster.point||0, // 加点

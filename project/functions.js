@@ -175,7 +175,7 @@ functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 	if (core.enemys.hasSpecial(special, 19)) {
 		core.status.hero.hp = 1;
 	}
-	// 退化系数
+	// 退化等级
 	if (core.enemys.hasSpecial(special, 51)) {
 		core.status.hero.lv += (enemy.dratio||0)
 	}
@@ -335,10 +335,11 @@ functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 
 	// 名称
 	core.canvas.ui.textAlign = "left";
-	core.fillText('ui', "HTML5 魔塔样板", text_start, top+35, "#FFD700", "bold 22px Verdana");
+	core.fillText('ui', "逆转", text_start, top+35, "#FFD700", "bold 22px Verdana");
 	core.fillText('ui', "版本： "+core.firstData.version, text_start, top + 80, "#FFFFFF", "bold 17px Verdana");
-	core.fillText('ui', "作者： 艾之葵", text_start, top + 112);
+	core.fillText('ui', "作者： zhaouv", text_start, top + 112);
 	core.fillText('ui', 'HTML5魔塔交流群：539113091', text_start, top+112+32);
+	core.fillText('ui', 'HTML5魔塔游戏列表：h5mota.com', text_start, top+112+32+32);
 	// TODO: 写自己的“关于”页面，每次增加32像素即可
 }
 },

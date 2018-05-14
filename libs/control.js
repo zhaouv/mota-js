@@ -1321,6 +1321,8 @@ control.prototype.updateFg = function () {
                 // 临界显伤
                 if (core.flags.displayCritical) {
                     var critical = core.formatBigNumber(core.enemys.getCritical(id));
+                    var enemy=core.enemys.enemys[id];
+                    critical=(enemy.datk||0)+'/'+(enemy.ddef||0);
                     if (critical == '???') critical = '?';
                     core.setFillStyle('fg', '#000000');
                     core.canvas.fg.fillText(critical, 32 * x + 2, 32 * (y + 1) - 2 - 10);
@@ -1328,6 +1330,7 @@ control.prototype.updateFg = function () {
                     core.canvas.fg.fillText(critical, 32 * x + 2, 32 * (y + 1) - 10);
                     core.canvas.fg.fillText(critical, 32 * x, 32 * (y + 1) - 10);
                     core.setFillStyle('fg', '#FFFFFF');
+                    if(enemy.dratio)core.setFillStyle('fg', '#FFFF00');
                     core.canvas.fg.fillText(critical, 32 * x + 1, 32 * (y + 1) - 1 - 10);
                 }
 
@@ -2358,6 +2361,7 @@ control.prototype.resize = function(clientWidth, clientHeight) {
     var count = core.dom.statusBar.children.length;
     if (!core.flags.enableFloor) count--;
     if (!core.flags.enableLv) count--;
+    count++;
     if (!core.flags.enableHPMax) count--;
     if (!core.flags.enableMDef) count--;
     if (!core.flags.enableMoney) count--;
@@ -2615,7 +2619,7 @@ control.prototype.resize = function(clientWidth, clientHeight) {
         {
             id: 'lvCol',
             rules: {
-                display: core.flags.enableLv ? 'block': 'none'
+                display: (core.flags.enableLv||1) ? 'block': 'none'
             }
         },
         {

@@ -4,7 +4,8 @@ data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d =
 		"floorIds": [
 			"l1",
 			"l2",
-			"l3"
+			"l3",
+			"l4"
 		],
 		"images": [
 			"bg.jpg"
@@ -49,12 +50,12 @@ data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d =
 		"toolsBackground": "url(project/images/ground.png) repeat"
 	},
 	"firstData": {
-		"title": "退化走廊",
-		"name": "tuihua",
+		"title": "逆转",
+		"name": "reverse",
 		"version": "Ver 0.1",
 		"floorId": "l1",
 		"hero": {
-			"name": "阳光",
+			"name": "勇士",
 			"lv": 1,
 			"hpmax": 9999,
 			"hp": 100000,
@@ -212,7 +213,7 @@ data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d =
 		"battleAnimate": true,
 		"displayEnemyDamage": true,
 		"displayCritical": true,
-		"displayExtraDamage": true,
+		"displayExtraDamage": false,
 		"enableGentleClick": true,
 		"potionWhileRouting": false,
 		"enableViewMaps": true,

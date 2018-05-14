@@ -735,7 +735,7 @@ ui.prototype.drawSwitchs = function() {
         "背景音效："+(core.musicStatus.soundStatus ? "[ON]" : "[OFF]"),
         "战斗动画： "+(core.flags.battleAnimate ? "[ON]" : "[OFF]"),
         "怪物显伤： "+(core.flags.displayEnemyDamage ? "[ON]" : "[OFF]"),
-        "临界显伤： "+(core.flags.displayCritical ? "[ON]" : "[OFF]"),
+        "显示怪物降低的攻守： "+(core.flags.displayCritical ? "[ON]" : "[OFF]"),
         "领域显伤： "+(core.flags.displayExtraDamage ? "[ON]" : "[OFF]"),
         "下载离线版本",
         "返回主菜单"
@@ -1270,12 +1270,25 @@ ui.prototype.drawBook = function (index) {
             expOffset = 255;
             line_cnt++;
         }
+        if (1) {
+            core.fillText('ui', '减攻', 165, 62 * i + 50, '#DDDDDD', '13px Verdana');
+            core.fillText('ui', core.formatBigNumber(enemy.datk||0), 195, 62 * i + 50, '#DDDDDD', 'bold 13px Verdana');
+            expOffset = 255;
+            line_cnt++;
+        }
 
         // 加点
         if (core.flags.enableAddPoint) {
             core.canvas.ui.textAlign = "left";
             core.fillText('ui', '加点', expOffset, 62 * i + 50, '#DDDDDD', '13px Verdana');
             core.fillText('ui', core.formatBigNumber(enemy.point), expOffset + 30, 62 * i + 50, '#DDDDDD', 'bold 13px Verdana');
+            expOffset = 255;
+            line_cnt++;
+        }
+        if (1) {
+            core.canvas.ui.textAlign = "left";
+            core.fillText('ui', '减防', expOffset, 62 * i + 50, '#DDDDDD', '13px Verdana');
+            core.fillText('ui', core.formatBigNumber(enemy.ddef||0), expOffset + 30, 62 * i + 50, '#DDDDDD', 'bold 13px Verdana');
             expOffset = 255;
             line_cnt++;
         }
