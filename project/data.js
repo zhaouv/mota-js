@@ -5,7 +5,11 @@ data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d =
 			"l1",
 			"l2",
 			"l3",
-			"l4"
+			"l4",
+			"l5",
+			"l6",
+			"l7",
+			"l8"
 		],
 		"images": [
 			"bg.jpg"
@@ -29,20 +33,12 @@ data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d =
 		"startLogoStyle": "color: black",
 		"levelChoose": [
 			[
-				"简单",
-				"Easy"
+				"探路难度",
+				""
 			],
 			[
-				"普通",
-				"Normal"
-			],
-			[
-				"困难",
-				"Hard"
-			],
-			[
-				"噩梦",
-				"Hell"
+				"正常难度",
+				"正常"
 			]
 		],
 		"statusLeftBackground": "url(project/images/ground.png) repeat",
@@ -207,7 +203,7 @@ data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d =
 		"enableNegativeDamage": false,
 		"hatredDecrease": true,
 		"betweenAttackCeil": false,
-		"startDirectly": true,
+		"startDirectly": false,
 		"canOpenBattleAnimate": false,
 		"showBattleAnimateConfirm": true,
 		"battleAnimate": true,

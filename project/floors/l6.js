@@ -1,7 +1,7 @@
-main.floors.l2=
+main.floors.l6=
 {
-"floorId": "l2",
-"title": "走廊2 - easy",
+"floorId": "l6",
+"title": "走廊2 - normal",
 "name": "0",
 "canFlyTo": true,
 "canUseQuickShop": true,
@@ -101,7 +101,7 @@ main.floors.l2=
 "afterOpenDoor": {},
 "cannotMove": {},
 "map": [
-    [ 92,224,  1,  0,  0,213,  1,  0,  0,215,  1,  0, 94],
+    [ 92,224,  1,  0,  0,218,  1,  0,  0,215,  1,  0, 94],
     [  1,  0,  0,216,  1,  0,  0,206,  1,  0,  0,214,  1],
     [ 92,204,  1,  0,  0,218,  1,  0,  0,215,  1,  0, 94],
     [  1,  0,  0,207,  1,  0,  0,226,  1,  0,  0,214,  1],

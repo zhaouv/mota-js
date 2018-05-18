@@ -1,7 +1,7 @@
-main.floors.l3=
+main.floors.l7=
 {
-"floorId": "l3",
-"title": "走廊3 - easy",
+"floorId": "l7",
+"title": "走廊3 - normal",
 "name": "0",
 "canFlyTo": true,
 "canUseQuickShop": true,

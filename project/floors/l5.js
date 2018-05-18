@@ -1,30 +1,14 @@
-main.floors.l1=
+main.floors.l5=
 {
-"floorId": "l1",
-"title": "走廊1 - easy",
+"floorId": "l5",
+"title": "走廊1 - normal",
 "name": "0",
 "canFlyTo": true,
 "canUseQuickShop": true,
 "cannotViewMap": false,
 "images": [],
 "item_ratio": 1,
-"firstArrive": [
-    {
-        "type": "if",
-        "condition": "flag:hard==2",
-        "true": [
-            {
-                "type": "changeFloor",
-                "floorId": "l5",
-                "loc": [
-                    0,
-                    6
-                ]
-            }
-        ],
-        "false": []
-    }
-],
+"firstArrive": [],
 "events": {
     "12,0": [
         {
@@ -82,7 +66,7 @@ main.floors.l1=
     [  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  0, 94],
     [  1,  1,  1,  1,  1,  1,  1,  1,  1,  0,  0,204,  1],
     [  1,  1,  1,  1,  1,  1,  1,  0,  0,204,  1,  0, 94],
-    [  1,  1,  1,  1,  1,  0,  0,220,  1,  0,  0,224,  1],
+    [  1,  1,  1,  1,  1,  0,  0,220,  1,  0,  0,207,  1],
     [  1,  1,  1,  0,  0,223,  1,  0,  0,212,  1,  0, 94],
     [129,  0,  0,247,  1,  0,  0,224,  1,  0,  0,207,  1],
     [  0,245,  1,  0,  0,228,  1,  0,  0,222,  1,  0, 94],
