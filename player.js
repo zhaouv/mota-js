@@ -144,7 +144,7 @@ NetworkPlayer.prototype.printtip=function(tip){
 }
 
 NetworkPlayer.prototype.initSocket=function(){
-    urlstr='https://h5mota.com:5050/pencil'
+    urlstr=':5050/pencil'
     if(this.gameview && this.gameview.urlstr)urlstr=this.gameview.urlstr;
     var socket = io(urlstr)
     this.socket=socket

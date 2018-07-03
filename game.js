@@ -179,13 +179,10 @@ gameview.listenGame=function(){
             {"type": "setBlock", "number":bid, "loc": [x,y]},
             {"type": "setValue", "name": "status:"+ss, "value": "status:"+ss+"+1"}
         ]) */
-        core.jumpBlock(x,y,xx,6,300,true,function() {
-            core.status.hero[ss]+=1
-            core.updateStatusBar()
-        })
-        setTimeout(function(){
-            core.setBlock(bid, x, y)
-        }, 10);
+        core.jumpBlock(x,y,xx,6,300,true,null)
+        core.status.hero[ss]+=1
+        core.updateStatusBar()
+        core.setBlock(bid, x, y)
     })
     game.changePlayer.push(function(playerId){
         core.insertAction([{"type": "tip", "text": playerId==0?"轮到先手":"轮到后手"}])
