@@ -83,6 +83,30 @@ main.floors.MT0=
                 ]
             },
             {
+                "type": "if",
+                "condition": "flag:hard==2 && core.getFlag('first2')==null",
+                "true": [
+                    "\b[up,1,12]中等AI搭建中, 欢迎AI选手发issue约战, \n@ https://github.com/zhaouv/pencil\n\n欢迎加群539113091 (h5魔塔交流群)\n\n网页版zhaouv.top/pencil也可与h5版对战"
+                ],
+                "false": []
+            },
+            {
+                "type": "if",
+                "condition": "flag:hard==4 && core.getFlag('first2')==null",
+                "true": [
+                    {
+                        "type": "showImage",
+                        "name": "pageversion.png",
+                        "loc": [
+                            16,
+                            16
+                        ]
+                    },
+                    "\b[up,1,12]网页版zhaouv.top/pencil有悔棋功能\n\n更方便研究游戏机制"
+                ],
+                "false": []
+            },
+            {
                 "type": "function",
                 "function": "function(){\ninitlocalgame()\n}"
             }

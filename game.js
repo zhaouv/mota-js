@@ -134,7 +134,8 @@ gameview.initTable=function(){
     var actions=[]
     for(var ii=1;ii<12;ii+=2){
         for(var jj=1;jj<12;jj+=2){
-            actions.push({"type": "setBlock", "number":300+~~(8*Math.random()), "loc": [ii,jj]})
+            // actions.push({"type": "setBlock", "number":[121,122,123,124,132][~~(5*Math.random())], "loc": [ii,jj]})
+            actions.push({"type": "setBlock", "number":[300,301,302,303,304,305,306,307][~~(8*Math.random())], "loc": [ii,jj]})
         }
     }
     core.insertAction(actions)
@@ -201,6 +202,11 @@ gameview.init=function(game,hasInited){
     gameview.gametip = 1
     gameview.x = {value:6}
     gameview.y = {value:6}
+
+    var ss = window.location.search
+    if(ss.indexOf('url=')!==-1){
+        gameview.urlstr=ss.split('url=')[1].split('&')[0]
+    }
 
     core.status.hero.hp=1000
     core.status.hero.atk=0
