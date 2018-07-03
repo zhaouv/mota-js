@@ -74,7 +74,10 @@ control.prototype.setRequestAnimationFrame = function () {
 
                 for (var a = 0; a < core.status.globalAnimateObjs.length; a++) {
                     var obj = core.status.globalAnimateObjs[a];
-                    obj.status = (obj.status+1)%(obj.event.animate||1);
+                    // obj.status = (obj.status+1)%(obj.event.animate||1);
+                    // change
+                    var up=obj.event.animate||1;
+                    obj.status = ~~(Math.random()*up);
                     core.drawBlock(obj, obj.status);
                 }
 

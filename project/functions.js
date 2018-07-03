@@ -1,8 +1,7 @@
 functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a = 
 {
-"events":{
-////// 游戏开始前的一些初始化操作 //////
-"initGame": function() {
+    "events": {
+        "initGame": function() {
 	// 游戏开始前的一些初始化操作
 
 	// 根据flag来对道具进行修改
@@ -28,29 +27,27 @@ functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 		core.material.items.shield5.cls = 'constants';
 	}
 },
-////// 不同难度分别设置初始属性 //////
-"setInitData":function (hard) {
+        "setInitData": function (hard) {
 	// 不同难度分别设置初始属性
-	if (hard=='Easy') { // 简单难度
+	if (hard=='网络对战') { // 简单难度
 		core.setFlag('hard', 1); // 可以用flag:hard来获得当前难度
 		// 可以在此设置一些初始福利，比如设置初始生命值可以调用：
 		// core.setStatus("hp", 10000);
 		// 赠送一把黄钥匙可以调用
 		// core.setItem("yellowKey", 1);
 	}
-	if (hard=='Normal') { // 普通难度
+	if (hard=='简单AI') { // 普通难度
 		core.setFlag('hard', 2); // 可以用flag:hard来获得当前难度
 	}
-	if (hard=='Hard') { // 困难难度
+	if (hard=='中等AI') { // 困难难度
 		core.setFlag('hard', 3); // 可以用flag:hard来获得当前难度
 	}
-	if (hard=='Hell') { // 噩梦难度
+	if (hard=='左右互搏') { // 噩梦难度
 		core.setFlag('hard', 4); // 可以用flag:hard来获得当前难度
 	}
 	core.events.afterLoadData();
 },
-////// 游戏获胜事件 //////
-"win" : function(reason) {
+        "win": function(reason) {
 	// 游戏获胜事件 
 	core.ui.closePanel();
 	var replaying = core.status.replay.replaying;
@@ -65,8 +62,7 @@ functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 		})
 	});
 },
-////// 游戏失败事件 //////
-"lose" : function(reason) {
+        "lose": function(reason) {
 	// 游戏失败事件
 	core.ui.closePanel();
 	var replaying = core.status.replay.replaying;
@@ -79,16 +75,14 @@ functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 		});
 	})
 },
-////// 转换楼层结束的事件 //////
-"afterChangeFloor" : function (floorId) {
+        "afterChangeFloor": function (floorId) {
 	// 转换楼层结束的事件
 	if (!core.hasFlag("visited_"+floorId)) {
 		core.insertAction(core.floors[floorId].firstArrive);
 		core.setFlag("visited_"+floorId, true);
 	}
 },
-////// 加点事件 //////
-"addPoint" : function (enemy) {
+        "addPoint": function (enemy) {
 	// 加点事件
 	var point = enemy.point;
 	if (!core.flags.enableAddPoint || !core.isset(point) || point<=0) return [];
@@ -110,8 +104,7 @@ functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 		}
 	];
 },
-////// 战斗结束后触发的事件 //////
-"afterBattle" : function(enemyId,x,y,callback) {
+        "afterBattle": function(enemyId,x,y,callback) {
 	// 战斗结束后触发的事件
 
 	var enemy = core.material.enemys[enemyId];
@@ -224,8 +217,7 @@ functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 	if (core.isset(callback)) callback();
 
 },
-////// 开一个门后触发的事件 //////
-"afterOpenDoor" : function(doorId,x,y,callback) {
+        "afterOpenDoor": function(doorId,x,y,callback) {
 	// 开一个门后触发的事件
 	
 	var todo = [];
@@ -248,13 +240,11 @@ functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 	}
 	if (core.isset(callback)) callback();
 },
-////// 改变亮灯之后，可以触发的事件 //////
-"afterChangeLight" : function(x,y) {
+        "afterChangeLight": function(x,y) {
 	// 改变亮灯之后，可以触发的事件
 
 },
-////// 推箱子后的事件 //////
-"afterPushBox" : function () {
+        "afterPushBox": function () {
 	// 推箱子后的事件
 
 	var noBoxLeft = function () {
@@ -277,8 +267,7 @@ functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 		*/
 	}
 },
-////// 使用炸弹/圣锤后的事件 //////
-"afterUseBomb" : function () {
+        "afterUseBomb": function () {
 	// 使用炸弹/圣锤后的事件
 
 	// 这是一个使用炸弹也能开门的例子
@@ -293,22 +282,19 @@ functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 	*/
 
 },
-////// 即将存档前可以执行的操作 //////
-"beforeSaveData" : function(data) {
+        "beforeSaveData": function(data) {
 	// 即将存档前可以执行的操作
 
 },
-////// 读档事件后，载入事件前，可以执行的操作 //////
-"afterLoadData" : function(data) {
+        "afterLoadData": function(data) {
 	// 读档事件后，载入事件前，可以执行的操作
 	// 可以在这里对怪物数据进行动态修改，详见文档——事件——怪物数据的动态修改
 
 
 }
-},
-"ui":{
-////// 绘制“关于”界面 //////
-"drawAbout" : function() {
+    },
+    "ui": {
+        "drawAbout": function() {
 	// 绘制“关于”界面
 	if (!core.isPlaying()) {
 		core.status.event = {'id': null, 'data': null};
@@ -329,15 +315,15 @@ functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 
 	// 名称
 	core.canvas.ui.textAlign = "left";
-	core.fillText('ui', "HTML5 魔塔样板", text_start, top+35, "#FFD700", "bold 22px Verdana");
+	core.fillText('ui', "抓伯伯(对战版)", text_start, top+35, "#FFD700", "bold 22px Verdana");
 	core.fillText('ui', "版本： "+core.firstData.version, text_start, top + 80, "#FFFFFF", "bold 17px Verdana");
-	core.fillText('ui', "作者： 艾之葵", text_start, top + 112);
+	core.fillText('ui', "作者： zhaouv", text_start, top + 112);
 	core.fillText('ui', 'HTML5魔塔交流群：539113091', text_start, top+112+32);
 	// TODO: 写自己的“关于”页面，每次增加32像素即可
 }
-},
-"plugins": {
-"plugin": function () {
+    },
+    "plugins": {
+        "plugin": function () {
 	////// 插件编写，可以在这里写自己额外需要执行的脚本 //////
 
 	// 在这里写的代码，在所有模块加载完毕后，游戏开始前会被执行
@@ -389,5 +375,5 @@ functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 	// 可以在任何地方（如afterXXX或自定义脚本事件）调用函数，方法为  core.plugin.xxx();
 
 }
-}
+    }
 }
