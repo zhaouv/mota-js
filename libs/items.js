@@ -23,7 +23,9 @@ items.prototype.getItemEffect = function(itemId, itemNum) {
     // 消耗品
     if (itemCls === 'items') {
         var ratio = parseInt(core.floors[core.status.floorId].item_ratio) || 1;
+        var curr_hp = core.status.hero.hp;
         if (itemId in this.itemEffect)eval(this.itemEffect[itemId]);
+        core.status.hero.statistics.hp += core.status.hero.hp - curr_hp;
     }
     else {
         core.addItem(itemId, itemNum);
@@ -32,9 +34,11 @@ items.prototype.getItemEffect = function(itemId, itemNum) {
 
 ////// “即捡即用类”道具的文字提示 //////
 items.prototype.getItemEffectTip = function(itemId) {
-    var ratio = parseInt(core.floors[core.status.floorId].item_ratio) || 1;
-    if (itemId in this.itemEffectTip && (!this.items[itemId].isEquipment || !core.flags.equipment)) {
-        return eval(this.itemEffectTip[itemId]);
+    var itemCls = core.material.items[itemId].cls;
+    // 消耗品
+    if (itemCls === 'items') {
+        var ratio = parseInt(core.floors[core.status.floorId].item_ratio) || 1;
+        if (itemId in this.itemEffectTip) return eval(this.itemEffectTip[itemId])||"";
     }
     return "";
 }
@@ -119,6 +123,7 @@ items.prototype.removeItem = function (itemId) {
 
 ////// 增加某个物品的个数 //////
 items.prototype.addItem = function (itemId, itemNum) {
+    itemNum=itemNum||1;
     var itemData = core.material.items[itemId];
     var itemCls = itemData.cls;
     if (itemCls == 'items') return;
@@ -130,5 +135,8 @@ items.prototype.addItem = function (itemId, itemNum) {
         core.status.hero.items[itemCls][itemId] = 0;
     }
     core.status.hero.items[itemCls][itemId] += itemNum;
+    // 永久道具只能有一个
+    if (itemCls == 'constants' && core.status.hero.items[itemCls][itemId]>1)
+        core.status.hero.items[itemCls][itemId] = 1;
 }
 

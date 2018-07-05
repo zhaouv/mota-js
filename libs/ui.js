@@ -20,6 +20,7 @@ ui.prototype.clearMap = function (map, x, y, width, height) {
         for (var m in core.canvas) {
             core.canvas[m].clearRect(0, 0, 416, 416);
         }
+        core.dom.gif.innerHTML = "";
     }
     else {
         core.canvas[map].clearRect(x||0, y||0, width||416, height||416);
@@ -667,8 +668,8 @@ ui.prototype.drawChoices = function(content, choices) {
 
     if (choices.length>0) {
         if (!core.isset(core.status.event.selection)) core.status.event.selection=0;
-        if (core.status.event.selection<0) core.status.event.selection=0;
-        if (core.status.event.selection>=choices.length) core.status.event.selection=choices.length-1;
+        while (core.status.event.selection<0) core.status.event.selection+=choices.length;
+        while (core.status.event.selection>=choices.length) core.status.event.selection-=choices.length;
         var len = core.canvas.ui.measureText(core.replaceText(choices[core.status.event.selection].text || choices[core.status.event.selection])).width;
         core.strokeRect('ui', 208-len/2-5, choice_top + 32 * core.status.event.selection - 20, len+10, 28, "#FFD700", 2);
     }
@@ -734,7 +735,9 @@ ui.prototype.drawSwitchs = function() {
         "背景音效："+(core.musicStatus.soundStatus ? "[ON]" : "[OFF]"),
         "战斗动画： "+(core.flags.battleAnimate ? "[ON]" : "[OFF]"),
         "怪物显伤： "+(core.flags.displayEnemyDamage ? "[ON]" : "[OFF]"),
+        "临界显伤： "+(core.flags.displayCritical ? "[ON]" : "[OFF]"),
         "领域显伤： "+(core.flags.displayExtraDamage ? "[ON]" : "[OFF]"),
+        "单击瞬移： "+(core.status.automaticRoute.clickMoveDirectly ? "[ON]" : "[OFF]"),
         "下载离线版本",
         "返回主菜单"
     ];
@@ -746,7 +749,7 @@ ui.prototype.drawSettings = function () {
     core.status.event.id = 'settings';
 
     this.drawChoices(null, [
-        "系统设置", "快捷商店", "浏览地图", "同步存档", "重新开始", "数据统计", "操作帮助", "关于本塔", "返回游戏"
+        "系统设置", "快捷商店", "浏览地图", "同步存档", "返回标题", "数据统计", "操作帮助", "关于本塔", "返回游戏"
     ]);
 }
 
@@ -787,7 +790,7 @@ ui.prototype.drawBattleAnimate = function(monsterId, callback) {
 
         // 如果有神圣盾免疫吸血等可以在这里写
 
-        vampireDamage = parseInt(vampireDamage);
+        vampireDamage = Math.floor(vampireDamage);
         // 加到自身
         if (monster.add) // 如果加到自身
             mon_hp += vampireDamage;
@@ -815,8 +818,8 @@ ui.prototype.drawBattleAnimate = function(monsterId, callback) {
     if (core.enemys.hasSpecial(mon_special, 6)) turns=1+(monster.n||4);
 
     // 初始伤害
-    if (core.enemys.hasSpecial(mon_special, 7)) initDamage+=parseInt(core.values.breakArmor * hero_def);
-    if (core.enemys.hasSpecial(mon_special, 9)) initDamage+=parseInt(core.values.purify * hero_mdef);
+    if (core.enemys.hasSpecial(mon_special, 7)) initDamage+=Math.floor(core.values.breakArmor * hero_def);
+    if (core.enemys.hasSpecial(mon_special, 9)) initDamage+=Math.floor(core.values.purify * hero_mdef);
     hero_mdef-=initDamage;
     if (hero_mdef<0) {
         hero_hp+=hero_mdef;
@@ -979,7 +982,7 @@ ui.prototype.drawBattleAnimate = function(monsterId, callback) {
     core.fillText("ui", "S", right_start-8, 208+15, "#FFFFFF", "italic bold 40px Verdana");
 
     var battleInterval = setInterval(function() {
-        core.playSound("attack.ogg");
+        core.playSound("attack.mp3");
 
         if (turn==0) {
             // 勇士攻击
@@ -1001,7 +1004,7 @@ ui.prototype.drawBattleAnimate = function(monsterId, callback) {
 
             // 反击
             if (core.enemys.hasSpecial(mon_special, 8)) {
-                hero_mdef -= parseInt(core.values.counterAttack * hero_atk);
+                hero_mdef -= Math.floor(core.values.counterAttack * hero_atk);
 
                 if (hero_mdef<0) {
                     hero_hp+=hero_mdef;
@@ -1109,7 +1112,7 @@ ui.prototype.drawSyncSave = function () {
 ui.prototype.drawSyncSelect = function () {
     core.status.event.id = 'syncSelect';
     this.drawChoices(null, [
-        "同步本地所有存档", "只同步最新单存档", "返回上级菜单"
+        "同步本地所有存档", "只同步当前单存档", "返回上级菜单"
     ]);
 }
 
@@ -1117,7 +1120,7 @@ ui.prototype.drawSyncSelect = function () {
 ui.prototype.drawLocalSaveSelect = function () {
     core.status.event.id = 'localSaveSelect';
     this.drawChoices(null, [
-        "下载所有存档", "只下载最新单存档", "返回上级菜单"
+        "下载所有存档", "只下载当前单存档", "返回上级菜单"
     ]);
 }
 
@@ -1126,6 +1129,14 @@ ui.prototype.drawStorageRemove = function () {
     core.status.event.id = 'storageRemove';
     this.drawChoices(null, [
         "清空全部塔的存档", "只清空当前塔的存档", "返回上级菜单"
+    ]);
+}
+
+ui.prototype.drawReplay = function () {
+    core.lockControl();
+    core.status.event.id = 'replay';
+    this.drawChoices(null, [
+        "从头回放录像", "从存档开始回放", "返回游戏"
     ]);
 }
 
@@ -1247,16 +1258,16 @@ ui.prototype.drawBook = function (index) {
         }
         core.canvas.ui.textAlign = "left";
         core.fillText('ui', '生命', 165, 62 * i + 32, '#DDDDDD', '13px Verdana');
-        core.fillText('ui', enemy.hp, 195, 62 * i + 32, '#DDDDDD', 'bold 13px Verdana');
+        core.fillText('ui', core.formatBigNumber(enemy.hp), 195, 62 * i + 32, '#DDDDDD', 'bold 13px Verdana');
         core.fillText('ui', '攻击', 255, 62 * i + 32, '#DDDDDD', '13px Verdana');
-        core.fillText('ui', enemy.atk, 285, 62 * i + 32, '#DDDDDD', 'bold 13px Verdana');
+        core.fillText('ui', core.formatBigNumber(enemy.atk), 285, 62 * i + 32, '#DDDDDD', 'bold 13px Verdana');
         core.fillText('ui', '防御', 335, 62 * i + 32, '#DDDDDD', '13px Verdana');
-        core.fillText('ui', enemy.def, 365, 62 * i + 32, '#DDDDDD', 'bold 13px Verdana');
+        core.fillText('ui', core.formatBigNumber(enemy.def), 365, 62 * i + 32, '#DDDDDD', 'bold 13px Verdana');
 
         var expOffset = 165, line_cnt=0;
         if (core.flags.enableMoney) {
             core.fillText('ui', '金币', 165, 62 * i + 50, '#DDDDDD', '13px Verdana');
-            core.fillText('ui', enemy.money, 195, 62 * i + 50, '#DDDDDD', 'bold 13px Verdana');
+            core.fillText('ui', core.formatBigNumber(enemy.money), 195, 62 * i + 50, '#DDDDDD', 'bold 13px Verdana');
             expOffset = 255;
             line_cnt++;
         }
@@ -1265,7 +1276,7 @@ ui.prototype.drawBook = function (index) {
         if (core.flags.enableAddPoint) {
             core.canvas.ui.textAlign = "left";
             core.fillText('ui', '加点', expOffset, 62 * i + 50, '#DDDDDD', '13px Verdana');
-            core.fillText('ui', enemy.point, expOffset + 30, 62 * i + 50, '#DDDDDD', 'bold 13px Verdana');
+            core.fillText('ui', core.formatBigNumber(enemy.point), expOffset + 30, 62 * i + 50, '#DDDDDD', 'bold 13px Verdana');
             expOffset = 255;
             line_cnt++;
         }
@@ -1273,7 +1284,7 @@ ui.prototype.drawBook = function (index) {
         if (core.flags.enableExperience && line_cnt<2) {
             core.canvas.ui.textAlign = "left";
             core.fillText('ui', '经验', expOffset, 62 * i + 50, '#DDDDDD', '13px Verdana');
-            core.fillText('ui', enemy.experience, expOffset + 30, 62 * i + 50, '#DDDDDD', 'bold 13px Verdana');
+            core.fillText('ui', core.formatBigNumber(enemy.experience), expOffset + 30, 62 * i + 50, '#DDDDDD', 'bold 13px Verdana');
             line_cnt++;
         }
 
@@ -1281,31 +1292,35 @@ ui.prototype.drawBook = function (index) {
         if (line_cnt==1) damageOffset=326;
         if (line_cnt==2) damageOffset=361;
 
-        /*
-        var damageOffet = 281;
-        if (core.flags.enableMoney && core.flags.enableExperience)
-            damageOffet = 361;
-        else if (core.flags.enableMoney || core.flags.enableExperience)
-            damageOffet = 326;
-            */
-
-
         core.canvas.ui.textAlign = "center";
         var damage = enemy.damage;
+
         var color = '#FFFF00';
-        if (damage >= core.status.hero.hp) color = '#FF0000';
-        if (damage <= 0) color = '#00FF00';
-        if (damage >= 999999999) damage = '无法战斗';
+        if (damage == null) {
+            damage = '无法战斗';
+            color = '#FF0000';
+        }
+        else {
+            if (damage >= core.status.hero.hp) color = '#FF0000';
+            if (damage<=0) color = '#00FF00';
+
+            damage = core.formatBigNumber(damage);
+            if (core.enemys.hasSpecial(core.material.enemys[enemy.id], 19))
+                damage += "+";
+            if (core.material.enemys[enemy.id].notBomb)
+                damage += "[b]";
+
+        }
         core.fillText('ui', damage, damageOffset, 62 * i + 50, color, 'bold 13px Verdana');
 
         core.canvas.ui.textAlign = "left";
 
         core.fillText('ui', '临界', 165, 62 * i + 68, '#DDDDDD', '13px Verdana');
-        core.fillText('ui', enemy.critical, 195, 62 * i + 68, '#DDDDDD', 'bold 13px Verdana');
+        core.fillText('ui', core.formatBigNumber(enemy.critical), 195, 62 * i + 68, '#DDDDDD', 'bold 13px Verdana');
         core.fillText('ui', '减伤', 255, 62 * i + 68, '#DDDDDD', '13px Verdana');
-        core.fillText('ui', enemy.criticalDamage, 285, 62 * i + 68, '#DDDDDD', 'bold 13px Verdana');
+        core.fillText('ui', core.formatBigNumber(enemy.criticalDamage), 285, 62 * i + 68, '#DDDDDD', 'bold 13px Verdana');
         core.fillText('ui', '1防', 335, 62 * i + 68, '#DDDDDD', '13px Verdana');
-        core.fillText('ui', enemy.defDamage, 365, 62 * i + 68, '#DDDDDD', 'bold 13px Verdana');
+        core.fillText('ui', core.formatBigNumber(enemy.defDamage), 365, 62 * i + 68, '#DDDDDD', 'bold 13px Verdana');
 
         if (index == start+i) {
             core.strokeRect('ui', 10, 62 * i + 13, 416-10*2,  62, '#FFD700');
@@ -1325,12 +1340,19 @@ ui.prototype.drawBookDetail = function (index) {
 
     var enemy = enemys[index];
     var enemyId=enemy.id;
-    var hints=core.enemys.getSpecialHint(core.enemys.getEnemys(enemyId));
+    var hints=core.enemys.getSpecialHint(core.material.enemys[enemyId]);
 
-    if (hints.length==0) {
-        core.drawTip("该怪物无特殊属性！");
-        return;
-    }
+
+    if (hints.length==0)
+        hints.push("该怪物无特殊属性。");
+
+    hints.push("");
+    var criticals = core.enemys.nextCriticals(enemyId, 10).map(function (v) {
+        return v[0]+":"+v[1];
+    });
+    while (criticals[0]=='0:0') criticals.shift();
+    hints.push("临界表："+JSON.stringify(criticals))
+
     var content=hints.join("\n");
 
     core.status.event.id = 'book-detail';
@@ -1445,19 +1467,27 @@ ui.prototype.drawToolbox = function(index) {
 
     if (!core.isset(index)) {
         if (tools.length>0) index=0;
-        else if (constants.length>0) index=100;
+        else if (constants.length>0) index=1000;
         else index=0;
     }
 
     core.status.event.selection=index;
 
     var selectId;
-    if (index<100)
+    if (index<1000) {
+        if (index>=tools.length) index=Math.max(0, tools.length-1);
         selectId = tools[index];
-    else
-        selectId = constants[index-100];
+    }
+    else {
+        if (index-1000>=constants.length) index=1000+Math.max(0, constants.length-1);
+        selectId = constants[index-1000];
+    }
+
+    var page = parseInt((index%1000)/12)+1;
+    var totalPage = parseInt(Math.max(tools.length, constants.length)/12)+1;
 
     if (!core.hasItem(selectId)) selectId=null;
+
     core.status.event.data=selectId;
 
     core.clearMap('ui', 0, 0, 416, 416);
@@ -1469,87 +1499,103 @@ ui.prototype.drawToolbox = function(index) {
     core.canvas.ui.lineWidth = 2;
     core.canvas.ui.strokeWidth = 2;
 
+    var ydelta = 20;
+
     // 画线
     core.canvas.ui.beginPath();
-    core.canvas.ui.moveTo(0, 130);
-    core.canvas.ui.lineTo(416, 130);
+    core.canvas.ui.moveTo(0, 130-ydelta);
+    core.canvas.ui.lineTo(416, 130-ydelta);
     core.canvas.ui.stroke();
     core.canvas.ui.beginPath();
-    core.canvas.ui.moveTo(0,129);
-    core.canvas.ui.lineTo(0,105);
-    core.canvas.ui.lineTo(72,105);
-    core.canvas.ui.lineTo(102,129);
+    core.canvas.ui.moveTo(416,129-ydelta);
+    core.canvas.ui.lineTo(416,105-ydelta);
+    core.canvas.ui.lineTo(416-72,105-ydelta);
+    core.canvas.ui.lineTo(416-102,129-ydelta);
     core.canvas.ui.fill();
 
     core.canvas.ui.beginPath();
-    core.canvas.ui.moveTo(0, 290);
-    core.canvas.ui.lineTo(416, 290);
+    core.canvas.ui.moveTo(0, 290-ydelta);
+    core.canvas.ui.lineTo(416, 290-ydelta);
     core.canvas.ui.stroke();
     core.canvas.ui.beginPath();
-    core.canvas.ui.moveTo(0,289);
-    core.canvas.ui.lineTo(0,265);
-    core.canvas.ui.lineTo(72,265);
-    core.canvas.ui.lineTo(102,289);
+    core.canvas.ui.moveTo(416,289-ydelta);
+    core.canvas.ui.lineTo(416,265-ydelta);
+    core.canvas.ui.lineTo(416-72,265-ydelta);
+    core.canvas.ui.lineTo(416-102,289-ydelta);
     core.canvas.ui.fill();
 
     // 文字
-    core.canvas.ui.textAlign = 'left';
-    core.fillText('ui', "消耗道具", 5, 124, '#333333', "bold 16px Verdana");
-    core.fillText('ui', "永久道具", 5, 284);
+    core.canvas.ui.textAlign = 'right';
+    core.fillText('ui', "消耗道具", 411, 124-ydelta, '#333333', "bold 16px Verdana");
+    core.fillText('ui', "永久道具", 411, 284-ydelta);
 
+    core.canvas.ui.textAlign = 'left';
     // 描述
     if (core.isset(selectId)) {
         var item=core.material.items[selectId];
         core.fillText('ui', item.name, 10, 32, '#FFD700', "bold 20px Verdana")
-        core.fillText('ui', item.text, 10, 62, '#FFFFFF', '17px Verdana');
-        core.fillText('ui', '<继续点击该道具即可进行使用>', 10, 89, '#CCCCCC', '14px Verdana');
+
+        var text = item.text||"该道具暂无描述。";
+        var lines = core.splitLines('ui', text, 406, '17px Verdana');
+
+        core.fillText('ui', lines[0], 10, 62, '#FFFFFF', '17px Verdana');
+
+        if (lines.length==1) {
+            core.fillText('ui', '<继续点击该道具即可进行使用>', 10, 89, '#CCCCCC', '14px Verdana');
+        }
+        else {
+            var leftText = text.substring(lines[0].length);
+            core.fillText('ui', leftText, 10, 89, '#FFFFFF', '17px Verdana');
+        }
     }
 
     core.canvas.ui.textAlign = 'right';
     var images = core.material.images.items;
     // 消耗道具
 
-    for (var i=0;i<tools.length;i++) {
-        var tool=tools[i];
+    for (var i=0;i<12;i++) {
+        var tool=tools[12*(page-1)+i];
+        if (!core.isset(tool)) break;
         var icon=core.material.icons.items[tool];
         if (i<6) {
-            core.canvas.ui.drawImage(images, 0, icon*32, 32, 32, 16*(4*i+1)+5, 144+5, 32, 32)
+            core.canvas.ui.drawImage(images, 0, icon*32, 32, 32, 16*(4*i+1)+5, 144+5-ydelta, 32, 32)
             // 个数
-            core.fillText('ui', core.itemCount(tool), 16*(4*i+1)+40, 144+38, '#FFFFFF', "bold 14px Verdana");
+            core.fillText('ui', core.itemCount(tool), 16*(4*i+1)+40, 144+38-ydelta, '#FFFFFF', "bold 14px Verdana");
             if (selectId == tool)
-                core.strokeRect('ui', 16*(4*i+1)+1, 144+1, 40, 40, '#FFD700');
+                core.strokeRect('ui', 16*(4*i+1)+1, 144+1-ydelta, 40, 40, '#FFD700');
         }
         else {
-            core.canvas.ui.drawImage(images, 0, icon*32, 32, 32, 16*(4*(i-6)+1)+5, 144+64+5, 32, 32)
+            core.canvas.ui.drawImage(images, 0, icon*32, 32, 32, 16*(4*(i-6)+1)+5, 144+64+5-ydelta, 32, 32)
             // 个数
-            core.fillText('ui', core.itemCount(tool), 16*(4*(i-6)+1)+40, 144+64+38, '#FFFFFF', "bold 14px Verdana");
+            core.fillText('ui', core.itemCount(tool), 16*(4*(i-6)+1)+40, 144+64+38-ydelta, '#FFFFFF', "bold 14px Verdana");
             if (selectId == tool)
-                core.strokeRect('ui', 16*(4*(i-6)+1)+1, 144+64+1, 40, 40, '#FFD700');
+                core.strokeRect('ui', 16*(4*(i-6)+1)+1, 144+64+1-ydelta, 40, 40, '#FFD700');
 
         }
     }
 
     // 永久道具
-
-    for (var i=0;i<constants.length;i++) {
-        var constant=constants[i];
+    for (var i=0;i<12;i++) {
+        var constant=constants[12*(page-1)+i];
+        if (!core.isset(constant)) break;
         var icon=core.material.icons.items[constant];
         if (i<6) {
-            core.canvas.ui.drawImage(images, 0, icon*32, 32, 32, 16*(4*i+1)+5, 304+5, 32, 32)
-            // core.fillText('ui', core.itemCount(constant), 16*(4*i+1)+40, 304+38, '#FFFFFF', "bold 16px Verdana")
+            core.canvas.ui.drawImage(images, 0, icon*32, 32, 32, 16*(4*i+1)+5, 304+5-ydelta, 32, 32)
+
             if (selectId == constant)
-                core.strokeRect('ui', 16*(4*i+1)+1, 304+1, 40, 40, '#FFD700');
+                core.strokeRect('ui', 16*(4*i+1)+1, 304+1-ydelta, 40, 40, '#FFD700');
         }
         else {
-            core.canvas.ui.drawImage(images, 0, icon*32, 32, 32, 16*(4*(i-6)+1)+5, 304+64+5, 32, 32)
+            core.canvas.ui.drawImage(images, 0, icon*32, 32, 32, 16*(4*(i-6)+1)+5, 304+64+5-ydelta, 32, 32)
             if (selectId == constant)
-                core.strokeRect('ui', 16*(4*(i-6)+1)+1, 304+64+1, 40, 40, '#FFD700');
+                core.strokeRect('ui', 16*(4*(i-6)+1)+1, 304+64+1-ydelta, 40, 40, '#FFD700');
         }
     }
 
     // 退出
+    this.drawPagination(page, totalPage);
     core.canvas.ui.textAlign = 'center';
-    core.fillText('ui', '删除道具', 370, 32,'#DDDDDD', 'bold 15px Verdana');
+    // core.fillText('ui', '删除道具', 370, 32,'#DDDDDD', 'bold 15px Verdana');
     core.fillText('ui', '返回游戏', 370, 403,'#DDDDDD', 'bold 15px Verdana');
 }
 
@@ -1559,7 +1605,8 @@ ui.prototype.drawSLPanel = function(index) {
     if (index<0) index=0;
 
     var page = parseInt(index/10), offset=index%10;
-    if (page>=30) page=29;
+    var max_page = main.savePages || 30;
+    if (page>=max_page) page=max_page - 1;
     if (offset>5) offset=5;
     index=10*page+offset;
 
@@ -1573,15 +1620,18 @@ ui.prototype.drawSLPanel = function(index) {
 
     var u=416/6, size=118;
 
-    var name=core.status.event.id=='save'?"存档":"读档";
+    var strokeColor = '#FFD700';
+    if (core.status.event.selection) strokeColor = '#FF6A6A';
+
+    var name=core.status.event.id=='save'?"存档":core.status.event.id=='load'?"读档":core.status.event.id=='replayLoad'?"回放":"";
     for (var i=0;i<6;i++) {
         var id=5*page+i;
         var data=core.getLocalStorage(i==0?"autoSave":"save"+id, null);
         if (i<3) {
             core.fillText('ui', i==0?"自动存档":name+id, (2*i+1)*u, 35, '#FFFFFF', "bold 17px Verdana");
-            core.strokeRect('ui', (2*i+1)*u-size/2, 50, size, size, i==offset?'#FFD700':'#FFFFFF', i==offset?6:2);
+            core.strokeRect('ui', (2*i+1)*u-size/2, 50, size, size, i==offset?strokeColor:'#FFFFFF', i==offset?6:2);
             if (core.isset(data) && core.isset(data.floorId)) {
-                this.drawThumbnail(data.floorId, 'ui', core.maps.load(data.maps, data.floorId).blocks, (2*i+1)*u-size/2, 50, size, data.hero.loc);
+                this.drawThumbnail(data.floorId, 'ui', core.maps.load(data.maps, data.floorId).blocks, (2*i+1)*u-size/2, 50, size, data.hero.loc, data.hero.flags.heroIcon||"hero.png");
                 core.fillText('ui', core.formatDate(new Date(data.time)), (2*i+1)*u, 65+size, '#FFFFFF', '10px Verdana');
             }
             else {
@@ -1591,9 +1641,9 @@ ui.prototype.drawSLPanel = function(index) {
         }
         else {
             core.fillText('ui', name+id, (2*i-5)*u, 230, '#FFFFFF', "bold 17px Verdana");
-            core.strokeRect('ui', (2*i-5)*u-size/2, 245, size, size, i==offset?'#FFD700':'#FFFFFF', i==offset?6:2);
+            core.strokeRect('ui', (2*i-5)*u-size/2, 245, size, size, i==offset?strokeColor:'#FFFFFF', i==offset?6:2);
             if (core.isset(data) && core.isset(data.floorId)) {
-                this.drawThumbnail(data.floorId, 'ui', core.maps.load(data.maps, data.floorId).blocks, (2*i-5)*u-size/2, 245, size, data.hero.loc);
+                this.drawThumbnail(data.floorId, 'ui', core.maps.load(data.maps, data.floorId).blocks, (2*i-5)*u-size/2, 245, size, data.hero.loc, data.hero.flags.heroIcon||"hero.png");
                 core.fillText('ui', core.formatDate(new Date(data.time)), (2*i-5)*u, 260+size, '#FFFFFF', '10px Verdana');
             }
             else {
@@ -1602,11 +1652,16 @@ ui.prototype.drawSLPanel = function(index) {
             }
         }
     }
-    this.drawPagination(page+1, 30);
+    this.drawPagination(page+1, max_page);
+
+    if (core.status.event.selection)
+        core.setFillStyle('ui', '#FF6A6A');
+    core.fillText('ui', '删除模式', 48, 403);
+
 }
 
 ////// 绘制一个缩略图 //////
-ui.prototype.drawThumbnail = function(floorId, canvas, blocks, x, y, size, heroLoc) {
+ui.prototype.drawThumbnail = function(floorId, canvas, blocks, x, y, size, heroLoc, heroIcon) {
     core.clearMap(canvas, x, y, size, size);
     var groundId = core.floors[floorId].defaultGround || "ground";
     var blockIcon = core.material.icons.terrains[groundId];
@@ -1655,10 +1710,12 @@ ui.prototype.drawThumbnail = function(floorId, canvas, blocks, x, y, size, heroL
     }
 
     if (core.isset(heroLoc)) {
-        var heroIcon = core.material.icons.hero[heroLoc.direction];
-        var height = core.material.icons.hero.height;
+        if (!core.isset(core.material.images.images[heroIcon]))
+            heroIcon = "hero.png";
+        var icon = core.material.icons.hero[heroLoc.direction];
+        var height = core.material.images.images[heroIcon].height/4;
         var realHeight = persize*height/32;
-        core.canvas[canvas].drawImage(core.material.images.hero, heroIcon.stop * 32, heroIcon.loc * height, 32, height, x+persize*heroLoc.x, y+persize*heroLoc.y+persize-realHeight, persize, realHeight);
+        core.canvas[canvas].drawImage(core.material.images.images[heroIcon], icon.stop * 32, icon.loc * height, 32, height, x+persize*heroLoc.x, y+persize*heroLoc.y+persize-realHeight, persize, realHeight);
     }
 
     images.forEach(function (t) {
@@ -1711,6 +1768,168 @@ ui.prototype.drawKeyBoard = function () {
     core.fillText("ui", "返回游戏", 416-80, offset-3, '#FFFFFF', 'bold 15px Verdana');
 }
 
+////// 绘制“数据统计”界面 //////
+ui.prototype.drawStatistics = function () {
+
+    // 数据统计要统计如下方面：
+    // 1. 当前全塔剩余下的怪物数量，总金币数，总经验数，总加点数
+    // 2. 当前全塔剩余的黄蓝红铁门数量，和对应的钥匙数量
+    // 3. 当前全塔剩余的三种宝石数量，血瓶数量，装备数量；总共增加的攻防生命值
+    // 4. 当前层的上述信息
+    // 5. 当前已走的步数；瞬间移动的步数，瞬间移动的次数（和少走的步数）；游戏时长
+    // 6. 当前已恢复的生命值；当前总伤害、战斗伤害、阻激夹域血网伤害、中毒伤害。
+
+
+    var total = {
+        'monster': {
+            'count': 0, 'money': 0, 'experience': 0, 'point': 0,
+        },
+        'count': {
+            'yellowDoor': 0, 'blueDoor': 0, 'redDoor': 0, 'steelDoor': 0,
+            'yellowKey': 0, 'blueKey': 0, 'redKey': 0, 'steelKey': 0,
+            'redJewel': 0, 'blueJewel': 0, 'greenJewel': 0, 'yellowJewel': 0,
+            'redPotion': 0, 'bluePotion': 0, 'greenPotion': 0, 'yellowPotion': 0, 'superPotion': 0,
+            'pickaxe': 0, 'bomb': 0, 'centerFly': 0,
+            'poisonWine': 0, 'weakWine': 0, 'curseWine': 0, 'superWine': 0,
+            'sword1': 0, 'sword2': 0, 'sword3': 0, 'sword4': 0, 'sword5': 0,
+            'shield1': 0, 'shield2': 0, 'shield3': 0, 'shield4': 0, 'shield5': 0,
+        },
+        'add': {
+            'hp': 0, 'atk': 0, 'def': 0, 'mdef': 0
+        }
+    };
+    var current = core.clone(total);
+
+    core.floorIds.forEach(function (floorId) {
+        var floor=core.floors[floorId];
+        var blocks=core.status.maps[floorId].blocks;
+        // 隐藏层不给看
+        if (floor.cannotViewMap && floorId!=core.status.floorId) return;
+
+        blocks.forEach(function (block) {
+            if (!core.isset(block.event) || (core.isset(block.enable) && !block.enable))
+                return;
+            var event = block.event;
+            if (event.cls.indexOf("enemy")==0) {
+                var enemyId = event.id, enemy = core.material.enemys[enemyId];
+                total.monster.money+=enemy.money||0;
+                total.monster.experience+=enemy.experience||0;
+                total.monster.point+=enemy.point||0;
+                total.monster.count++;
+                if (floorId==core.status.floorId) {
+                    current.monster.money+=enemy.money||0;
+                    current.monster.experience+=enemy.experience||0;
+                    current.monster.point+=enemy.point||0;
+                    current.monster.count++;
+                }
+            }
+            else {
+                var id = event.id;
+
+                var temp = core.clone(core.status.hero);
+
+                if (core.isset(total.count[id])) {
+                    var hp=0, atk=0, def=0, mdef=0;
+
+                    if (core.isset(core.material.items[id]) && core.material.items[id].cls=='items' && id!='superPotion') {
+                        var ratio = floor.item_ratio||1;
+                        if (core.isset(core.items.itemEffect[id])) {
+                            eval(core.items.itemEffect[id]);
+                        }
+                        hp = core.status.hero.hp - temp.hp;
+                        atk = core.status.hero.atk - temp.atk;
+                        def = core.status.hero.def - temp.def;
+                        mdef = core.status.hero.mdef - temp.mdef;
+                    }
+                    else {
+                        if (id.indexOf('sword')==0 && core.isset(core.values[id])) {
+                            var x = core.values[id];
+                            if (typeof x == 'number') x = {'atk': x};
+                            atk += x.atk||0;
+                            def += x.def||0;
+                            mdef += x.mdef||0;
+                        }
+                        if (id.indexOf('shield')==0 && core.isset(core.values[id])) {
+                            var x = core.values[id];
+                            if (typeof x == 'number') x = {'def': x};
+                            atk += x.atk||0;
+                            def += x.def||0;
+                            mdef += x.mdef||0;
+                        }
+                    }
+                    core.status.hero = core.clone(temp);
+                    total.count[id]++;
+                    total.add.hp+=hp;
+                    total.add.atk+=atk;
+                    total.add.def+=def;
+                    total.add.mdef+=mdef;
+                    if (floorId==core.status.floorId) {
+                        current.count[id]++;
+                        current.add.hp+=hp;
+                        current.add.atk+=atk;
+                        current.add.def+=def;
+                        current.add.mdef+=mdef;
+                    }
+                }
+            }
+        })
+    })
+
+    var getText = function (type, data) {
+        var text = type+"地图中：\n";
+        text += "共有怪物"+data.monster.count+"个";
+        if (core.flags.enableMoney) text+="，总金币数"+data.monster.money;
+        if (core.flags.enableExperience) text+="，总经验数"+data.monster.experience;
+        if (core.flags.enableAddPoint) text+="，总加点数"+data.monster.point;
+        text+="。\n\n";
+        Object.keys(data.count).forEach(function (key) {
+            var value=data.count[key];
+            if (value>0) {
+                var name="";
+                if (key=='yellowDoor') name="黄门";
+                else if (key=='blueDoor') name="蓝门";
+                else if (key=='redDoor') name="红门";
+                else if (key=='steelDoor') name="铁门";
+                else name=core.material.items[key].name;
+                if (core.isset(name)) {
+                    text+=name+value+"个；";
+                }
+            }
+        })
+        text+="\n\n";
+        text+="共加生命值"+core.formatBigNumber(data.add.hp)+"点，攻击"
+            +core.formatBigNumber(data.add.atk)+"点，防御"
+            +core.formatBigNumber(data.add.def)+"点，魔防"
+            +core.formatBigNumber(data.add.mdef)+"点。";
+        return text;
+    }
+
+    var formatTime = function (time) {
+        return core.setTwoDigits(parseInt(time/3600000))
+            +":"+core.setTwoDigits(parseInt(time/60000)%60)
+            +":"+core.setTwoDigits(parseInt(time/1000)%60);
+    }
+
+    var statistics = core.status.hero.statistics;
+    core.drawText([
+        getText("全塔", total),
+        getText("当前", current),
+        "当前总步数："+core.status.hero.steps+"，当前游戏时长："+formatTime(statistics.currTime)
+        +"，总游戏时长"+formatTime(statistics.totalTime)
+        +"。\n瞬间移动次数："+statistics.moveDirectly+"，共计少走"+statistics.ignoreSteps+"步。"
+        +"\n\n总计通过血瓶恢复生命值为"+core.formatBigNumber(statistics.hp)+"点。\n\n"
+        +"总计受到的伤害为"+core.formatBigNumber(statistics.battleDamage+statistics.poisonDamage+statistics.extraDamage)
+        +"，其中战斗伤害"+core.formatBigNumber(statistics.battleDamage)+"点"
+        +(core.flags.enableDebuff?("，中毒伤害"+core.formatBigNumber(statistics.poisonDamage)+"点"):"")
+        +"，领域/夹击/阻击/血网伤害"+core.formatBigNumber(statistics.extraDamage)+"点。",
+        "\t[说明]1. 地图数据统计的效果仅模拟当前立刻获得该道具的效果。\n2. 不会计算“不可被浏览地图”的隐藏层的数据。\n" +
+        "3. 不会计算任何通过事件得到的道具（显示事件、改变图块、或直接增加道具等）。\n"+
+        "4. 在自定义道具（例如其他宝石）后，需在ui.js的drawStatistics中注册，不然不会进行统计。\n"+
+        "5. 所有统计信息仅供参考，如有错误，概不负责。"
+    ])
+
+}
+
 ////// 绘制“关于”界面 //////
 ui.prototype.drawAbout = function () {
     return this.uidata.drawAbout();
@@ -1721,6 +1940,7 @@ ui.prototype.drawHelp = function () {
     core.drawText([
         "\t[键盘快捷键列表]"+
         "[CTRL] 跳过对话\n" +
+        "[Z] 转向\n" +
         "[X] 打开/关闭怪物手册\n" +
         "[G] 打开/关闭楼层传送器\n" +
         "[A] 读取自动存档（回退）\n" +
@@ -1728,10 +1948,11 @@ ui.prototype.drawHelp = function () {
         "[K] 打开/关闭快捷商店选择列表\n" +
         "[T] 打开/关闭工具栏\n" +
         "[ESC] 打开/关闭系统菜单\n" +
-        "[E] 显示光标\n" +
+        // "[E] 显示光标\n" +
         "[H] 打开帮助页面\n"+
         "[R] 回放\n"+
         "[SPACE] 轻按（仅在轻按开关打开时有效）\n" +
+        "[PgUp/PgDn] 浏览地图\n"+
         "[1] 快捷使用破墙镐\n" +
         "[2] 快捷使用炸弹/圣锤\n" +
         "[3] 快捷使用中心对称飞行器",
@@ -1739,6 +1960,7 @@ ui.prototype.drawHelp = function () {
         "点状态栏中图标： 进行对应的操作\n"+
         "点任意块： 寻路并移动\n"+
         "点任意块并拖动： 指定寻路路线\n"+
+        "双击空地： 瞬间移动\n"+
         "单击勇士： 转向\n"+
         "双击勇士： 轻按（仅在轻按开关打开时有效）\n"+
         "长按任意位置：跳过剧情对话或打开虚拟键盘\n"

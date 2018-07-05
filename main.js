@@ -2,12 +2,19 @@ function main() {
 
     //------------------------ 用户修改内容 ------------------------//
 
-    this.version = "2.0"; // 游戏版本号；如果更改了游戏内容建议修改此version以免造成缓存问题。
+    this.version = "2.3.1"; // 游戏版本号；如果更改了游戏内容建议修改此version以免造成缓存问题。
 
     this.useCompress = false; // 是否使用压缩文件
     // 当你即将发布你的塔时，请使用“JS代码压缩工具”将所有js代码进行压缩，然后将这里的useCompress改为true。
     // 请注意，只有useCompress是false时才会读取floors目录下的文件，为true时会直接读取libs目录下的floors.min.js文件。
     // 如果要进行剧本的修改请务必将其改成false。
+
+    this.bgmRemote = false; // 是否采用远程BGM
+    this.bgmRemoteRoot = "https://gitee.com/ckcz123/h5music/raw/master/"; // 远程BGM的根目录
+
+    this.isCompetition = false; // 是否是比赛模式
+
+    this.savePages = 100; // 存档页数，每页可存5个；默认为100页500个存档
 
     //------------------------ 用户修改内容 END ------------------------//
 
@@ -33,6 +40,8 @@ function main() {
         'toolBar': document.getElementById('toolBar'),
         'tools': document.getElementsByClassName('tools'),
         'gameCanvas': document.getElementsByClassName('gameCanvas'),
+        'gif': document.getElementById('gif'),
+        'gif2': document.getElementById('gif2'),
         'curtain': document.getElementById('curtain'),
         'startButtons': document.getElementById('startButtons'),
         'playGame': document.getElementById('playGame'),
@@ -48,6 +57,7 @@ function main() {
         'moneyCol': document.getElementById('moneyCol'),
         'expCol': document.getElementById('expCol'),
         'upCol': document.getElementById('upCol'),
+        'keyCol': document.getElementById('keyCol'),
         'debuffCol': document.getElementById('debuffCol'),
         'hard': document.getElementById('hard'),
     };
@@ -83,17 +93,29 @@ function main() {
             'settings': document.getElementById("img-settings")
         },
         'icons': {
-            'book': null,
-            'fly': null,
-            'toolbox': null,
-            'save': null,
-            'load': null,
-            'settings': null,
-            'rewind': null, // 减速
-            'forward': null, // 加速
-            'play': null, // 播放
-            'pause': null, // 暂停
-            'stop': null, // 停止
+            'floor': 0,
+            'lv': 1,
+            'hpmax': 2,
+            'hp': 3,
+            'atk': 4,
+            'def': 5,
+            'mdef': 6,
+            'money': 7,
+            'experience': 8,
+            'up': 9,
+            'book': 10,
+            'fly': 11,
+            'toolbox': 12,
+            'shop': 13,
+            'save': 14,
+            'load': 15,
+            'settings': 16,
+            'play': 17,
+            'pause': 18,
+            'stop': 19,
+            'speedDown': 20,
+            'speedUp': 21,
+            'rewind': 22,
         },
         'floor': document.getElementById('floor'),
         'lv': document.getElementById('lv'),
@@ -125,11 +147,7 @@ main.prototype.init = function (mode, callback) {
         main.mode = mode;
         if (mode === 'editor')main.editor = {'disableGlobalAnimate':true};
     }
-    Object.keys(this.statusBar.icons).forEach(function (t) {
-        var image=new Image();
-        image.src="project/images/"+t+".png";
-        main.statusBar.icons[t] = image;
-    })
+
     main.loaderJs('project', main.pureData, function(){
         var mainData = data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d.main;
         for(var ii in mainData)main[ii]=mainData[ii];
@@ -172,17 +190,26 @@ main.prototype.init = function (mode, callback) {
 
 ////// 动态加载所有核心JS文件 //////
 main.prototype.loaderJs = function (dir, loadList, callback) {
-    var instanceNum = 0;
+
     // 加载js
     main.setMainTipsText('正在加载核心js文件...')
-    for (var i = 0; i < loadList.length; i++) {
-        main.loadMod(dir, loadList[i], function (modName) {
-            main.setMainTipsText(modName + '.js 加载完毕');
-            instanceNum++;
-            if (instanceNum === loadList.length) {
-                callback();
-            }
-        });
+
+    if (this.useCompress) {
+        main.loadMod(dir, dir, function () {
+            callback();
+        })
+    }
+    else {
+        var instanceNum = 0;
+        for (var i = 0; i < loadList.length; i++) {
+            main.loadMod(dir, loadList[i], function (modName) {
+                main.setMainTipsText(modName + '.js 加载完毕');
+                instanceNum++;
+                if (instanceNum === loadList.length) {
+                    callback();
+                }
+            });
+        }
     }
 }
 
@@ -369,12 +396,24 @@ main.statusBar.image.fly.onclick = function () {
 
 ////// 点击状态栏中的工具箱时 //////
 main.statusBar.image.toolbox.onclick = function () {
+
+    if (core.isset(core.status.replay) && core.status.replay.replaying) {
+        core.rewindReplay();
+        return;
+    }
+
     if (main.core.isPlaying())
         main.core.openToolbox(true);
 }
 
 ////// 点击状态栏中的快捷商店时 //////
 main.statusBar.image.shop.onclick = function () {
+
+    if (core.isset(core.status.replay) && core.status.replay.replaying) {
+        core.bookReplay();
+        return;
+    }
+
     if (main.core.isPlaying())
         main.core.openQuickShop(true);
 }
@@ -383,7 +422,7 @@ main.statusBar.image.shop.onclick = function () {
 main.statusBar.image.save.onclick = function () {
 
     if (core.isset(core.status.replay) && core.status.replay.replaying) {
-        core.rewindReplay();
+        core.speedDownReplay();
         return;
     }
 
@@ -395,7 +434,7 @@ main.statusBar.image.save.onclick = function () {
 main.statusBar.image.load.onclick = function () {
 
     if (core.isset(core.status.replay) && core.status.replay.replaying) {
-        core.forwardReplay();
+        core.speedUpReplay();
         return;
     }
 
@@ -405,6 +444,12 @@ main.statusBar.image.load.onclick = function () {
 
 ////// 点击状态栏中的系统菜单时 //////
 main.statusBar.image.settings.onclick = function () {
+
+    if (core.isset(core.status.replay) && core.status.replay.replaying) {
+        core.saveReplay();
+        return;
+    }
+
     if (main.core.isPlaying())
         main.core.openSettings(true);
 }
@@ -412,6 +457,15 @@ main.statusBar.image.settings.onclick = function () {
 ////// 点击“开始游戏”时 //////
 main.dom.playGame.onclick = function () {
     main.dom.startButtons.style.display='none';
+
+    if (main.core.isset(main.core.musicStatus) && main.core.musicStatus.startDirectly
+        && main.core.musicStatus.bgmStatus) {
+        if (main.core.musicStatus.playingBgm==null
+            || core.material.bgms[main.core.musicStatus.playingBgm].paused) {
+            main.core.musicStatus.playingBgm=null;
+            main.core.playBgm(main.core.bgms[0]);
+        }
+    }
 
     if (main.core.isset(main.core.flags.startDirectly) && main.core.flags.startDirectly) {
         core.events.startGame("");
@@ -423,11 +477,30 @@ main.dom.playGame.onclick = function () {
 
 ////// 点击“载入游戏”时 //////
 main.dom.loadGame.onclick = function() {
+
+    if (main.core.isset(main.core.musicStatus) && main.core.musicStatus.startDirectly
+        && main.core.musicStatus.bgmStatus) {
+        if (main.core.musicStatus.playingBgm==null
+            || core.material.bgms[main.core.musicStatus.playingBgm].paused) {
+            main.core.musicStatus.playingBgm=null;
+            main.core.playBgm(main.core.bgms[0]);
+        }
+    }
+
     main.core.load();
 }
 
 ////// 点击“录像回放”时 //////
 main.dom.replayGame.onclick = function () {
+
+    if (main.core.isset(main.core.musicStatus) && main.core.musicStatus.startDirectly
+        && main.core.musicStatus.bgmStatus) {
+        if (main.core.musicStatus.playingBgm==null
+            || core.material.bgms[main.core.musicStatus.playingBgm].paused) {
+            main.core.musicStatus.playingBgm=null;
+            main.core.playBgm(main.core.bgms[0]);
+        }
+    }
 
     core.readFile(function (obj) {
         if (obj.name!=core.firstData.name) {
@@ -446,6 +519,8 @@ main.dom.replayGame.onclick = function () {
 
         core.dom.startPanel.style.display = 'none';
         core.resetStatus(core.firstData.hero, obj.hard, core.firstData.floorId, null, core.initStatus.maps);
+        core.setFlag('seed', obj.seed);
+        core.setFlag('rand', obj.seed);
         core.events.setInitData(obj.hard);
         core.changeFloor(core.status.floorId, null, core.firstData.hero.loc, null, function() {
             core.startReplay(core.decodeRoute(obj.route));

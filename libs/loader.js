@@ -23,11 +23,19 @@ loader.prototype.setStartLoadTipText = function (text) {
 
 loader.prototype.load = function (callback) {
 
+    // 加载icons
+    core.loader.loadIcons();
+
     // 加载图片
     core.loader.loadImages(core.materials, core.material.images, function () {
         // 加载png图片
         core.material.images.images = {};
-        core.loader.loadImages(core.images, core.material.images.images, function () {
+
+        var images = core.clone(core.images);
+        if (images.indexOf("hero.png")<0)
+            images.push("hero.png");
+
+        core.loader.loadImages(images, core.material.images.images, function () {
             // 加载autotile
             core.material.images.autotile = {};
             core.loader.loadImages(Object.keys(core.material.icons.autotile), core.material.images.autotile, function () {
@@ -38,6 +46,20 @@ loader.prototype.load = function (callback) {
             })
         })
     })
+}
+
+loader.prototype.loadIcons = function () {
+
+    this.loadImage("icons.png", function (id, image) {
+        var images = core.cropImage(image);
+        for (var key in core.statusBar.icons) {
+            if (typeof core.statusBar.icons[key] == 'number') {
+                core.statusBar.icons[key] = images[core.statusBar.icons[key]];
+                if (core.isset(core.statusBar.image[key]))
+                    core.statusBar.image[key].src = core.statusBar.icons[key].src;
+            }
+        }
+    });
 }
 
 loader.prototype.loadImages = function (names, toSave, callback) {
@@ -171,8 +193,8 @@ loader.prototype.loadMusic = function () {
         }
         else {
             var music = new Audio();
-            music.preload = core.musicStatus.startDirectly?'auto':'none';
-            if (main.bgmRemote) music.src = 'https://gitee.com/ckcz123/h5music/raw/master/'+core.firstData.name+'/'+t;
+            music.preload = 'none';
+            if (main.bgmRemote) music.src = main.bgmRemoteRoot+core.firstData.name+'/'+t;
             else music.src = 'project/sounds/'+t;
             music.loop = 'loop';
             core.material.bgms[t] = music;
@@ -182,12 +204,10 @@ loader.prototype.loadMusic = function () {
     core.sounds.forEach(function (t) {
 
         if (core.musicStatus.audioContext != null) {
-            var xhr = new XMLHttpRequest();
-            xhr.open('GET', 'project/sounds/'+t, true);
-            xhr.responseType = 'arraybuffer';
-            xhr.onload = function(e) { //下载完成
+
+            core.http('GET', 'project/sounds/'+t, null, function (data) {
                 try {
-                    core.musicStatus.audioContext.decodeAudioData(this.response, function (buffer) {
+                    core.musicStatus.audioContext.decodeAudioData(data, function (buffer) {
                         core.material.sounds[t] = buffer;
                     }, function (e) {
                         console.log(e);
@@ -198,17 +218,10 @@ loader.prototype.loadMusic = function () {
                     console.log(ee);
                     core.material.sounds[t] = null;
                 }
-            };
-
-            xhr.ontimeout = function(e) {
+            }, function () {
                 console.log(e);
                 core.material.sounds[t] = null;
-            }
-            xhr.onerror = function(e) {
-                console.log(e);
-                core.material.sounds[t] = null;
-            }
-            xhr.send();
+            }, null, 'arraybuffer');
         }
         else {
             var music = new Audio();

@@ -2,29 +2,31 @@ data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d =
 {
 	"main" : {
 		"floorIds" : [ 
-			"sample0", "sample1", "sample2"
+			"sample0", "sample1", "sample2", "MT0"
 		],
 		"images" : [
-			"bg.jpg",
+			"bg.jpg"
 		],
 		"animates" : [ 
-			"hand", "sword", "zone", "yongchang",
+			"hand", "sword", "zone",
 		],
 		"bgms" : [ 
-			'bgm.mp3', 'qianjin.mid', 'star.mid',
+			'bgm.mp3'
 		],
 		"sounds" : [ 
-			'floor.mp3', 'attack.ogg', 'door.ogg', 'item.ogg', 'zone.ogg'
+			'floor.mp3', 'attack.mp3', 'door.mp3', 'item.mp3', 'zone.mp3', 'jump.mp3'
 		],
-		"bgmRemote" : false,
 		"startBackground" : "bg.jpg",
 		"startLogoStyle" : "color: black",
 		"levelChoose" : [["简单","Easy"],["普通","Normal"],["困难","Hard"],["噩梦","Hell"]],
+		"statusLeftBackground": "url(project/images/ground.png) repeat",
+		"statusTopBackground": "url(project/images/ground.png) repeat",
+		"toolsBackground": "url(project/images/ground.png) repeat"
 	},
 	"firstData" : {
 		"title": "魔塔样板",
 		"name": "template",
-		"version": "Ver 2.0",
+		"version": "Ver 2.3.1",
 		"floorId": "sample0",
 		"hero": { 
 			"name": "阳光",
@@ -47,11 +49,7 @@ data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d =
 			},
 			"flyRange": [],
 			"loc": {"direction": "up", "x": 6, "y": 10},
-			"flags": { 
-				"poison": false,
-				"weak": false,
-				"curse": false,
-			},
+			"flags": {},
 			"steps": 0,
 		},
 		"startText": [ 
@@ -130,6 +128,7 @@ data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d =
 		'counterAttack': 0.1,
 		'purify': 3,
 		'hatred': 2,
+		'maxValidHp': null,
 		'animateSpeed': 300,
 	},
 	
@@ -141,15 +140,16 @@ data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d =
 		"enableMoney": true,
 		"enableExperience": false,
 		"enableLevelUp": false,
+		"enableKeys": true,
 		"enableDebuff": false,
 		"flyNearStair": true,
-		"pickaxeFourDirections": true,
-		"bombFourDirections": true,
+		"pickaxeFourDirections": false,
+		"bombFourDirections": false,
+		"snowFourDirections": false,
 		"bigKeyIsBox": false,
-		"equipment": true,
-		"enableDeleteItem": true,
+		"equipment": false,
 		"enableAddPoint": false,
-		"enableNegativeDamage": true,
+		"enableNegativeDamage": false,
 		"hatredDecrease": true,
 		"betweenAttackCeil": false,
 		"startDirectly": false,
@@ -157,6 +157,7 @@ data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d =
 		"showBattleAnimateConfirm": true,
 		"battleAnimate": true,
 		"displayEnemyDamage": true,
+		"displayCritical": true,
 		"displayExtraDamage": true,
 		"enableGentleClick": true,
 		"potionWhileRouting": false,

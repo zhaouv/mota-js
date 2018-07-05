@@ -13,7 +13,7 @@ actions.prototype.init = function () {
 
 ////// 按下某个键时 //////
 actions.prototype.onkeyDown = function (e) {
-    if (core.isset(core.status.replay)&&core.status.replay.replaying) return;
+    if (core.isset(core.status.replay)&&core.status.replay.replaying&&core.status.event.id!='save'&&(core.status.event.id||"").indexOf('book')!=0) return;
     if (!core.isset(core.status.holdingKeys))core.status.holdingKeys=[];
     var isArrow={37:true,38:true,39:true,40:true}[e.keyCode]
     if(isArrow && !core.status.lockControl){
@@ -25,21 +25,28 @@ actions.prototype.onkeyDown = function (e) {
         core.status.holdingKeys.push(e.keyCode);
         this.pressKey(e.keyCode);
     } else {
+        if (e.keyCode==17) core.status.ctrlDown = true;
         this.keyDown(e.keyCode);
     }
 }
 
 ////// 放开某个键时 //////
 actions.prototype.onkeyUp = function(e) {
-    if (core.isset(core.status.replay)&&core.status.replay.replaying) {
+    if (core.isset(core.status.replay)&&core.status.replay.replaying&&core.status.event.id!='save'&&(core.status.event.id||"").indexOf('book')!=0) {
         if (e.keyCode==27) // ESCAPE
             core.stopReplay();
         else if (e.keyCode==90) // Z
-            core.rewindReplay();
+            core.speedDownReplay();
         else if (e.keyCode==88) // X
-            core.forwardReplay();
+            core.speedUpReplay();
         else if (e.keyCode==32) // SPACE
             core.triggerReplay();
+        else if (e.keyCode==65) // A
+            core.rewindReplay();
+        else if (e.keyCode==83)
+            core.saveReplay();
+        else if (e.keyCode==67)
+            core.bookReplay();
         return;
     }
 
@@ -54,13 +61,14 @@ actions.prototype.onkeyUp = function(e) {
         }
         this.keyUp(e.keyCode);
     } else {
+        if (e.keyCode==17) core.status.ctrlDown = false;
         this.keyUp(e.keyCode);
     }
 }
 
 ////// 按住某个键时 //////
 actions.prototype.pressKey = function (keyCode) {
-    if (core.isset(core.status.replay)&&core.status.replay.replaying) return;
+    if (core.isset(core.status.replay)&&core.status.replay.replaying&&core.status.event.id!='save'&&(core.status.event.id||"").indexOf('book')!=0) return;
     if (keyCode === core.status.holdingKeys.slice(-1)[0]) {
         this.keyDown(keyCode);
         window.setTimeout(function(){core.pressKey(keyCode);},30);
@@ -69,7 +77,7 @@ actions.prototype.pressKey = function (keyCode) {
 
 ////// 根据按下键的code来执行一系列操作 //////
 actions.prototype.keyDown = function(keyCode) {
-    if (core.isset(core.status.replay)&&core.status.replay.replaying) return;
+    if (core.isset(core.status.replay)&&core.status.replay.replaying&&core.status.event.id!='save'&&(core.status.event.id||"").indexOf('book')!=0) return;
     if (core.status.lockControl) {
         // Ctrl跳过对话
         if (keyCode==17) {
@@ -104,7 +112,7 @@ actions.prototype.keyDown = function(keyCode) {
             this.keyDownToolbox(keyCode);
             return;
         }
-        if (core.status.event.id=='save' || core.status.event.id=='load') {
+        if (core.status.event.id=='save' || core.status.event.id=='load' || core.status.event.id=='replayLoad') {
             this.keyDownSL(keyCode);
             return;
         }
@@ -135,6 +143,9 @@ actions.prototype.keyDown = function(keyCode) {
         if (core.status.event.id=='cursor') {
             this.keyDownCursor(keyCode);
             return;
+        }
+        if (core.status.event.id=='replay') {
+            this.keyDownReplay(keyCode);
         }
         return;
     }
@@ -186,7 +197,8 @@ actions.prototype.keyDown = function(keyCode) {
 
 ////// 根据放开键的code来执行一系列操作 //////
 actions.prototype.keyUp = function(keyCode, fromReplay) {
-    if (!fromReplay&&core.isset(core.status.replay)&&core.status.replay.replaying) return;
+    if (!fromReplay&&core.isset(core.status.replay)&&core.status.replay.replaying&&core.status.event.id!='save'&&(core.status.event.id||"").indexOf('book')!=0)
+        return;
 
     if (core.status.lockControl) {
         core.status.holdingKeys = [];
@@ -235,7 +247,7 @@ actions.prototype.keyUp = function(keyCode, fromReplay) {
             this.keyUpToolbox(keyCode);
             return;
         }
-        if (core.status.event.id=='save' || core.status.event.id=='load') {
+        if (core.status.event.id=='save' || core.status.event.id=='load' || core.status.event.id=='replayLoad') {
             this.keyUpSL(keyCode);
             return;
         }
@@ -265,6 +277,10 @@ actions.prototype.keyUp = function(keyCode, fromReplay) {
         }
         if (core.status.event.id=='cursor') {
             this.keyUpCursor(keyCode);
+            return;
+        }
+        if (core.status.event.id=='replay') {
+            this.keyUpReplay(keyCode);
             return;
         }
         return;
@@ -324,17 +340,12 @@ actions.prototype.keyUp = function(keyCode, fromReplay) {
             break;
         case 82: // R
             if (core.status.heroStop) {
-                core.ui.drawConfirmBox("确定要回放录像吗？", function () {
-                    core.ui.closePanel();
-                    var hard=core.status.hard, route=core.clone(core.status.route);
-                    core.resetStatus(core.firstData.hero, hard, core.firstData.floorId, null, core.initStatus.maps);
-                    core.events.setInitData(hard);
-                    core.changeFloor(core.status.floorId, null, core.firstData.hero.loc, null, function() {
-                        core.startReplay(route);
-                    }, true);
-                }, function () {
-                    core.ui.closePanel();
-                });
+                if (core.hasFlag('debug')) {
+                    core.drawText("\t[系统提示]调试模式下无法回放录像");
+                }
+                else {
+                    core.ui.drawReplay();
+                }
             }
             break;
         case 33: case 34: // PAGEUP/PAGEDOWN
@@ -399,14 +410,14 @@ actions.prototype.keyUp = function(keyCode, fromReplay) {
 
 ////// 点击（触摸）事件按下时 //////
 actions.prototype.ondown = function (x ,y) {
-    if (core.isset(core.status.replay)&&core.status.replay.replaying) return;
+    if (core.isset(core.status.replay)&&core.status.replay.replaying&&core.status.event.id!='save'&&(core.status.event.id||"").indexOf('book')!=0) return;
     if (!core.status.played || core.status.lockControl) {
         this.onclick(x, y, []);
         if (core.timeout.onDownTimeout==null) {
             core.timeout.onDownTimeout = setTimeout(function () {
                 if (core.interval.onDownInterval == null) {
                     core.interval.onDownInterval = setInterval(function () {
-                        if (!core.actions.longClick()) {
+                        if (!core.actions.longClick(x, y, true)) {
                             clearInterval(core.interval.onDownInterval);
                             core.interval.onDownInterval = null;
                         }
@@ -427,7 +438,7 @@ actions.prototype.ondown = function (x ,y) {
 
 ////// 当在触摸屏上滑动时 //////
 actions.prototype.onmove = function (x ,y) {
-    if (core.isset(core.status.replay)&&core.status.replay.replaying) return;
+    if (core.isset(core.status.replay)&&core.status.replay.replaying&&core.status.event.id!='save'&&(core.status.event.id||"").indexOf('book')!=0) return;
     // if (core.status.holdingPath==0){return;}
     //core.status.mouseOutCheck =1;
     var pos={'x':x,'y':y};
@@ -451,7 +462,7 @@ actions.prototype.onmove = function (x ,y) {
 
 ////// 当点击（触摸）事件放开时 //////
 actions.prototype.onup = function () {
-    if (core.isset(core.status.replay)&&core.status.replay.replaying) return;
+    if (core.isset(core.status.replay)&&core.status.replay.replaying&&core.status.event.id!='save'&&(core.status.event.id||"").indexOf('book')!=0) return;
 
     clearTimeout(core.timeout.onDownTimeout);
     core.timeout.onDownTimeout = null;
@@ -477,10 +488,7 @@ actions.prototype.onup = function () {
 
         // 长按
         if (!core.status.lockControl && stepPostfix.length==0 && core.status.downTime!=null && new Date()-core.status.downTime>=1000) {
-            core.waitHeroToStop(function () {
-                // 绘制快捷键
-                core.ui.drawKeyBoard();
-            });
+            this.longClick(posx, posy);
         }
         else {
             //posx,posy是寻路的目标点,stepPostfix是后续的移动
@@ -517,7 +525,7 @@ actions.prototype.getClickLoc = function (x, y) {
 
 ////// 具体点击屏幕上(x,y)点时，执行的操作 //////
 actions.prototype.onclick = function (x, y, stepPostfix) {
-    if (core.isset(core.status.replay)&&core.status.replay.replaying) return;
+    if (core.isset(core.status.replay)&&core.status.replay.replaying&&core.status.event.id!='save'&&(core.status.event.id||"").indexOf('book')!=0) return;
     // console.log("Click: (" + x + "," + y + ")");
 
     stepPostfix=stepPostfix||[];
@@ -604,7 +612,7 @@ actions.prototype.onclick = function (x, y, stepPostfix) {
     }
 
     // 存读档
-    if (core.status.event.id == 'save' || core.status.event.id == 'load') {
+    if (core.status.event.id == 'save' || core.status.event.id == 'load' || core.status.event.id=='replayLoad') {
         this.clickSL(x,y);
         return;
     }
@@ -662,11 +670,16 @@ actions.prototype.onclick = function (x, y, stepPostfix) {
         return;
     }
 
+    if (core.status.event.id == 'replay') {
+        this.clickReplay(x,y);
+        return;
+    }
+
 }
 
 ////// 滑动鼠标滚轮时的操作 //////
 actions.prototype.onmousewheel = function (direct) {
-    if (core.isset(core.status.replay)&&core.status.replay.replaying) return;
+    if (core.isset(core.status.replay)&&core.status.replay.replaying&&core.status.event.id!='save'&&(core.status.event.id||"").indexOf('book')!=0) return;
     // 向下滚动是 -1 ,向上是 1
 
     // 楼层飞行器
@@ -692,8 +705,8 @@ actions.prototype.onmousewheel = function (direct) {
 
     // 浏览地图
     if (core.status.lockControl && core.status.event.id == 'viewMaps') {
-        if (direct==1) core.ui.drawMaps(core.status.event.data+1);
-        if (direct==-1) core.ui.drawMaps(core.status.event.data-1);
+        if (direct==1) this.clickViewMaps(6,2);
+        if (direct==-1) this.clickViewMaps(6,10);
         return;
     }
 }
@@ -701,15 +714,23 @@ actions.prototype.onmousewheel = function (direct) {
 /////////////////// 在某个界面时的按键点击效果 ///////////////////
 
 ////// 长按 //////
-actions.prototype.longClick = function () {
+actions.prototype.longClick = function (x, y, fromEvent) {
     if (!core.isPlaying()) return false;
-    if (core.status.event.id=='text') {
-        core.drawText();
-        return true;
+    if (core.status.lockControl) {
+        if (core.status.event.id=='text') {
+            core.drawText();
+            return true;
+        }
+        if (core.status.event.id=='action' && core.status.event.data.type=='text') {
+            core.doAction();
+            return true;
+        }
     }
-    if (core.status.event.id=='action' && core.status.event.data.type=='text') {
-        core.doAction();
-        return true;
+    else if (!fromEvent) {
+        core.waitHeroToStop(function () {
+            // 绘制快捷键
+            core.ui.drawKeyBoard();
+        });
     }
     return false;
 }
@@ -766,6 +787,15 @@ actions.prototype.clickAction = function (x,y) {
         core.doAction();
         return;
     }
+    if (core.status.event.data.type=='wait') {
+        core.setFlag('type', 1);
+        core.setFlag('x', x);
+        core.setFlag('y', y);
+        core.status.route.push("input:"+(10000+100*x+y));
+        core.doAction();
+        return;
+    }
+
     if (core.status.event.data.type=='choices') {
         // 选项
         var data = core.status.event.data.current;
@@ -804,6 +834,13 @@ actions.prototype.keyDownAction = function (keycode) {
 ////// 自定义事件时，放开某个键的操作 //////
 actions.prototype.keyUpAction = function (keycode) {
     if (core.status.event.data.type=='text' && (keycode==13 || keycode==32 || keycode==67)) {
+        core.doAction();
+        return;
+    }
+    if (core.status.event.data.type=='wait') {
+        core.setFlag('type', 0);
+        core.setFlag('keycode', keycode);
+        core.status.route.push("input:"+keycode);
         core.doAction();
         return;
     }
@@ -898,6 +935,8 @@ actions.prototype.clickFly = function(x,y) {
     if (x>=0 && x<=9 && y>=3 && y<=11) {
         var index=core.status.hero.flyRange.indexOf(core.status.floorId);
         var stair=core.status.event.data<index?"upFloor":"downFloor";
+        if (core.status.event.data==index && core.floors[core.status.floorId].underGround)
+            stair = "upFloor";
         var floorId=core.status.event.data;
         var toFloor = core.status.hero.flyRange[floorId];
         core.status.route.push("fly:"+toFloor);
@@ -925,11 +964,21 @@ actions.prototype.keyUpFly = function (keycode) {
 
 ////// 查看地图界面时的点击操作 //////
 actions.prototype.clickViewMaps = function (x,y) {
+    var now = core.floorIds.indexOf(core.status.floorId);
+    var nextId = core.status.event.data;
     if(y<=4) {
-        core.ui.drawMaps(core.status.event.data+1);
+        nextId++;
+        while (nextId<core.floorIds.length && nextId!=now && core.floors[core.floorIds[nextId]].cannotViewMap)
+            nextId++;
+        if (nextId<core.floorIds.length)
+            core.ui.drawMaps(nextId);
     }
     else if (y>=8) {
-        core.ui.drawMaps(core.status.event.data-1);
+        nextId--;
+        while (nextId>=0 && nextId!=now && core.floors[core.floorIds[nextId]].cannotViewMap)
+            nextId--;
+        if (nextId>=0)
+            core.ui.drawMaps(nextId);
     }
     else {
         core.clearMap('data', 0, 0, 416, 416);
@@ -940,8 +989,12 @@ actions.prototype.clickViewMaps = function (x,y) {
 
 ////// 查看地图界面时，按下某个键的操作 //////
 actions.prototype.keyDownViewMaps = function (keycode) {
-    if (keycode==37 || keycode==38 || keycode==33) core.ui.drawMaps(core.status.event.data+1);
-    else if (keycode==39 || keycode==40 || keycode==34) core.ui.drawMaps(core.status.event.data-1);
+    if (keycode==37 || keycode==38 || keycode==33) {
+        this.clickViewMaps(6,2);
+    }
+    else if (keycode==39 || keycode==40 || keycode==34) {
+        this.clickViewMaps(6,10);
+    }
     return;
 }
 
@@ -1105,6 +1158,7 @@ actions.prototype.clickToolbox = function(x,y) {
         core.ui.closePanel();
         return;
     }
+    /*
     if (x>=10 && x<=12 && y<=1) {
         if (!core.isset(core.status.event.data)) return;
         if (!core.flags.enableDeleteItem) {
@@ -1116,22 +1170,50 @@ actions.prototype.clickToolbox = function(x,y) {
         core.ui.drawToolbox();
         return;
     }
+    */
 
-    var index=0;
-    if (y==4||y==5||y==9||y==10) index=parseInt(x/2);
-    else index=6+parseInt(x/2);
-    if (y>=9) index+=100;
-    this.clickToolboxIndex(index);
+    // 当前页面
+    var page = parseInt((core.status.event.selection%1000)/12)+1;
+
+    // 上一页
+    if ((x == 3 || x == 4) && y == 12) {
+        if (page>1) {
+            core.ui.drawToolbox(core.status.event.selection-12);
+        }
+        return;
+    }
+    // 下一页
+    if ((x == 8 || x == 9) && y == 12) {
+        var toolPage = parseInt(Object.keys(core.status.hero.items.tools).length/12)+1,
+            constantPage = parseInt(Object.keys(core.status.hero.items.constants).length/12)+1;
+        if (page<toolPage) {
+            core.ui.drawToolbox(12*page);
+        }
+        else if (page<constantPage) {
+            core.ui.drawToolbox(1000+12*page);
+        }
+        return;
+    }
+
+    var index=parseInt(12*(page-1)+x/2);
+    if (y==4) index+=0;
+    else if (y==6) index+=6;
+    else if (y==9) index+=1000;
+    else if (y==11) index+=1006;
+    else index=-1;
+
+    if (index>=0)
+        this.clickToolboxIndex(index);
 }
 
 ////// 选择工具栏界面中某个Index后的操作 //////
 actions.prototype.clickToolboxIndex = function(index) {
     var items = null;
     var ii=index;
-    if (ii<100)
+    if (ii<1000)
         items = Object.keys(core.status.hero.items.tools).sort();
     else {
-        ii-=100;
+        ii-=1000;
         items = Object.keys(core.status.hero.items.constants).sort();
     }
     if (items==null) return;
@@ -1152,58 +1234,59 @@ actions.prototype.keyDownToolbox = function (keycode) {
     var tools = Object.keys(core.status.hero.items.tools).sort();
     var constants = Object.keys(core.status.hero.items.constants).sort();
     var index=core.status.event.selection;
+    var page=parseInt(index%1000/12), offset=12*page;
 
     if (keycode==37) { // left
-        if ((index>0 && index<100) || index>100) {
+        if ((index>0 && index<1000) || index>1000) {
             this.clickToolboxIndex(index-1);
             return;
         }
-        if (index==100 && tools.length>0) {
+        if (index==1000 && tools.length>0) {
             this.clickToolboxIndex(tools.length-1);
             return;
         }
     }
     if (keycode==38) { // up
-        if ((index>5 && index<100) || index>105) {
+        if ((index>offset+5 && index<1000) || index>offset+1005) {
             this.clickToolboxIndex(index-6);
             return;
         }
-        if (index>=100 && index<=105) {
-            if (tools.length>6) {
-                this.clickToolboxIndex(Math.min(tools.length-1, index-100+6));
+        if (index>=offset+1000 && index<=offset+1005) {
+            if (tools.length>offset+6) {
+                this.clickToolboxIndex(Math.min(tools.length-1, index-1000+6));
             }
-            else if (tools.length>0) {
-                this.clickToolboxIndex(Math.min(tools.length-1, index-100));
+            else if (tools.length>offset) {
+                this.clickToolboxIndex(Math.min(tools.length-1, index-1000));
             }
             return;
         }
     }
     if (keycode==39) { // right
-        if ((index<tools.length-1) || (index>=100 && index<constants.length+100)) {
+        if ((index<tools.length-1) || (index>=1000 && index<constants.length+1000)) {
             this.clickToolboxIndex(index+1);
             return;
         }
         if (index==tools.length-1 && constants.length>0) {
-            this.clickToolboxIndex(100);
+            this.clickToolboxIndex(1000);
             return;
         }
     }
     if (keycode==40) { // down
-        if (index<=5) {
-            if (tools.length>6) {
+        if (index<=offset+5) {
+            if (tools.length>offset+6) {
                 this.clickToolboxIndex(Math.min(tools.length-1, index+6));
             }
-            else if (constants.length>0) {
-                this.clickToolboxIndex(100+Math.min(constants.length-1, index));
+            else if (constants.length>offset) {
+                this.clickToolboxIndex(1000+Math.min(constants.length-1, index));
             }
             return;
         }
-        if (index>5 && index<100 && constants.length>0) {
-            this.clickToolboxIndex(100+Math.min(constants.length-1, index-6));
+        if (index>offset+5 && index<offset+1000 && constants.length>offset) {
+            this.clickToolboxIndex(1000+Math.min(constants.length-1, index-6));
             return;
         }
-        if (index>=100 && index<=105 && constants.length>6) {
-            this.clickToolboxIndex(Math.min(100+constants.length-1, index+6));
+        if (index>=offset+1000 && index<=offset+1005 && constants.length>offset+6) {
+            this.clickToolboxIndex(Math.min(1000+constants.length-1, index+6));
             return;
         }
     }
@@ -1222,6 +1305,7 @@ actions.prototype.keyUpToolbox = function (keycode) {
         return;
     }
 
+    /*
     if (keycode==46) { // delete
         if (!core.isset(core.status.event.data)) return;
         if (!core.flags.enableDeleteItem) {
@@ -1233,6 +1317,7 @@ actions.prototype.keyUpToolbox = function (keycode) {
         core.ui.drawToolbox();
         return;
     }
+    */
 
 }
 
@@ -1245,10 +1330,12 @@ actions.prototype.clickSL = function(x,y) {
     // 上一页
     if ((x == 3 || x == 4) && y == 12) {
         core.ui.drawSLPanel(10*(page-1)+offset);
+        return;
     }
     // 下一页
     if ((x == 8 || x == 9) && y == 12) {
         core.ui.drawSLPanel(10*(page+1)+offset);
+        return;
     }
     // 返回
     if (x>=10 && x<=12 && y==12) {
@@ -1258,17 +1345,37 @@ actions.prototype.clickSL = function(x,y) {
         }
         return;
     }
+    // 删除
+    if (x>=0 && x<=2 && y==12) {
+        core.status.event.selection=!core.status.event.selection;
+        core.ui.drawSLPanel(index);
+        return;
+    }
 
-    var index=6*page+1;
+    var id=null;
     if (y>=1 && y<=4) {
-        if (x>=1 && x<=3) core.doSL("autoSave", core.status.event.id);
-        if (x>=5 && x<=7) core.doSL(5*page+1, core.status.event.id);
-        if (x>=9 && x<=11) core.doSL(5*page+2, core.status.event.id);
+        if (x>=1 && x<=3) id = "autoSave";
+        if (x>=5 && x<=7) id = 5*page+1;
+        if (x>=9 && x<=11) id = 5*page+2;
     }
     if (y>=7 && y<=10) {
-        if (x>=1 && x<=3) core.doSL(5*page+3, core.status.event.id);
-        if (x>=5 && x<=7) core.doSL(5*page+4, core.status.event.id);
-        if (x>=9 && x<=11) core.doSL(5*page+5, core.status.event.id);
+        if (x>=1 && x<=3) id = 5*page+3;
+        if (x>=5 && x<=7) id = 5*page+4;
+        if (x>=9 && x<=11) id = 5*page+5;
+    }
+    if (id!=null) {
+        if (core.status.event.selection)  {
+            if (id == 'autoSave') {
+                core.drawTip("无法删除自动存档！");
+            }
+            else {
+                core.removeLocalStorage("save"+id);
+                core.ui.drawSLPanel(index);
+            }
+        }
+        else {
+            core.doSL(id, core.status.event.id);
+        }
     }
 }
 
@@ -1346,6 +1453,15 @@ actions.prototype.keyUpSL = function (keycode) {
         }
         return;
     }
+    if (keycode==46) {
+        if (offset==0) {
+            core.drawTip("无法删除自动存档！");
+        }
+        else {
+            core.removeLocalStorage("save"+(5*page+offset));
+            core.ui.drawSLPanel(index);
+        }
+    }
 }
 
 ////// 系统设置界面时的点击操作 //////
@@ -1389,15 +1505,26 @@ actions.prototype.clickSwitchs = function (x,y) {
                 core.ui.drawSwitchs();
                 break;
             case 4:
+                core.flags.displayCritical=!core.flags.displayCritical;
+                core.updateFg();
+                core.setLocalStorage('critical', core.flags.displayCritical);
+                core.ui.drawSwitchs();
+                break;
+            case 5:
                 core.flags.displayExtraDamage=!core.flags.displayExtraDamage;
                 core.updateFg();
                 core.setLocalStorage('extraDamage', core.flags.displayExtraDamage);
                 core.ui.drawSwitchs();
                 break;
-            case 5:
+            case 6:
+                core.status.automaticRoute.clickMoveDirectly=!core.status.automaticRoute.clickMoveDirectly;
+                core.setLocalStorage('clickMoveDirectly', core.status.automaticRoute.clickMoveDirectly);
+                core.ui.drawSwitchs();
+                break;
+            case 7:
                 window.open(core.firstData.name+".zip", "_blank");
                 break;
-            case 6:
+            case 8:
                 core.status.event.selection=0;
                 core.ui.drawSettings();
                 break;
@@ -1465,7 +1592,7 @@ actions.prototype.clickSettings = function (x,y) {
                 break;
             case 4:
                 core.status.event.selection=1;
-                core.ui.drawConfirmBox("你确定要重新开始吗？", function () {
+                core.ui.drawConfirmBox("你确定要返回标题页面吗？", function () {
                     core.ui.closePanel();
                     core.restart();
                 }, function () {
@@ -1474,6 +1601,8 @@ actions.prototype.clickSettings = function (x,y) {
                 });
                 break;
             case 5:
+                core.ui.drawStatistics();
+                /*
                 core.ui.drawWaiting("正在拉取统计信息，请稍后...");
 
                 var formData = new FormData();
@@ -1521,6 +1650,7 @@ actions.prototype.clickSettings = function (x,y) {
                     core.drawText("出错啦！\n无法拉取统计信息。\n错误原因：XHR Error");
                 }
                 xhr.send(formData);
+                */
                 break;
             case 6:
                 core.ui.drawHelp();
@@ -1599,7 +1729,7 @@ actions.prototype.clickSyncSave = function (x,y) {
 
                     if (data instanceof Array) {
                         core.ui.drawConfirmBox("所有本地存档都将被覆盖，确认？", function () {
-                            for (var i=1;i<=150;i++) {
+                            for (var i=1;i<=5*(main.savePages||30);i++) {
                                 if (i<=data.length) {
                                     core.setLocalStorage("save"+i, data[i-1]);
                                 }
@@ -1614,23 +1744,22 @@ actions.prototype.clickSyncSave = function (x,y) {
                         })
                     }
                     else {
-                        var index=150;
-                        for (var i=150;i>=1;i--) {
-                            if (core.getLocalStorage("save"+i, null)==null)
-                                index=i;
-                            else break;
-                        }
-                        core.setLocalStorage("save"+index, data);
-                        core.drawText("同步成功！\n单存档已覆盖至存档"+index);
+                        core.setLocalStorage("save"+core.status.saveIndex, data);
+                        core.drawText("同步成功！\n单存档已覆盖至存档"+core.status.saveIndex);
                     }
                 }, function () {
 
                 });
                 break;
             case 4:
+                if (core.hasFlag('debug')) {
+                    core.drawText("\t[系统提示]调试模式下无法下载录像");
+                    break;
+                }
                 core.download(core.firstData.name+"_"+core.formatDate2(new Date())+".h5route", JSON.stringify({
                     'name': core.firstData.name,
                     'hard': core.status.hard,
+                    'seed': core.getFlag('seed'),
                     'route': core.encodeRoute(core.status.route)
                 }));
                 break;
@@ -1737,7 +1866,7 @@ actions.prototype.clickLocalSaveSelect = function (x,y) {
         switch (selection) {
             case 0:
                 saves=[];
-                for (var i=1;i<=150;i++) {
+                for (var i=1;i<=5*(main.savePages||30);i++) {
                     var data = core.getLocalStorage("save"+i, null);
                     if (core.isset(data)) {
                         saves.push(data);
@@ -1745,12 +1874,7 @@ actions.prototype.clickLocalSaveSelect = function (x,y) {
                 }
                 break;
             case 1:
-                for (var i=150;i>=1;i--) {
-                    saves=core.getLocalStorage("save"+i, null);
-                    if (core.isset(saves)) {
-                        break;
-                    }
-                }
+                saves=core.getLocalStorage("save"+core.status.saveIndex, null);
                 break;
             case 2:
                 break;
@@ -1809,7 +1933,7 @@ actions.prototype.clickStorageRemove = function (x, y) {
                 core.drawText("\t[操作成功]你的所有存档已被清空。");
                 break;
             case 1:
-                for (var i=1;i<=150;i++) {
+                for (var i=1;i<=5*(main.savePages||30);i++) {
                     core.removeLocalStorage("save"+i);
                 }
                 core.drawText("\t[操作成功]当前塔的存档已被清空。");
@@ -1846,6 +1970,71 @@ actions.prototype.keyUpStorageRemove = function (keycode) {
     if (keycode==13 || keycode==32 || keycode==67) {
         var topIndex = 6 - parseInt((choices.length - 1) / 2);
         this.clickStorageRemove(6, topIndex+core.status.event.selection);
+    }
+}
+
+////// 回放选择界面时的点击操作 //////
+actions.prototype.clickReplay = function (x, y) {
+    if (x<5 || x>7) return;
+    var choices = core.status.event.ui.choices;
+
+    var topIndex = 6 - parseInt((choices.length - 1) / 2);
+
+    if (y>=topIndex && y<topIndex+choices.length) {
+        var selection = y - topIndex;
+        switch (selection) {
+            case 0:
+                {
+                    core.ui.closePanel();
+                    var hard=core.status.hard, route=core.clone(core.status.route);
+                    var seed = core.getFlag('seed');
+                    core.resetStatus(core.firstData.hero, hard, core.firstData.floorId, null, core.initStatus.maps);
+                    core.events.setInitData(hard);
+                    core.setFlag('seed', seed);
+                    core.setFlag('rand', seed);
+                    core.changeFloor(core.status.floorId, null, core.firstData.hero.loc, null, function() {
+                        core.startReplay(route);
+                    }, true);
+                    break;
+                }
+            case 1:
+                {
+                    core.status.event.id = 'replayLoad';
+                    core.status.event.selection = null;
+                    var saveIndex = core.status.saveIndex;
+                    var page=parseInt((saveIndex-1)/5), offset=saveIndex-5*page;
+                    core.ui.drawSLPanel(10*page+offset);
+                    break;
+                }
+            case 2:
+                core.ui.closePanel();
+                break;
+        }
+    }
+}
+
+////// 回放选择界面时，按下某个键的操作 //////
+actions.prototype.keyDownReplay = function (keycode) {
+    if (keycode==38) {
+        core.status.event.selection--;
+        core.ui.drawChoices(core.status.event.ui.text, core.status.event.ui.choices);
+    }
+    if (keycode==40) {
+        core.status.event.selection++;
+        core.ui.drawChoices(core.status.event.ui.text, core.status.event.ui.choices);
+    }
+}
+
+////// 回放选择界面时，放开某个键的操作 //////
+actions.prototype.keyUpReplay = function (keycode) {
+    if (keycode==27 || keycode==88) {
+        core.ui.closePanel();
+        return;
+    }
+    var choices = core.status.event.ui.choices;
+    if (keycode==13 || keycode==32 || keycode==67) {
+        var topIndex = 6 - parseInt((choices.length - 1) / 2);
+        this.clickReplay(6, topIndex+core.status.event.selection);
     }
 }
 

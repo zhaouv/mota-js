@@ -13,20 +13,20 @@ functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 		core.material.items.pickaxe.text = "可以破坏勇士四周的墙";
 	if (core.flags.bombFourDirections)
 		core.material.items.bomb.text = "可以炸掉勇士四周的怪物";
+	if (core.flags.snowFourDirections)
+		core.material.items.bomb.text = "可以将四周的熔岩变成平地";
 	if (core.flags.equipment) {
-		core.material.items.sword1 = {'cls': 'constants', 'name': '铁剑', 'text': '一把很普通的铁剑'};
-		core.material.items.sword2 = {'cls': 'constants', 'name': '银剑', 'text': '一把很普通的银剑'};
-		core.material.items.sword3 = {'cls': 'constants', 'name': '骑士剑', 'text': '一把很普通的骑士剑'};
-		core.material.items.sword4 = {'cls': 'constants', 'name': '圣剑', 'text': '一把很普通的圣剑'};
-		core.material.items.sword5 = {'cls': 'constants', 'name': '神圣剑', 'text': '一把很普通的神圣剑'};
-		core.material.items.shield1 = {'cls': 'constants', 'name': '铁盾', 'text': '一个很普通的铁盾'};
-		core.material.items.shield2 = {'cls': 'constants', 'name': '银盾', 'text': '一个很普通的银盾'};
-		core.material.items.shield3 = {'cls': 'constants', 'name': '骑士盾', 'text': '一个很普通的骑士盾'};
-		core.material.items.shield4 = {'cls': 'constants', 'name': '圣盾', 'text': '一个很普通的圣盾'};
-		core.material.items.shield5 = {'cls': 'constants', 'name': '神圣盾', 'text': '一个很普通的神圣盾'};
+		core.material.items.sword1.cls = 'constants';
+		core.material.items.sword2.cls = 'constants';
+		core.material.items.sword3.cls = 'constants';
+		core.material.items.sword4.cls = 'constants';
+		core.material.items.sword5.cls = 'constants';
+		core.material.items.shield1.cls = 'constants';
+		core.material.items.shield2.cls = 'constants';
+		core.material.items.shield3.cls = 'constants';
+		core.material.items.shield4.cls = 'constants';
+		core.material.items.shield5.cls = 'constants';
 	}
-
-
 },
 ////// 不同难度分别设置初始属性 //////
 "setInitData":function (hard) {
@@ -59,7 +59,7 @@ functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 		core.removeGlobalAnimate(0,0,true);
 		core.clearMap('all'); // 清空全地图
 		core.drawText([
-			"\t[恭喜通关]你的分数是${status:hp}。"
+			"\t[" + (reason||"恭喜通关") + "]你的分数是${status:hp}。"
 		], function () {
 			core.events.gameOver(reason||'', replaying);
 		})
@@ -73,7 +73,7 @@ functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 	core.stopReplay();
 	core.waitHeroToStop(function() {
 		core.drawText([
-			"\t[结局1]你死了。\n如题。"
+			"\t["+(reason||"结局1")+"]你死了。\n如题。"
 		], function () {
 			core.events.gameOver(null, replaying);
 		});
@@ -116,12 +116,19 @@ functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 
 	var enemy = core.material.enemys[enemyId];
 
+	var damage = core.enemys.getDamage(enemyId);
+	if (damage == null) damage = core.status.hero.hp+1;
+
 	// 扣减体力值
-	core.status.hero.hp -= core.enemys.getDamage(enemyId);
+	core.status.hero.hp -= damage;
+
+	// 记录
+	core.status.hero.statistics.battleDamage += damage;
+
 	if (core.status.hero.hp<=0) {
 		core.status.hero.hp=0;
 		core.updateStatusBar();
-		core.events.lose('battle');
+		core.events.lose('战斗失败');
 		return;
 	}
 	// 获得金币和经验
@@ -154,8 +161,13 @@ functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 	// 衰弱
 	if (core.enemys.hasSpecial(special, 13) && !core.hasFlag('weak')) {
 		core.setFlag('weak', true);
-		core.status.hero.atk-=core.values.weakValue;
-		core.status.hero.def-=core.values.weakValue;
+		var weakValue = core.values.weakValue;
+		var weakAtk = weakValue>=1?weakValue:Math.floor(weakValue*core.status.hero.atk);
+		var weakDef = weakValue>=1?weakValue:Math.floor(weakValue*core.status.hero.def);
+		core.setFlag('weakAtk', weakAtk);
+		core.setFlag('weakDef', weakDef);
+		core.status.hero.atk-=weakAtk;
+		core.status.hero.def-=weakDef;
 	}
 	// 诅咒
 	if (core.enemys.hasSpecial(special, 14) && !core.hasFlag('curse')) {
@@ -340,25 +352,38 @@ functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 		console.log("插件函数执行测试");
 	}
 
+	var _useEquipment = function (itemId, name, type) { // 具体的装备使用效果
+		if (itemId.indexOf(name)==0) {
+			var now=core.getFlag(name, name+"0");
+
+			if (typeof core.values[now] == 'number') {
+				core.status.hero[type] -= core.values[now];
+			}
+			else {
+				core.status.hero.atk -= core.values[now].atk || 0;
+				core.status.hero.def -= core.values[now].def || 0;
+				core.status.hero.mdef -= core.values[now].mdef || 0;
+			}
+
+			if (typeof core.values[itemId] == 'number') {
+				core.status.hero[type] += core.values[itemId];
+			}
+			else {
+				core.status.hero.atk += core.values[itemId].atk || 0;
+				core.status.hero.def += core.values[itemId].def || 0;
+				core.status.hero.mdef += core.values[itemId].mdef || 0;
+			}
+
+			core.setItem(now, 1);
+			core.setItem(itemId, 0);
+			core.setFlag(name, itemId);
+			core.drawTip("已装备"+core.material.items[itemId].name);
+		}
+	}
+
 	this.useEquipment = function (itemId) { // 使用装备
-		if (itemId.indexOf("sword")==0) {
-			var now=core.getFlag('sword', 'sword0'); // 当前装备剑的ID
-			core.status.hero.atk -= core.values[now];
-			core.setItem(now, 1);
-			core.status.hero.atk += core.values[itemId];
-			core.setItem(itemId, 0);
-			core.setFlag('sword', itemId);
-			core.drawTip("已装备"+core.material.items[itemId].name);
-		}
-		if (itemId.indexOf("shield")==0) {
-			var now=core.getFlag('shield', 'shield0');
-			core.status.hero.def -= core.values[now];
-			core.setItem(now, 1);
-			core.status.hero.def += core.values[itemId];
-			core.setItem(itemId, 0);
-			core.setFlag('shield', itemId);
-			core.drawTip("已装备"+core.material.items[itemId].name);
-		}
+		_useEquipment(itemId, "sword", "atk");
+		_useEquipment(itemId, "shield", "def");
 	}
 	
 	// 可以在任何地方（如afterXXX或自定义脚本事件）调用函数，方法为  core.plugin.xxx();

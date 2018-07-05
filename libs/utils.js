@@ -20,6 +20,12 @@ utils.prototype.replaceText = function (text) {
 
 ////// 计算表达式的值 //////
 utils.prototype.calValue = function (value) {
+    if (typeof value == 'number') {
+        return value;
+    }
+    if (value instanceof Function) {
+        return value();
+    }
     value=value.replace(/status:([\w\d_]+)/g, "core.getStatus('$1')");
     value=value.replace(/item:([\w\d_]+)/g, "core.itemCount('$1')");
     value=value.replace(/flag:([\w\d_]+)/g, "core.getFlag('$1', 0)");
@@ -70,7 +76,19 @@ utils.prototype.unshift = function (a,b) {
 ////// 设置本地存储 //////
 utils.prototype.setLocalStorage = function(key, value) {
     try {
-        localStorage.setItem(core.firstData.name + "_" + key, JSON.stringify(value));
+        var str = JSON.stringify(value);
+        var compressed = LZString.compress(str);
+
+        // test if we can save to localStorage
+        localStorage.setItem("__tmp__", compressed);
+        if (LZString.decompress(localStorage.getItem("__tmp__"))==str) {
+            localStorage.setItem(core.firstData.name + "_" + key, compressed);
+        }
+        else {
+            // We cannot compress the data
+            localStorage.setItem(core.firstData.name + "_" + key, str);
+        }
+        localStorage.removeItem("__tmp__");
         return true;
     }
     catch (e) {
@@ -81,9 +99,24 @@ utils.prototype.setLocalStorage = function(key, value) {
 
 ////// 获得本地存储 //////
 utils.prototype.getLocalStorage = function(key, defaultValue) {
-    var value = localStorage.getItem(core.firstData.name+"_"+key);
-    if (core.isset(value)) return JSON.parse(value);
-    return defaultValue;
+    try {
+        var value = localStorage.getItem(core.firstData.name+"_"+key);
+        if (core.isset(value)) {
+            var output = LZString.decompress(value);
+            if (core.isset(output) && output.length>0) {
+                try {
+                    return JSON.parse(output);
+                }
+                catch (ee) {}
+            }
+            return JSON.parse(value);
+        }
+        return defaultValue;
+    }
+    catch (e) {
+        console.log(e);
+        return defaultValue;
+    }
 }
 
 ////// 移除本地存储 //////
@@ -126,6 +159,24 @@ utils.prototype.clone = function (data) {
     return data;
 }
 
+////// 裁剪图片 //////
+utils.prototype.cropImage = function (image, size) {
+    size = size||32;
+    var canvas = document.createElement("canvas");
+    var context = canvas.getContext("2d");
+    canvas.width = size;
+    canvas.height = size;
+    var ans = [];
+    for (var i=0;i<image.height;i+=size) {
+        context.drawImage(image, 0, i, size, size, 0, 0, size, size);
+        var img = new Image();
+        img.src = canvas.toDataURL("image/png");
+        ans.push(img);
+        context.clearRect(0,0,size,size);
+    }
+    return ans;
+}
+
 ////// 格式化时间为字符串 //////
 utils.prototype.formatDate = function(date) {
     if (!core.isset(date)) return "";
@@ -143,6 +194,34 @@ utils.prototype.formatDate2 = function (date) {
 ////// 两位数显示 //////
 utils.prototype.setTwoDigits = function (x) {
     return parseInt(x)<10?"0"+x:x;
+}
+
+utils.prototype.formatBigNumber = function (x) {
+    x = Math.floor(parseFloat(x));
+    if (!core.isset(x)) return '???';
+
+    var c = x<0?"-":"";
+    x = Math.abs(x);
+
+    if (x<=999999) return c + x;
+
+    var all = [
+        {"val": 1e20, "c": "g"},
+        {"val": 1e16, "c": "j"},
+        {"val": 1e12, "c": "z"},
+        {"val": 1e8, "c": "e"},
+        {"val": 1e4, "c": "w"},
+    ]
+
+    for (var i=0;i<all.length;i++) {
+        var one = all[i];
+        if (x>=10*one.val) {
+            var v = x/one.val;
+            return c + v.toFixed(Math.max(0, Math.floor(4-Math.log10(v+1)))) + one.c;
+        }
+    }
+
+    return c+x;
 }
 
 ////// 数组转RGB //////
@@ -192,8 +271,10 @@ utils.prototype.encodeRoute = function (route) {
                 ans+='N';
             else if (t.indexOf('move:')==0)
                 ans+="M"+t.substring(5);
-            else if (t=='key:')
+            else if (t.indexOf('key:')==0)
                 ans+='K'+t.substring(4);
+            else if (t.indexOf('random:')==0)
+                ans+='X'+t.substring(7);
         }
     });
     if (cnt>0) {
@@ -246,6 +327,7 @@ utils.prototype.decodeRoute = function (route) {
             case "N": ans.push("no"); break;
             case "M": ++index; ans.push("move:"+nxt+":"+getNumber()); break;
             case "K": ans.push("key:"+nxt); break;
+            case "X": ans.push("random:"+nxt); break;
         }
     }
     return ans;
@@ -259,8 +341,89 @@ utils.prototype.isset = function (val) {
     return true
 }
 
+////// 获得子数组 //////
+utils.prototype.subarray = function (a, b) {
+    if (!core.isset(a) || !core.isset(b) || !(a instanceof Array) || !(b instanceof Array) || a.length<b.length)
+        return null;
+    var na = core.clone(a), nb=core.clone(b);
+    while (nb.length>0) {
+        if (na.shift() != nb.shift()) return null;
+    }
+    return na;
+}
+
+////// Base64加密 //////
+utils.prototype.encodeBase64 = function (str) {
+    return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, function (match, p1) {
+        return String.fromCharCode(parseInt(p1, 16))
+    }))
+}
+
+////// Base64解密 //////
+utils.prototype.decodeBase64 = function (str) {
+    return decodeURIComponent(atob(str).split('').map(function(c) {
+        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+    }).join(''));
+}
+
+utils.prototype.__init_seed = function () {
+    var rand = new Date().getTime()%34834795 + 3534;
+    rand = this.__next_rand(rand);
+    rand = this.__next_rand(rand);
+    rand = this.__next_rand(rand);
+    core.setFlag('seed', rand);
+    core.setFlag('rand', rand);
+}
+
+utils.prototype.__next_rand = function (_rand) {
+    _rand=(_rand%127773)*16807-~~(_rand/127773)*2836;
+    _rand+=_rand<0?2147483647:0;
+    return _rand;
+}
+
+utils.prototype.rand = function (num) {
+    var rand = core.getFlag('rand');
+    rand = this.__next_rand(rand);
+    core.setFlag('rand', rand);
+    var ans = rand/2147483647;
+    if (core.isset(num) && num>0)
+        return Math.floor(ans*num);
+    return ans;
+}
+
+////// 生成随机数（录像方法） //////
+utils.prototype.rand2 = function (num) {
+    num = num||2147483648;
+
+    var value;
+    if (core.status.replay.replaying) {
+        var action = core.status.replay.toReplay.shift();
+        if (action.indexOf("random:")==0 ) {
+            value=parseInt(action.substring(7));
+        }
+        else {
+            core.stopReplay();
+            core.drawTip("录像文件出错");
+            return;
+        }
+    }
+    else {
+        value = Math.floor(Math.random()*num);
+    }
+    core.status.route.push("random:"+value);
+    return value;
+}
+
 ////// 读取一个本地文件内容 //////
 utils.prototype.readFile = function (success, error, readType) {
+
+    core.platform.successCallback = success;
+    core.platform.errorCallback = error;
+
+    if (core.isset(window.jsinterface)) {
+        window.jsinterface.readFile();
+        return;
+    }
 
     // step 0: 不为http/https，直接不支持
     if (!core.platform.isOnline) {
@@ -278,7 +441,7 @@ utils.prototype.readFile = function (success, error, readType) {
 
     if (core.platform.fileInput==null) {
         core.platform.fileInput = document.createElement("input");
-        core.platform.fileInput.style.display = 'none';
+        core.platform.fileInput.style.opacity = 0;
         core.platform.fileInput.type = 'file';
         core.platform.fileInput.onchange = function () {
             var files = core.platform.fileInput.files;
@@ -293,13 +456,41 @@ utils.prototype.readFile = function (success, error, readType) {
         }
     }
 
-    core.platform.successCallback = success;
-    core.platform.errorCallback = error;
     core.platform.fileInput.click();
+}
+
+////// 读取文件完毕 //////
+utils.prototype.readFileContent = function (content) {
+    var obj=null;
+    if(content.slice(0,4)==='data'){
+        if (core.isset(core.platform.successCallback))
+            core.platform.successCallback(content);
+        return;
+    }
+    try {
+        obj=JSON.parse(content);
+        if (core.isset(obj)) {
+            if (core.isset(core.platform.successCallback))
+                core.platform.successCallback(obj);
+            return;
+        }
+    }
+    catch (e) {
+        console.log(e);
+    }
+    alert("不是有效的JSON文件！");
+
+    if (core.isset(core.platform.errorCallback))
+        core.platform.errorCallback();
 }
 
 ////// 下载文件到本地 //////
 utils.prototype.download = function (filename, content) {
+
+    if (core.isset(window.jsinterface)) {
+        window.jsinterface.download(filename, content);
+        return;
+    }
 
     // Step 0: 不为http/https，直接不支持
     if (!core.platform.isOnline) {
@@ -356,6 +547,12 @@ utils.prototype.download = function (filename, content) {
 
 ////// 复制一段内容到剪切板 //////
 utils.prototype.copy = function (data) {
+
+    if (core.isset(window.jsinterface)) {
+        window.jsinterface.copy(filename, content);
+        return true;
+    }
+
     if (!core.platform.supportCopy) return false;
 
     var textArea = document.createElement("textarea");
@@ -434,11 +631,56 @@ utils.prototype.hide = function (obj, speed, callback) {
     }, speed);
 }
 
-utils.prototype.http = function (type, url, formData, success, error, mimeType) {
+utils.prototype.export = function (floorIds) {
+    if (!core.isset(floorIds)) floorIds = [core.status.floorId];
+    else if (floorIds=='all') floorIds = core.clone(core.floorIds);
+    else if (typeof floorIds == 'string') floorIds = [floorIds];
+
+    var monsterMap = {};
+
+    // map
+    var content = floorIds.length+"\n13 13\n\n";
+    floorIds.forEach(function (floorId) {
+        var arr = core.maps.getMapArray(core.status.maps[floorId].blocks);
+        content += arr.map(function (x) {
+            // check monster
+            x.forEach(function (t) {
+                var block = core.maps.initBlock(null, null, t);
+                if (core.isset(block.event) && block.event.cls.indexOf("enemy")==0) {
+                    monsterMap[t] = block.event.id;
+                }
+            })
+            return x.join("\t");
+        }).join("\n") + "\n\n";
+    })
+
+    // values
+    content += ["redJewel", "blueJewel", "greenJewel", "redPotion", "bluePotion",
+        "yellowPotion", "greenPotion", "sword1", "shield1"].map(function (x) {return core.values[x]}).join(" ") + "\n\n";
+
+    // monster
+    content += Object.keys(monsterMap).length + "\n";
+    for (var t in monsterMap) {
+        var id = monsterMap[t], monster = core.material.enemys[id];
+        content += t + " " + monster.hp + " " + monster.atk + " " +
+            monster.def + " " + monster.money + " " + monster.special + "\n";
+    }
+    content += "\n0 0 0 0 0 0\n\n";
+    content += core.status.hero.hp + " " + core.status.hero.atk + " "
+        + core.status.hero.def + " " + core.status.hero.mdef + " " + core.status.hero.money + " "
+        + core.itemCount('yellowKey') + " " + core.itemCount("blueKey") + " " + core.itemCount("redKey") + " 0 "
+        + core.status.hero.loc.x + " " + core.status.hero.loc.y + "\n";
+
+    console.log(content);
+}
+
+utils.prototype.http = function (type, url, formData, success, error, mimeType, responseType) {
     var xhr = new XMLHttpRequest();
     xhr.open(type, url, true);
     if (core.isset(mimeType))
         xhr.overrideMimeType(mimeType);
+    if (core.isset(responseType))
+        xhr.responseType = responseType;
     xhr.onload = function(e) {
         if (xhr.status==200) {
             if (core.isset(success)) {

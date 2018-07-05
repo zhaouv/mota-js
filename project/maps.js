@@ -17,7 +17,8 @@ maps_90f36752_8815_4be8_b32b_d7fad1d0542e =
     '12':{'cls': 'animates', 'id': 'poisonNet', 'noPass': false, 'trigger': 'passNet'}, // 毒网
     '13':{'cls': 'animates', 'id': 'weakNet', 'noPass': false, 'trigger': 'passNet'}, // 衰网
     '14':{'cls': 'animates', 'id': 'curseNet', 'noPass': false, 'trigger': 'passNet'}, // 咒网
-    '15':{'cls': 'animates', 'id': 'water', 'noPass': true}, // 水
+    '15':{'cls': 'animates', 'id': 'blueWater', 'noPass': true}, // 水
+    '16':{'cls': 'animates', 'id': 'water', 'noPass': true}, // 水
     // 在这里添加更多地形
     // 如果空位不足，可以从180以后开始继续放，只要不和现有的数字冲突即可
 
@@ -76,6 +77,10 @@ maps_90f36752_8815_4be8_b32b_d7fad1d0542e =
     '63':{'cls': 'items', 'id': 'moneyPocket'}, // 金钱袋
     '64':{'cls': 'items', 'id': 'shoes'}, // 绿鞋
     '65':{'cls': 'items', 'id': 'hammer'}, // 圣锤
+    '66':{'cls': 'items', 'id': 'sword0'}, // 空剑
+    '67':{'cls': 'items', 'id': 'shield0'}, // 空盾
+    '68':{'cls': 'items', 'id': 'lifeWand'}, // 生命魔杖
+    '69':{'cls': 'items', 'id': 'jumpShoes'}, // 生命魔杖
 
 
     ////////////////////////// 门、楼梯、传送点部分 //////////////////////////
@@ -112,16 +117,32 @@ maps_90f36752_8815_4be8_b32b_d7fad1d0542e =
     '130':{'cls': 'npcs', 'id': 'pinkShop'},
     '131':{'cls': 'npcs', 'id': 'blueShop'},
     '132':{'cls': 'npcs', 'id': 'princess'},
-    '133':{'cls': 'npc48', 'id': 'npc0'},
-    '134':{'cls': 'npc48', 'id': 'npc1'},
-    '135':{'cls': 'npc48', 'id': 'npc2'},
-    '136':{'cls': 'npc48', 'id': 'npc3'},
-    '137':{'cls': 'npc48', 'id': 'npc4'},
-
+    '133': {'cls': 'npc48', 'id': 'npc0'},
+    '134': {'cls': 'npc48', 'id': 'npc1'},
+    '135': {'cls': 'npc48', 'id': 'npc2'},
+    '136': {'cls': 'npc48', 'id': 'npc3'},
+    '137': {'cls': 'npc48', 'id': 'npc4'},
+    
+    '181': {'cls': 'npcs', 'id': 'wlt'},
+    '182': {'cls': 'npcs', 'id': 'wt'},
+    '183': {'cls': 'npcs', 'id': 'wrt'},
+    '184': {'cls': 'npcs', 'id': 'wl'},
+    '185': {'cls': 'npcs', 'id': 'wc'},
+    '186': {'cls': 'npcs', 'id': 'wr'},
+    '187': {'cls': 'npcs', 'id': 'wlb'},
+    '188': {'cls': 'npcs', 'id': 'wrb'},
+    '189': {'cls': 'npcs', 'id': 'dlt'},
+    '190': {'cls': 'npcs', 'id': 'dt'},
+    '191': {'cls': 'npcs', 'id': 'drt'},
+    '192': {'cls': 'npcs', 'id': 'dl'},
+    '193': {'cls': 'npcs', 'id': 'dc'},
+    '194': {'cls': 'npcs', 'id': 'dr'},
+    '195': {'cls': 'npcs', 'id': 'dlb'},
+    '196': {'cls': 'npcs', 'id': 'drb'},
 
     ////////////////////////// 其他部分 //////////////////////////
 
-    // 161-200 其他（单向箭头、灯、箱子等等）
+    // 171-200 其他（单向箭头、灯、箱子等等）
     '161':{'cls': 'terrains', 'id': 'arrowUp', 'noPass': false}, // 单向上箭头
     '162':{'cls': 'terrains', 'id': 'arrowDown', 'noPass': false}, // 单向下箭头
     '163':{'cls': 'terrains', 'id': 'arrowLeft', 'noPass': false}, // 单向左箭头
@@ -132,7 +153,6 @@ maps_90f36752_8815_4be8_b32b_d7fad1d0542e =
     '168':{'cls': 'terrains', 'id': 'flower', 'noPass': false}, // 花
     '169':{'cls': 'terrains', 'id': 'box', 'trigger': 'pushBox', 'noPass': true}, // 箱子
     '170':{'cls': 'terrains', 'id': 'boxed', 'trigger': 'pushBox', 'noPass': true}, // 完成的箱子
-
 
     ////////////////////////// 怪物部分 //////////////////////////
 

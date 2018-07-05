@@ -48,6 +48,8 @@ function core() {
         'soundStatus': true, // 是否播放SE
         'playingBgm': null, // 正在播放的BGM
         'isPlaying': false,
+        'gainNode': null,
+        'volume': 1.0, // 音量
     }
     this.platform = {
         'isOnline': true, // 是否http
@@ -101,10 +103,12 @@ function core() {
             'cursorX': null,
             'cursorY': null,
             "moveDirectly": false,
+            'clickMoveDirectly': false,
         },
 
         // 按下键的时间：为了判定双击
         'downTime': null,
+        'ctrlDown': false,
 
         // 路线&回放
         'route': [],
@@ -114,7 +118,9 @@ function core() {
             'animate': false, // 正在某段动画中
             'toReplay': [],
             'totalList': [],
-            'speed': 1.0
+            'speed': 1.0,
+            'steps': 0,
+            'save': [],
         },
 
         // event事件
@@ -174,7 +180,7 @@ core.prototype.init = function (coreData, callback) {
     core.dom.logoLabel.innerHTML = core.firstData.title;
     document.title = core.firstData.title + " - HTML5魔塔";
     document.getElementById("startLogo").innerHTML = core.firstData.title;
-    core.material.items = core.items.getItems();
+    core.material.items = core.clone(core.items.getItems());
     core.initStatus.maps = core.maps.initMaps(core.floorIds);
     core.material.enemys = core.clone(core.enemys.getEnemys());
     core.material.icons = core.icons.getIcons();
@@ -185,6 +191,8 @@ core.prototype.init = function (coreData, callback) {
         window.AudioContext = window.AudioContext || window.webkitAudioContext || window.mozAudioContext || window.msAudioContext;
         try {
             core.musicStatus.audioContext = new window.AudioContext();
+            core.musicStatus.gainNode = core.musicStatus.audioContext.createGain();
+            core.musicStatus.gainNode.connect(core.musicStatus.audioContext.destination);
         } catch (e) {
             console.log("该浏览器不支持AudioContext");
             core.musicStatus.audioContext = null;
@@ -216,29 +224,7 @@ core.prototype.init = function (coreData, callback) {
     if (window.FileReader) {
         core.platform.fileReader = new FileReader();
         core.platform.fileReader.onload = function () {
-            var content=core.platform.fileReader.result;
-            var obj=null;
-            if(content.slice(0,4)==='data'){
-                if (core.isset(core.platform.successCallback))
-                    core.platform.successCallback(content);
-                return;
-            }
-            try {
-                obj=JSON.parse(content);
-                if (core.isset(obj)) {
-                    if (core.isset(core.platform.successCallback))
-                        core.platform.successCallback(obj);
-                    return;
-                }
-            }
-            catch (e) {
-                console.log(e);
-            }
-            alert("不是有效的JSON文件！");
-
-            if (core.isset(core.platform.errorCallback))
-                core.platform.errorCallback();
-
+            core.readFileContent(core.platform.fileReader.result);
         };
         core.platform.fileReader.onerror = function () {
             if (core.isset(core.platform.errorCallback))
@@ -268,11 +254,11 @@ core.prototype.init = function (coreData, callback) {
     // switchs
     core.flags.battleAnimate = core.getLocalStorage('battleAnimate', core.flags.battleAnimate);
     core.flags.displayEnemyDamage = core.getLocalStorage('enemyDamage', core.flags.displayEnemyDamage);
+    core.flags.displayCritical = core.getLocalStorage('critical', core.flags.displayCritical);
     core.flags.displayExtraDamage = core.getLocalStorage('extraDamage', core.flags.displayExtraDamage);
 
     core.material.ground = new Image();
     core.material.ground.src = "project/images/ground.png";
-
 
     core.loader.load(function () {
         console.log(core.material);
@@ -281,7 +267,8 @@ core.prototype.init = function (coreData, callback) {
         core.setRequestAnimationFrame();
         core.showStartAnimate();
 
-        core.events.initGame();
+        if (main.mode=='play')
+            core.events.initGame();
 
         if (core.isset(functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a.plugins))
             core.plugin = new functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a.plugins.plugin();
@@ -317,8 +304,8 @@ core.prototype.clearStatus = function() {
 }
 
 ////// 重置游戏状态和初始数据 //////
-core.prototype.resetStatus = function(hero, hard, floorId, route, maps) {
-    core.control.resetStatus(hero, hard, floorId, route, maps)
+core.prototype.resetStatus = function(hero, hard, floorId, route, maps, values, flags) {
+    core.control.resetStatus(hero, hard, floorId, route, maps, values, flags);
 }
 
 ////// 开始游戏 //////
@@ -476,6 +463,11 @@ core.prototype.eventMoveHero = function(steps, time, callback) {
     core.control.eventMoveHero(steps, time, callback);
 }
 
+////// 使用事件让勇士跳跃。这个函数将不会触发任何事件 //////
+core.prototype.jumpHero = function (ex,ey,time,callback) {
+    core.control.jumpHero(ex,ey,time,callback);
+}
+
 ////// 每移动一格后执行的事件 //////
 core.prototype.moveOneStep = function() {
     core.control.moveOneStep();
@@ -507,13 +499,13 @@ core.prototype.getHeroLoc = function (itemName) {
 }
 
 ////// 获得勇士面对位置的x坐标 //////
-core.prototype.nextX = function() {
-    return core.control.nextX();
+core.prototype.nextX = function(n) {
+    return core.control.nextX(n);
 }
 
 ////// 获得勇士面对位置的y坐标 //////
-core.prototype.nextY = function () {
-    return core.control.nextY();
+core.prototype.nextY = function (n) {
+    return core.control.nextY(n);
 }
 
 /////////// 自动行走 & 行走控制 END ///////////
@@ -666,9 +658,19 @@ core.prototype.getBlock = function (x, y, floorId, needEnable) {
     return core.maps.getBlock(x,y,floorId,needEnable);
 }
 
+////// 获得某个点的blockId //////
+core.prototype.getBlockId = function (x, y, floorId, needEnable) {
+    return core.maps.getBlockId(x, y, floorId, needEnable);
+}
+
 ////// 显示移动某块的动画，达到{“type”:”move”}的效果 //////
 core.prototype.moveBlock = function(x,y,steps,time,immediateHide,callback) {
     core.maps.moveBlock(x,y,steps,time,immediateHide,callback)
+}
+
+////// 显示跳跃某块的动画，达到{"type":"jump"}的效果 //////
+core.prototype.jumpBlock = function(sx,sy,ex,ey,time,immediateHide,callback) {
+    core.maps.jumpBlock(sx,sy,ex,ey,time,immediateHide,callback);
 }
 
 ////// 显示/隐藏某个块时的动画效果 //////
@@ -694,6 +696,11 @@ core.prototype.removeBlockById = function (index, floorId) {
 ////// 一次性删除多个block //////
 core.prototype.removeBlockByIds = function (floorId, ids) {
     core.maps.removeBlockByIds(floorId, ids);
+}
+
+////// 改变图块 //////
+core.prototype.setBlock = function (number, x, y, floorId) {
+    core.maps.setBlock(number, x, y, floorId);
 }
 
 ////// 添加一个全局动画 //////
@@ -863,6 +870,11 @@ core.prototype.clone = function (data) {
     return core.utils.clone(data);
 }
 
+////// 裁剪图片 //////
+core.prototype.cropImage = function (image, size) {
+    return core.utils.cropImage(image, size);
+}
+
 ////// 格式化时间为字符串 //////
 core.prototype.formatDate = function(date) {
     return core.utils.formatDate(date);
@@ -871,6 +883,11 @@ core.prototype.formatDate = function(date) {
 ////// 格式化时间为最简字符串 //////
 core.prototype.formatDate2 = function (date) {
     return core.utils.formatDate2(date);
+}
+
+////// 格式化大数 //////
+core.prototype.formatBigNumber = function (x) {
+    return core.utils.formatBigNumber(x);
 }
 
 ////// 两位数显示 //////
@@ -888,9 +905,29 @@ core.prototype.debug = function() {
     core.control.debug();
 }
 
+////// 存档前 //////
+core.prototype.beforeSaveData = function (data) {
+    return core.events.beforeSaveData(data);
+}
+
+////// 读档后 //////
+core.prototype.afterLoadData = function (data) {
+    return core.events.afterLoadData(data);
+}
+
+////// 重置当前地图 //////
+core.prototype.resetMap = function(floorId) {
+    core.maps.resetMap(floorId);
+}
+
 ////// 开始播放 //////
 core.prototype.startReplay = function (list) {
     core.control.startReplay(list);
+}
+
+////// 关闭UI窗口 //////
+core.prototype.closePanel = function () {
+    core.ui.closePanel();
 }
 
 ////// 更改播放状态 //////
@@ -909,11 +946,16 @@ core.prototype.resumeReplay = function () {
 }
 
 ////// 加速播放 //////
-core.prototype.forwardReplay = function () {
-    core.control.forwardReplay();
+core.prototype.speedUpReplay = function () {
+    core.control.speedUpReplay();
 }
 
 ////// 减速播放 //////
+core.prototype.speedDownReplay = function () {
+    core.control.speedDownReplay();
+}
+
+////// 回退播放 //////
 core.prototype.rewindReplay = function () {
     core.control.rewindReplay();
 }
@@ -921,6 +963,15 @@ core.prototype.rewindReplay = function () {
 ////// 停止播放 //////
 core.prototype.stopReplay = function () {
     core.control.stopReplay();
+}
+
+////// 回放时存档 //////
+core.prototype.saveReplay = function () {
+    core.control.saveReplay();
+}
+
+core.prototype.bookReplay = function () {
+    core.control.bookReplay();
 }
 
 ////// 回放 //////
@@ -989,8 +1040,8 @@ core.prototype.syncLoad = function () {
 }
 
 ////// 存档到本地 //////
-core.prototype.saveData = function(dataId) {
-    return core.control.saveData(dataId);
+core.prototype.saveData = function() {
+    return core.control.saveData();
 }
 
 ////// 从本地读档 //////
@@ -1009,8 +1060,8 @@ core.prototype.decodeRoute = function (route) {
 }
 
 ////// 发送HTTP //////
-core.prototype.http = function (type, url, formData, success, error, header) {
-    core.utils.http(type, url, formData, success, error, header)
+core.prototype.http = function (type, url, formData, success, error, mimeType, responseType) {
+    core.utils.http(type, url, formData, success, error, mimeType, responseType)
 }
 
 ////// 设置勇士属性 //////
@@ -1067,9 +1118,39 @@ core.prototype.isset = function (val) {
     return core.utils.isset(val);
 }
 
+////// 获得子数组 //////
+core.prototype.subarray = function (a, b) {
+    return core.utils.subarray(a, b);
+}
+
+////// Base64加密 //////
+core.prototype.encodeBase64 = function (str) {
+    return core.utils.encodeBase64(str);
+}
+
+////// Base64解密 //////
+core.prototype.decodeBase64 = function (str) {
+    return core.utils.decodeBase64(str);
+}
+
+////// 生成随机数（seed方法） //////
+core.prototype.rand = function (num) {
+    return core.utils.rand(num);
+}
+
+////// 生成随机数（录像方法） //////
+core.prototype.rand2 = function (num) {
+    return core.utils.rand2(num);
+}
+
 ////// 读取一个本地文件内容 //////
 core.prototype.readFile = function (success, error, readType) {
     core.utils.readFile(success, error, readType);
+}
+
+////// 读取本地文件完毕 //////
+core.prototype.readFileContent = function (content) {
+    core.utils.readFileContent(content);
 }
 
 ////// 下载文件到本地 //////

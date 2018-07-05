@@ -1,8 +1,8 @@
-editor_blockly = function(){
+editor_blockly = function () {
 
-var editor_blockly = {};
+    var editor_blockly = {};
 
-initscript=String.raw`
+    initscript = String.raw`
 (function(){
   var getCategory = function(name){
   for(var node of document.getElementById('toolbox').children) {
@@ -11,25 +11,25 @@ initscript=String.raw`
   }
 
   var toolboxObj = {
-    'entry':[
+    '入口方块':[
       MotaActionFunctions.actionParser.parse([
         "欢迎使用事件编辑器",
         "本事件触发一次后会消失",
         {"type": "hide", "time": 500},
       ],'event'),
       MotaActionBlocks['changeFloor_m'].xmlText(),
-      MotaActionFunctions.actionParser.parse({"type": "choices", "choices": [
-        {"text": "攻击+\${point}", "action": [
-          {"type": "setValue", "name": "status:atk", "value": "status:atk+\${point}"},
-        ]},
-        {"text": "防御+\${2*point}", "action": [
-          {"type": "setValue", "name": "status:def", "value": "status:def+\${2*point}"},
-        ]},
-        {"text": "生命+\${200*point}", "action": [
-          {"type": "setValue", "name": "status:hp", "value": "status:hp+\${200*point}"},
-        ]},
-      ]},'point'),
-      MotaActionFunctions.actionParser.parse({
+      //MotaActionFunctions.actionParser.parse({"type": "choices", "choices": [
+      //  {"text": "攻击+\${point}", "action": [
+      //    {"type": "setValue", "name": "status:atk", "value": "status:atk+\${point}"},
+      //  ]},
+      //  {"text": "防御+\${2*point}", "action": [
+      //    {"type": "setValue", "name": "status:def", "value": "status:def+\${2*point}"},
+      //  ]},
+      //  {"text": "生命+\${200*point}", "action": [
+      //    {"type": "setValue", "name": "status:hp", "value": "status:hp+\${200*point}"},
+      //  ]},
+      //]},'point'),
+      MotaActionFunctions.actionParser.parse([{
         "id": "moneyShop1",
         "name": "贪婪之神", 
         "icon": "blueShop",
@@ -43,13 +43,13 @@ initscript=String.raw`
           {"text": "防御+4", "effect": "status:def+=4"},
           {"text": "魔防+10", "effect": "status:mdef+=10"}
         ]
-      },'shop'),
+      }],'shop'),
       MotaActionBlocks['afterBattle_m'].xmlText(),
       MotaActionBlocks['afterGetItem_m'].xmlText(),
       MotaActionBlocks['afterOpenDoor_m'].xmlText(),
       MotaActionBlocks['firstArrive_m'].xmlText(),
     ],
-    'statement':[
+    '语句块':[
       '<label text="显示文字"></label>',
       MotaActionBlocks['text_0_s'].xmlText(),
       MotaActionBlocks['text_1_s'].xmlText(),
@@ -62,7 +62,12 @@ initscript=String.raw`
       ]}),
       MotaActionBlocks['setText_s'].xmlText(),
       MotaActionBlocks['showImage_0_s'].xmlText(),
+      MotaActionBlocks['animateImage_0_s'].xmlText(),
+      MotaActionBlocks['animateImage_1_s'].xmlText(),
       MotaActionBlocks['showImage_1_s'].xmlText(),
+      MotaActionBlocks['showGif_0_s'].xmlText(),
+      MotaActionBlocks['showGif_1_s'].xmlText(),
+      MotaActionBlocks['moveImage_0_s'].xmlText(),
       MotaActionBlocks['tip_s'].xmlText(),
       MotaActionBlocks['openShop_s'].xmlText(),
       MotaActionBlocks['win_s'].xmlText(),
@@ -80,23 +85,30 @@ initscript=String.raw`
       MotaActionBlocks['input_s'].xmlText(),
       MotaActionBlocks['update_s'].xmlText(),
       MotaActionBlocks['moveHero_s'].xmlText(),
+      MotaActionBlocks['jumpHero_s'].xmlText(),
       MotaActionBlocks['changeFloor_s'].xmlText(),
       MotaActionBlocks['changePos_0_s'].xmlText(),
       MotaActionBlocks['changePos_1_s'].xmlText(),
       MotaActionBlocks['battle_s'].xmlText(),
       MotaActionBlocks['openDoor_s'].xmlText(),
       MotaActionBlocks['setBlock_s'].xmlText(),
+      MotaActionBlocks['setHeroIcon_s'].xmlText(),
       '<label text="事件控制"></label>',
       MotaActionBlocks['if_s'].xmlText(),
+      MotaActionBlocks['while_s'].xmlText(),
+      MotaActionBlocks['break_s'].xmlText(),
+      MotaActionBlocks['continue_s'].xmlText(),
       MotaActionBlocks['revisit_s'].xmlText(),
       MotaActionBlocks['exit_s'].xmlText(),
       MotaActionBlocks['show_s'].xmlText(),
       MotaActionBlocks['hide_s'].xmlText(),
       MotaActionBlocks['trigger_s'].xmlText(),
       MotaActionBlocks['move_s'].xmlText(),
+      MotaActionBlocks['jump_s'].xmlText(),
       MotaActionBlocks['disableShop_s'].xmlText(),
       '<label text="特效/声音"></label>',
       MotaActionBlocks['sleep_s'].xmlText(),
+      MotaActionBlocks['wait_s'].xmlText(),
       MotaActionBlocks['animate_s'].xmlText(),
       MotaActionBlocks['setFg_0_s'].xmlText(),
       MotaActionBlocks['setFg_1_s'].xmlText(),
@@ -105,10 +117,11 @@ initscript=String.raw`
       MotaActionBlocks['pauseBgm_s'].xmlText(),
       MotaActionBlocks['resumeBgm_s'].xmlText(),
       MotaActionBlocks['playSound_s'].xmlText(),
+      MotaActionBlocks['setVolume_s'].xmlText(),
       '<label text="其他"></label>',
       MotaActionBlocks['function_s'].xmlText(),
     ],
-    'value':[
+    '值块':[
       MotaActionBlocks['setValue_s'].xmlText(),
       MotaActionBlocks['expression_arithmetic_0'].xmlText(),
       MotaActionBlocks['negate_e'].xmlText(),
@@ -118,7 +131,7 @@ initscript=String.raw`
       MotaActionBlocks['idString_2_e'].xmlText(),
       MotaActionBlocks['evalString_e'].xmlText(),
     ],
-    'template':[
+    '常见事件模板':[
       '<label text="检测音乐如果没有开启则系统提示开启"></label>',
       MotaActionFunctions.actionParser.parseList({"type": "if", "condition": "!core.musicStatus.bgmStatus",
         "true": [
@@ -172,13 +185,17 @@ initscript=String.raw`
       ],'afterBattle'),
       '<label text="打怪开门"></label>',
       MotaActionFunctions.actionParser.parse([
-        {"type": "setValue", "name": "flag:__door_name__", "value": "flag:__door_name__+1"},
-        {"type": "if", "condition": "flag:__door_name__==2", 
+        {"type": "setValue", "name": "flag:__door__", "value": "flag:__door__+1"},
+        {"type": "if", "condition": "flag:__door__==2", 
           "true": [
             {"type": "openDoor", "loc": [10,5]}
           ],
           "false": [] 
         },
+      ],'afterBattle'),
+      '<label text="杀死魔龙后隐藏其余图块"></label>',
+      MotaActionFunctions.actionParser.parse([
+        {"type": "function", "function": "function(){var x=core.status.event.data.x,y=core.status.event.data.y;if(core.isset(x)&&core.isset(y)){core.insertAction([{type:'hide',loc:[[x-1,y-2],[x,y-2],[x+1,y-2],[x-1,y-1],[x,y-1],[x+1,y-1],[x-1,y],[x+1,y]]}]);}}"},
       ],'afterBattle'),
       '<label text="获得圣水后变成墙"></label>',
       MotaActionFunctions.actionParser.parse({
@@ -252,6 +269,18 @@ document.getElementById('blocklyDiv').onmousewheel = function(e){
       }
     }
   }
+  if(editor_blockly.workspace.topBlocks_.length>=2){
+    codeAreaHL.setValue('入口方块只能有一个');
+    return;
+  }
+  var eventType = document.getElementById('entryType').value;
+  if(editor_blockly.workspace.topBlocks_.length==1){
+    var blockType = editor_blockly.workspace.topBlocks_[0].type;
+    if(blockType!==eventType+'_m'){
+      codeAreaHL.setValue('入口方块类型错误');
+      return;
+    }
+  }
   try {
     var code = Blockly.JavaScript.workspaceToCode(workspace);
     codeAreaHL.setValue(code);
@@ -262,7 +291,7 @@ document.getElementById('blocklyDiv').onmousewheel = function(e){
     var varName = error.varName;
     var block = error.block;
     }
-    console.log(error);
+    // console.log(error);
   }
   }
 
@@ -278,161 +307,176 @@ document.getElementById('blocklyDiv').onmousewheel = function(e){
 })();
 `;
 
-var input_='';
-editor_blockly.runOne = function (){
-    //var printf = console.log;
-    //var printf = function(){};
-    var grammerFile = input_;
-    converter = new Converter().init();
-    converter.generBlocks(grammerFile);
-    //printf(converter.blocks);
-    converter.renderGrammerName();
-    //converter.generToolbox();
-    converter.generMainFile();
-    //printf(converter.mainFile.join(''));
-    //console.log(converter);
+    var input_ = '';
+    editor_blockly.runOne = function () {
+        //var printf = console.log;
+        //var printf = function(){};
+        var grammerFile = input_;
+        converter = new Converter().init();
+        converter.generBlocks(grammerFile);
+        //printf(converter.blocks);
+        converter.renderGrammerName();
+        //converter.generToolbox();
+        converter.generMainFile();
+        //printf(converter.mainFile.join(''));
+        //console.log(converter);
 
 
-
-    var script = document.createElement('script');
-    //var initscript = document.getElementById('initscript').innerText;
-    script.innerHTML = converter.mainFile[5]+initscript;
-    document.body.appendChild(script);
-}
-var xhr=new XMLHttpRequest();
-xhr.onreadystatechange = function (){
-    if(xhr.readyState!=4) return;
-    if(xhr.status!=200) {
-        alert("无法在file://下加载");
-        return;
+        var script = document.createElement('script');
+        //var initscript = document.getElementById('initscript').innerText;
+        script.innerHTML = converter.mainFile[5] + initscript;
+        document.body.appendChild(script);
     }
-    input_=xhr.responseText;
-    editor_blockly.runOne();
-}
-xhr.open('GET','_server/blockly/MotaAction.g4',true);
-xhr.send(null);
+    var xhr = new XMLHttpRequest();
+    xhr.onreadystatechange = function () {
+        if (xhr.readyState != 4) return;
+        if (xhr.status != 200) {
+            alert("无法在file://下加载");
+            return;
+        }
+        input_ = xhr.responseText;
+        editor_blockly.runOne();
+    }
+    xhr.open('GET', '_server/blockly/MotaAction.g4', true);
+    xhr.send(null);
 
-codeAreaHL = CodeMirror.fromTextArea(document.getElementById("codeArea"), {
-  lineNumbers: true,
-  matchBrackets: true,
-  lineWrapping: true,
-  continueComments: "Enter",
-  extraKeys: {"Ctrl-Q": "toggleComment"}
-});
-
-editor_blockly.showXML = function () {
-  var xml = Blockly.Xml.workspaceToDom(editor_blockly.workspace);
-  var xml_text = Blockly.Xml.domToPrettyText(xml);
-  console.log(xml_text);
-  var xml_text = Blockly.Xml.domToText(xml);
-  console.log(xml_text);
-  console.log(xml);
-}
-
-editor_blockly.runCode = function () {
-  // Generate JavaScript code and run it.
-  window.LoopTrap = 1000;
-  Blockly.JavaScript.INFINITE_LOOP_TRAP =
-    'if (--window.LoopTrap == 0) throw "Infinite loop.";\n';
-  var code = Blockly.JavaScript.workspaceToCode(editor_blockly.workspace);
-  Blockly.JavaScript.INFINITE_LOOP_TRAP = null;
-  try {
-    eval('obj=' + code);
-    console.log(obj);
-  } catch (e) {
-    alert(e);
-  }
-}
-
-editor_blockly.parse = function () {
-    MotaActionFunctions.parse(
-        eval('obj=' + codeAreaHL.getValue().replace(/[<>&]/g,function(c){return {'<':'&lt;','>':'&gt;','&':'&amp;'}[c];})),
-        document.getElementById('entryType').value
-    );
-}
-
-editor_blockly.id='';
-
-editor_blockly.import = function(id_,args){
-  var thisTr = document.getElementById(id_);
-  if(!thisTr)return false;
-  var input = thisTr.children[2].children[0].children[0];
-  var field = thisTr.children[0].getAttribute('title');
-  var type = args.type;
-  if(!type)return false;
-  editor_blockly.id=id_;
-  codeAreaHL.setValue(input.value);
-  document.getElementById('entryType').value = type;
-  editor_blockly.parse();
-  editor_blockly.show();
-  return true;
-}
-
-var blocklyWidgetDiv = document.getElementsByClassName('blocklyWidgetDiv');
-editor_blockly.show = function(){
-  if(typeof(selectBox)!==typeof(undefined))selectBox.isSelected = false;
-  document.getElementById('left6').style='';
-  for(var ii =0,node;node=blocklyWidgetDiv[ii];ii++){
-    node.style.zIndex = 201;
-    node.style.opacity = '';
-  }
-}
-editor_blockly.hide = function(){
-  document.getElementById('left6').style='z-index:-1;opacity: 0;';
-  for(var ii =0,node;node=blocklyWidgetDiv[ii];ii++){
-    node.style.zIndex = -1;
-    node.style.opacity = 0;
-  }
-}
-
-editor_blockly.cancel = function(){
-  editor_blockly.id='';
-  editor_blockly.hide();
-}
-
-editor_blockly.confirm =  function (){
-  if(!editor_blockly.id){
-    editor_blockly.id='';
-    return;
-  }
-  var setvalue = function(value){
-    var thisTr = document.getElementById(editor_blockly.id);
-    editor_blockly.id='';
-    var input = thisTr.children[2].children[0].children[0];
-    input.value = value;
-    editor_blockly.hide();
-    input.onchange();
-  }
-  if(codeAreaHL.getValue()===''){
-    setvalue('null');
-    return;
-  }
-  var code = Blockly.JavaScript.workspaceToCode(editor_blockly.workspace);
-  eval('var obj=' + code);
-  setvalue(JSON.stringify(obj));
-}
-
-editor_blockly.doubleClickBlock = function (blockId){
-  var b=editor_blockly.workspace.getBlockById(blockId);
-  //console.log(b);
-  var textStringDict = {
-    'text_0_s':'EvalString_0',
-    'text_1_s':'EvalString_2',
-    'autoText_s':'EvalString_2',
-    'choices_s':'EvalString_0',
-    'function_s':'RawEvalString_0',
-  }
-  var f=b?textStringDict[b.type]:null;
-  if(f){
-    var value = b.getFieldValue(f);
-    //多行编辑
-    editor_multi.multiLineEdit(value,b,f,{'lint':f==='RawEvalString_0'},function(newvalue,b,f){
-      if(textStringDict[b.type]!=='RawEvalString_0'){}
-      b.setFieldValue(newvalue.split('\n').join('\\n'),f);
+    codeAreaHL = CodeMirror.fromTextArea(document.getElementById("codeArea"), {
+        lineNumbers: true,
+        matchBrackets: true,
+        lineWrapping: true,
+        continueComments: "Enter",
+        extraKeys: {"Ctrl-Q": "toggleComment"}
     });
-  }
-}
 
-return editor_blockly;
+    editor_blockly.showXML = function () {
+        var xml = Blockly.Xml.workspaceToDom(editor_blockly.workspace);
+        var xml_text = Blockly.Xml.domToPrettyText(xml);
+        console.log(xml_text);
+        var xml_text = Blockly.Xml.domToText(xml);
+        console.log(xml_text);
+        console.log(xml);
+    }
+
+    editor_blockly.runCode = function () {
+        // Generate JavaScript code and run it.
+        window.LoopTrap = 1000;
+        Blockly.JavaScript.INFINITE_LOOP_TRAP =
+            'if (--window.LoopTrap == 0) throw "Infinite loop.";\n';
+        var code = Blockly.JavaScript.workspaceToCode(editor_blockly.workspace);
+        Blockly.JavaScript.INFINITE_LOOP_TRAP = null;
+        try {
+            eval('obj=' + code);
+            console.log(obj);
+        } catch (e) {
+            alert(e);
+        }
+    }
+
+    editor_blockly.parse = function () {
+        MotaActionFunctions.parse(
+            eval('obj=' + codeAreaHL.getValue().replace(/[<>&]/g, function (c) {
+                return {'<': '&lt;', '>': '&gt;', '&': '&amp;'}[c];
+            })),
+            document.getElementById('entryType').value
+        );
+    }
+
+    editor_blockly.id = '';
+
+    editor_blockly.import = function (id_, args) {
+        var thisTr = document.getElementById(id_);
+        if (!thisTr) return false;
+        var input = thisTr.children[2].children[0].children[0];
+        var field = thisTr.children[0].getAttribute('title');
+        var type = args.type;
+        if (!type) return false;
+        editor_blockly.id = id_;
+        codeAreaHL.setValue(input.value);
+        document.getElementById('entryType').value = type;
+        editor_blockly.parse();
+        editor_blockly.show();
+        return true;
+    }
+
+    var blocklyWidgetDiv = document.getElementsByClassName('blocklyWidgetDiv');
+    editor_blockly.show = function () {
+        if (typeof(selectBox) !== typeof(undefined)) selectBox.isSelected = false;
+        document.getElementById('left6').style = '';
+        for (var ii = 0, node; node = blocklyWidgetDiv[ii]; ii++) {
+            node.style.zIndex = 201;
+            node.style.opacity = '';
+        }
+    }
+    editor_blockly.hide = function () {
+        document.getElementById('left6').style = 'z-index:-1;opacity: 0;';
+        for (var ii = 0, node; node = blocklyWidgetDiv[ii]; ii++) {
+            node.style.zIndex = -1;
+            node.style.opacity = 0;
+        }
+    }
+
+    editor_blockly.cancel = function () {
+        editor_blockly.id = '';
+        editor_blockly.hide();
+    }
+
+    editor_blockly.confirm = function () {
+        if (!editor_blockly.id) {
+            editor_blockly.id = '';
+            return;
+        }
+        if(editor_blockly.workspace.topBlocks_.length>=2){
+          codeAreaHL.setValue('入口方块只能有一个');
+          return;
+        }
+        var eventType = document.getElementById('entryType').value;
+        if(editor_blockly.workspace.topBlocks_.length==1){
+          var blockType = editor_blockly.workspace.topBlocks_[0].type;
+          if(blockType!==eventType+'_m'){
+            codeAreaHL.setValue('入口方块类型错误');
+            return;
+          }
+        }
+        var setvalue = function (value) {
+            var thisTr = document.getElementById(editor_blockly.id);
+            editor_blockly.id = '';
+            var input = thisTr.children[2].children[0].children[0];
+            input.value = value;
+            editor_blockly.hide();
+            input.onchange();
+        }
+        if (codeAreaHL.getValue() === '') {
+            eventType==='shop'?setvalue('[]'):setvalue('null');
+            return;
+        }
+        var code = Blockly.JavaScript.workspaceToCode(editor_blockly.workspace);
+        eval('var obj=' + code);
+        setvalue(JSON.stringify(obj));
+    }
+
+    editor_blockly.doubleClickBlock = function (blockId) {
+        var b = editor_blockly.workspace.getBlockById(blockId);
+        //console.log(b);
+        var textStringDict = {
+            'text_0_s': 'EvalString_0',
+            'text_1_s': 'EvalString_2',
+            'autoText_s': 'EvalString_2',
+            'choices_s': 'EvalString_0',
+            'function_s': 'RawEvalString_0',
+            'shopsub': 'EvalString_3',
+        }
+        var f = b ? textStringDict[b.type] : null;
+        if (f) {
+            var value = b.getFieldValue(f);
+            //多行编辑
+            editor_multi.multiLineEdit(value, b, f, {'lint': f === 'RawEvalString_0'}, function (newvalue, b, f) {
+                if (textStringDict[b.type] !== 'RawEvalString_0') {
+                }
+                b.setFieldValue(newvalue.split('\n').join('\\n'), f);
+            });
+        }
+    }
+
+    return editor_blockly;
 }
 //editor_blockly=editor_blockly();
