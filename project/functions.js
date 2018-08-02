@@ -192,6 +192,8 @@ functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 	core.setFlag('hatred', core.getFlag('hatred',0)+core.values.hatred);
 	core.updateStatusBar();
 
+	//change
+	startMoveCentroid(x,y,damage)
 
 	// 事件的处理
 	var todo = [];
@@ -523,7 +525,116 @@ functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 	}
 	
 	// 可以在任何地方（如afterXXX或自定义脚本事件）调用函数，方法为  core.plugin.xxx();
+//================================
+setCanvasRotate=function(args){
+	var x=args.shift()
+	var y=args.shift()
+	var angle=args.shift()
+	var cx=args.shift()
+	var cy=args.shift()
+	for(var ii=0,canvas;canvas=core.dom.gameCanvas[ii];ii++){
+        if(['data','ui'].indexOf(canvas.getAttribute('id'))!==-1)continue;
 
+        canvas.style.transformOrigin=cx+'% '+cy+'%'
+        canvas.style.webkitTransformOrigin=cx+'% '+cy+'%'
+        canvas.style.OTransformOrigin=cx+'% '+cy+'%'
+        canvas.style.MozTransformOrigin=cx+'% '+cy+'%'
+
+        canvas.style.transform='rotate3d('+x+','+y+',0,'+angle+'deg)'
+        canvas.style.webkitTransform='rotate3d('+x+','+y+',0,'+angle+'deg)'
+        canvas.style.OTransform='rotate3d('+x+','+y+',0,'+angle+'deg)'
+        canvas.style.MozTransform='rotate3d('+x+','+y+',0,'+angle+'deg)'
+    }
+}
+getArgsFromXYAngle=function(x,y,angle){
+	var _x=x||0
+    var _y=y||0
+    var _angle=angle||0
+    var x=-(_y-6)
+    var y=(_x-6)
+    var _center=[
+        [Math.abs(_x-0)+Math.abs(_y-0),0,0],
+        [Math.abs(_x-12)+Math.abs(_y-0),100,0],
+        [Math.abs(_x-0)+Math.abs(_y-12),0,100],
+        [Math.abs(_x-12)+Math.abs(_y-12),100,100],
+    ]
+    for(var ii=0,max=-1,now;now=_center[ii];ii++){
+        if(now[0]>max){
+            max=now[0]
+            var cx=now[1]
+            var cy=now[2]
+        }
+    }
+	return [x,y,angle,cx,cy]
+}
+getInsertArray=function(a1,a2,num){
+	if(a1.length!==a2.length)throw Error('length not match');
+	if(num<2)throw Error('num < 2');
+	var n=a1.length;
+	var output=[a1]
+	for(var ii=1;ii<=num-2;ii++){
+		var at=[]
+		for(var jj=0;jj<n;jj++){
+			at.push(a1[jj]+(a2[jj]-a1[jj])*ii/(num-1))
+		}
+		output.push(at)
+	}
+	output.push(a2)
+	return output
+}
+getNewCenter = function(o,d){
+    return [((o[0]-6)*o[2]+(d[0]-6)*d[2])/(o[2]+d[2])+6,((o[1]-6)*o[2]+(d[1]-6)*d[2])/(o[2]+d[2])+6,o[2]+d[2]]
+}
+getAngleFromCentroid = function(c){
+	if(!c)c=core.plugin.lastCentroid;
+    var x=c[0]-6,y=c[1]-6,m=c[2]
+    var r=Math.sqrt(x*x+y*y)
+    var m0r0=50000*13
+    var angle=Math.atan(m*r/m0r0)/Math.PI*180
+	var _angle=angle
+	_angle=Math.min(Math.max(angle,0),20)
+	_angle=8+_angle/20*7
+	console.log(angle,_angle)
+    return [angle,_angle]
+}
+this.moveCentroidInterval=null
+this.lastCentroid=[6,6,0]
+startMoveCentroid =function(dx,dy,dm){
+	if(!dm)return;
+	if(core.plugin.moveCentroidInterval)
+		clearInterval(core.plugin.moveCentroidInterval);
+	var lastCentroid=core.plugin.lastCentroid
+    var ox=lastCentroid[0],oy=lastCentroid[1],om=lastCentroid[2]
+    var oc=[ox,oy,om]
+    var dc=[dx,dy,dm]
+	var nc=getNewCenter(oc,dc)
+	core.plugin.lastCentroid=nc
+	console.log(lastCentroid)
+	var oa=getAngleFromCentroid(oc)[1]
+	var na=getAngleFromCentroid(nc)[1]
+	var argslist=getInsertArray(
+		getArgsFromXYAngle(oc[0],oc[1],oa),
+		getArgsFromXYAngle(nc[0],nc[1],na),
+		31
+	)
+    moveCentroidInterval=setInterval(function(){
+        if(argslist.length===0){
+            clearInterval(moveCentroidInterval)
+            moveCentroidInterval=null
+            return
+        }
+        setCanvasRotate(argslist.shift())
+    },1000/60)
+}
+// 8~15
+
+// startMoveCentroid(5,12,30000) //15.18
+// startMoveCentroid(0,0,30000) //20.7
+
+// startMoveCentroid(4,3,1000)
+// startMoveCentroid(5,11,1000)
+
+//================================
 }
 }
 }
