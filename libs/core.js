@@ -73,6 +73,7 @@ function core() {
     }
     this.initStatus = {
         'played': false,
+        'gameOver': false,
 
         // 勇士属性
         'hero': {},
@@ -103,7 +104,7 @@ function core() {
             'cursorX': null,
             'cursorY': null,
             "moveDirectly": false,
-            'clickMoveDirectly': false,
+            'clickMoveDirectly': true,
         },
 
         // 按下键的时间：为了判定双击
@@ -144,6 +145,7 @@ function core() {
         'curtainColor': null,
         'usingCenterFly':false,
         'openingDoor': null,
+        'isSkiing': false,
 
         // 动画
         'globalAnimateObjs': [],
@@ -170,11 +172,12 @@ core.prototype.init = function (coreData, callback) {
         core.flags.battleAnimate = false;
         core.setLocalStorage('battleAnimate', false);
     }
-    
-    // core.initStatus.shops = core.firstData.shops;
-    core.firstData.shops.forEach(function (t) {
-        core.initStatus.shops[t.id] = t;
-    })
+
+    if (core.isset(core.firstData.shops)) {
+        core.firstData.shops.forEach(function (t) {
+            core.initStatus.shops[t.id] = t;
+        })
+    }
 
     core.dom.versionLabel.innerHTML = core.firstData.version;
     core.dom.logoLabel.innerHTML = core.firstData.title;
@@ -304,8 +307,8 @@ core.prototype.clearStatus = function() {
 }
 
 ////// 重置游戏状态和初始数据 //////
-core.prototype.resetStatus = function(hero, hard, floorId, route, maps, values, flags) {
-    core.control.resetStatus(hero, hard, floorId, route, maps, values, flags);
+core.prototype.resetStatus = function(hero, hard, floorId, route, maps, values) {
+    core.control.resetStatus(hero, hard, floorId, route, maps, values);
 }
 
 ////// 开始游戏 //////
@@ -484,13 +487,13 @@ core.prototype.stopHero = function () {
 }
 
 ////// 绘制勇士 //////
-core.prototype.drawHero = function (direction, x, y, status, offsetX, offsetY) {
-    core.control.drawHero(direction, x, y, status, offsetX, offsetY);
+core.prototype.drawHero = function (direction, x, y, status, offset) {
+    core.control.drawHero(direction, x, y, status, offset);
 }
 
 ////// 设置勇士的位置 //////
-core.prototype.setHeroLoc = function (itemName, itemVal) {
-    core.control.setHeroLoc(itemName, itemVal);
+core.prototype.setHeroLoc = function (itemName, itemVal, noGather) {
+    core.control.setHeroLoc(itemName, itemVal, noGather);
 }
 
 ////// 获得勇士的位置 //////
@@ -664,13 +667,13 @@ core.prototype.getBlockId = function (x, y, floorId, needEnable) {
 }
 
 ////// 显示移动某块的动画，达到{“type”:”move”}的效果 //////
-core.prototype.moveBlock = function(x,y,steps,time,immediateHide,callback) {
-    core.maps.moveBlock(x,y,steps,time,immediateHide,callback)
+core.prototype.moveBlock = function(x,y,steps,time,keep,callback) {
+    core.maps.moveBlock(x,y,steps,time,keep,callback)
 }
 
 ////// 显示跳跃某块的动画，达到{"type":"jump"}的效果 //////
-core.prototype.jumpBlock = function(sx,sy,ex,ey,time,immediateHide,callback) {
-    core.maps.jumpBlock(sx,sy,ex,ey,time,immediateHide,callback);
+core.prototype.jumpBlock = function(sx,sy,ex,ey,time,keep,callback) {
+    core.maps.jumpBlock(sx,sy,ex,ey,time,keep,callback);
 }
 
 ////// 显示/隐藏某个块时的动画效果 //////
@@ -761,6 +764,21 @@ core.prototype.setFg = function(color, time, callback) {
 ////// 更新全地图显伤 //////
 core.prototype.updateFg = function () {
     core.control.updateFg();
+}
+
+////// 测试是否拥有某个特殊属性 //////
+core.prototype.hasSpecial = function (special, test) {
+    return core.enemys.hasSpecial(special, test);
+}
+
+////// 判断能否战斗 //////
+core.prototype.canBattle = function(enemyId) {
+    return core.enemys.canBattle(enemyId);
+}
+
+////// 获得伤害数值 //////
+core.prototype.getDamage = function(enemy) {
+    return core.enemys.getDamage(enemy);
 }
 
 ////// 获得某个物品的个数 //////

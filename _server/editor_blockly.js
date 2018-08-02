@@ -5,9 +5,13 @@ editor_blockly = function () {
     initscript = String.raw`
 (function(){
   var getCategory = function(name){
-  for(var node of document.getElementById('toolbox').children) {
-    if(node.getAttribute('name')==name) return node;
-  }
+    for(var node of document.getElementById('toolbox').children) {
+      if(node.getAttribute('name')==name) return node;
+    }
+    var node = document.createElement('category');
+    node.setAttribute('name',name);
+    document.getElementById('toolbox').appendChild(node);
+    return node;
   }
 
   var toolboxObj = {
@@ -69,7 +73,6 @@ editor_blockly = function () {
       MotaActionBlocks['showGif_1_s'].xmlText(),
       MotaActionBlocks['moveImage_0_s'].xmlText(),
       MotaActionBlocks['tip_s'].xmlText(),
-      MotaActionBlocks['openShop_s'].xmlText(),
       MotaActionBlocks['win_s'].xmlText(),
       MotaActionBlocks['lose_s'].xmlText(),
       MotaActionBlocks['choices_s'].xmlText([
@@ -84,6 +87,7 @@ editor_blockly = function () {
       MotaActionBlocks['setValue_s'].xmlText(),
       MotaActionBlocks['input_s'].xmlText(),
       MotaActionBlocks['update_s'].xmlText(),
+      MotaActionBlocks['updateEnemys_s'].xmlText(),
       MotaActionBlocks['moveHero_s'].xmlText(),
       MotaActionBlocks['jumpHero_s'].xmlText(),
       MotaActionBlocks['changeFloor_s'].xmlText(),
@@ -91,8 +95,11 @@ editor_blockly = function () {
       MotaActionBlocks['changePos_1_s'].xmlText(),
       MotaActionBlocks['battle_s'].xmlText(),
       MotaActionBlocks['openDoor_s'].xmlText(),
+      MotaActionBlocks['openShop_s'].xmlText(),
       MotaActionBlocks['setBlock_s'].xmlText(),
       MotaActionBlocks['setHeroIcon_s'].xmlText(),
+      MotaActionBlocks['follow_s'].xmlText(),
+      MotaActionBlocks['unfollow_s'].xmlText(),
       '<label text="事件控制"></label>',
       MotaActionBlocks['if_s'].xmlText(),
       MotaActionBlocks['while_s'].xmlText(),
@@ -109,6 +116,7 @@ editor_blockly = function () {
       '<label text="特效/声音"></label>',
       MotaActionBlocks['sleep_s'].xmlText(),
       MotaActionBlocks['wait_s'].xmlText(),
+      MotaActionBlocks['viberate_s'].xmlText(),
       MotaActionBlocks['animate_s'].xmlText(),
       MotaActionBlocks['setFg_0_s'].xmlText(),
       MotaActionBlocks['setFg_1_s'].xmlText(),
@@ -242,10 +250,11 @@ var workspace = Blockly.inject(blocklyDiv,{
 var onresize = function(e) {
   blocklyDiv.style.width = blocklyArea.offsetWidth + 'px';
   blocklyDiv.style.height = blocklyArea.offsetHeight + 'px';
+  Blockly.svgResize(workspace);
 };
-window.addEventListener('resize', onresize, false);
+if(typeof editor !== "undefined" && !editor.isMobile)window.addEventListener('resize', onresize, false);
 onresize();
-Blockly.svgResize(workspace);
+//Blockly.svgResize(workspace);
 
 //Blockly.bindEventWithChecks_(workspace.svgGroup_,"wheel",workspace,function(e){});
 document.getElementById('blocklyDiv').onmousewheel = function(e){

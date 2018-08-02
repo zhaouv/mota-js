@@ -8,7 +8,7 @@ data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d =
 			"bg.jpg"
 		],
 		"animates" : [ 
-			"hand", "sword", "zone",
+			"hand", "sword", "zone"
 		],
 		"bgms" : [ 
 			'bgm.mp3'
@@ -26,7 +26,7 @@ data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d =
 	"firstData" : {
 		"title": "魔塔样板",
 		"name": "template",
-		"version": "Ver 2.3.1",
+		"version": "Ver 2.3.3",
 		"floorId": "sample0",
 		"hero": { 
 			"name": "阳光",
@@ -152,10 +152,11 @@ data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d =
 		"enableNegativeDamage": false,
 		"hatredDecrease": true,
 		"betweenAttackCeil": false,
+		"useLoop": false,
 		"startDirectly": false,
 		"canOpenBattleAnimate": true,
-		"showBattleAnimateConfirm": true,
-		"battleAnimate": true,
+		"showBattleAnimateConfirm": false,
+		"battleAnimate": false,
 		"displayEnemyDamage": true,
 		"displayCritical": true,
 		"displayExtraDamage": true,

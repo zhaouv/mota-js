@@ -30,6 +30,7 @@ events.prototype.init = function () {
                 heroLoc = {'x': data.event.data.loc[0], 'y': data.event.data.loc[1]};
             if (core.isset(data.event.data.direction))
                 heroLoc.direction = data.event.data.direction;
+            if (core.status.event.id!='action') core.status.event.id=null;
             core.changeFloor(data.event.data.floorId, data.event.data.stair,
                 heroLoc, data.event.data.time, function () {
                     if (core.isset(callback)) callback();
@@ -115,17 +116,19 @@ events.prototype.setInitData = function (hard) {
 }
 
 ////// 游戏获胜事件 //////
-events.prototype.win = function (reason) {
-    return this.eventdata.win(reason);
+events.prototype.win = function (reason, norank) {
+    core.status.gameOver = true;
+    return this.eventdata.win(reason, norank);
 }
 
 ////// 游戏失败事件 //////
 events.prototype.lose = function (reason) {
+    core.status.gameOver = true;
     return this.eventdata.lose(reason);
 }
 
 ////// 游戏结束 //////
-events.prototype.gameOver = function (ending, fromReplay) {
+events.prototype.gameOver = function (ending, fromReplay, norank) {
 
     // 清空图片和天气
     core.clearMap('animate', 0, 0, 416, 416);
@@ -188,6 +191,7 @@ events.prototype.gameOver = function (ending, fromReplay) {
             formData.append('money', core.status.hero.money);
             formData.append('experience', core.status.hero.experience);
             formData.append('steps', core.status.hero.steps);
+            formData.append('norank', norank||0);
             formData.append('seed', core.getFlag('seed'));
             formData.append('totalTime', Math.floor(core.status.hero.statistics.totalTime/1000));
             formData.append('route', core.encodeRoute(core.status.route));
@@ -405,6 +409,42 @@ events.prototype.doAction = function() {
                 this.doAction();
                 break;
             }
+        case "follow": // 跟随
+            if (core.isset(core.material.images.images[data.name])
+                && core.material.images.images[data.name].width==128) {
+                if (!core.isset(core.status.hero.followers))
+                    core.status.hero.followers = [];
+                core.status.hero.followers.push({"img": data.name});
+                core.control.gatherFollowers();
+                core.clearMap('hero');
+                core.drawHero();
+            }
+            this.doAction();
+            break;
+        case "unfollow": // 取消跟随
+            if (core.isset(core.status.hero.followers)) {
+                var remove = false;
+                if (!core.isset(data.name) && core.status.hero.followers.length>0) {
+                    core.status.hero.followers = [];
+                    remove=true;
+                }
+                if (core.isset(data.name)) {
+                    for (var i=0;i<core.status.hero.followers.length;i++) {
+                        if (core.status.hero.followers[i].img == data.name) {
+                            core.status.hero.followers.splice(i, 1);
+                            remove=true;
+                            break;
+                        }
+                    }
+                }
+                if (remove) {
+                    core.control.gatherFollowers();
+                    core.clearMap('hero');
+                    core.drawHero();
+                }
+            }
+            this.doAction();
+            break;
         case "animate": // 显示动画
             if (core.isset(data.loc)) {
                 if (data.loc == 'hero') {
@@ -425,7 +465,7 @@ events.prototype.doAction = function() {
                 x=core.calValue(data.loc[0]);
                 y=core.calValue(data.loc[1]);
             }
-            core.moveBlock(x,y,data.steps,data.time,data.immediateHide,function() {
+            core.moveBlock(x,y,data.steps,data.time,data.keep,function() {
                 core.events.doAction();
             })
             break;
@@ -445,7 +485,7 @@ events.prototype.doAction = function() {
                     ex=core.calValue(data.to[0]);
                     ey=core.calValue(data.to[1]);
                 }
-                core.jumpBlock(sx,sy,ex,ey,data.time,data.immediateHide,function() {
+                core.jumpBlock(sx,sy,ex,ey,data.time,data.keep,function() {
                     core.events.doAction();
                 });
                 break;
@@ -618,14 +658,11 @@ events.prototype.doAction = function() {
             break
         case "setVolume":
             data.value = parseInt(data.value||0);
+            if (data.value<0) data.value=0;
             if (data.value>100) data.value=100;
-            data.value = data.value / 100;
-            core.musicStatus.volume = data.value;
-            if (core.isset(core.musicStatus.playingBgm)) {
-                core.material.bgms[core.musicStatus.playingBgm].volume = data.value;
-            }
-            core.musicStatus.gainNode.gain.value = data.value;
-            this.doAction();
+            this.setVolume(data.value/100, data.time, function() {
+                core.doAction();
+            });
             break;
         case "setValue":
             try {
@@ -704,13 +741,14 @@ events.prototype.doAction = function() {
                 }
                 else {
                     var action = core.status.replay.toReplay.shift(), index;
+                    if (action == 'turn') action = core.status.replay.toReplay.shift();
                     if (action.indexOf("choices:")==0 && ((index=parseInt(action.substring(8)))>=0) && index<data.choices.length) {
                             core.status.event.selection=index;
                             setTimeout(function () {
                                 core.status.route.push("choices:"+index);
                                 core.events.insertAction(data.choices[index].action);
                                 core.events.doAction();
-                            }, 750 / core.status.replay.speed)
+                            }, 750 / Math.max(1, core.status.replay.speed))
                     }
                     else {
                         core.stopReplay();
@@ -742,14 +780,10 @@ events.prototype.doAction = function() {
             this.doAction();
             break;
         case "win":
-            core.events.win(data.reason, function () {
-                core.events.doAction();
-            });
+            core.events.win(data.reason, data.norank);
             break;
         case "lose":
-            core.events.lose(data.reason, function () {
-                core.events.doAction();
-            });
+            core.events.lose(data.reason);
             break;
         case "function":
             {
@@ -767,6 +801,16 @@ events.prototype.doAction = function() {
         case "update":
             core.updateStatusBar();
             this.doAction();
+            break;
+        case "updateEnemys":
+            core.enemys.updateEnemys();
+            core.updateStatusBar();
+            this.doAction();
+            break;
+        case "viberate":
+            core.events.vibrate(data.time, function () {
+                core.events.doAction();
+            })
             break;
         case "sleep": // 等待多少毫秒
             if (core.status.replay.replaying)
@@ -827,7 +871,7 @@ events.prototype.doAction = function() {
 
 ////// 往当前事件列表之前添加一个或多个事件 //////
 events.prototype.insertAction = function (action, x, y, callback) {
-    if (core.status.event.id == null) {
+    if (core.status.event.id != 'action') {
         this.doEvents(action, x, y, callback);
     }
     else {
@@ -978,6 +1022,7 @@ events.prototype.battle = function (id, x, y, force, callback) {
 
 ////// 触发(x,y)点的事件 //////
 events.prototype.trigger = function (x, y) {
+    core.status.isSkiing = false;
     var mapBlocks = core.status.thisMap.blocks;
     var noPass;
     for (var b = 0; b < mapBlocks.length; b++) {
@@ -988,6 +1033,8 @@ events.prototype.trigger = function (x, y) {
             }
             if (core.isset(mapBlocks[b].event) && core.isset(mapBlocks[b].event.trigger)) {
                 var trigger = mapBlocks[b].event.trigger;
+
+                if (trigger == 'ski') core.status.isSkiing = true;
 
                 // 转换楼层能否穿透
                 if (trigger=='changeFloor' && !noPass) {
@@ -1236,6 +1283,97 @@ events.prototype.moveImage = function (image, from, to, time, callback) {
     }, time / 64);
 }
 
+////// 淡入淡出音乐 //////
+events.prototype.setVolume = function (value, time, callback) {
+
+    var set = function (value) {
+        core.musicStatus.volume = value;
+        if (core.isset(core.musicStatus.playingBgm)) {
+            core.material.bgms[core.musicStatus.playingBgm].volume = value;
+        }
+        core.musicStatus.gainNode.gain.value = value;
+    }
+
+    if (!core.isset(time) || time<100) {
+        set(value);
+        if (core.isset(callback)) callback();
+        return;
+    }
+    core.status.replay.animate=true;
+    var currVolume = core.musicStatus.volume;
+    var step = 0;
+    var fade = setInterval(function () {
+        step++;
+        var nowVolume = currVolume+(value-currVolume)*step/32;
+        set(nowVolume);
+        if (step>=32) {
+            clearInterval(fade);
+            core.status.replay.animate=false;
+            if (core.isset(callback))
+                callback();
+        }
+    }, time / 32);
+}
+
+////// 画面震动 //////
+events.prototype.vibrate = function(time, callback) {
+
+    if (core.isset(core.status.replay)&&core.status.replay.replaying) {
+        if (core.isset(callback)) callback();
+        return;
+    }
+
+    core.status.replay.animate=true;
+
+    var setGameCanvasTranslate=function(x,y){
+        for(var ii=0,canvas;canvas=core.dom.gameCanvas[ii];ii++){
+            if(['data','ui'].indexOf(canvas.getAttribute('id'))!==-1)continue;
+            canvas.style.transform='translate('+x+'px,'+y+'px)';
+            canvas.style.webkitTransform='translate('+x+'px,'+y+'px)';
+            canvas.style.OTransform='translate('+x+'px,'+y+'px)';
+            canvas.style.MozTransform='translate('+x+'px,'+y+'px)';
+        }
+    }
+
+    if (!core.isset(time) || time<1000) time=1000;
+
+    var shake_duration = time*3/50;
+    var shake_speed = 5;
+    var shake_power = 5;
+    var shake_direction = 1;
+    var shake = 0;
+
+    var update = function() {
+        if(shake_duration >= 1 || shake != 0){
+            var delta = (shake_power * shake_speed * shake_direction) / 10.0;
+            if(shake_duration <= 1 && shake * (shake + delta) < 0){
+                shake = 0;
+            }else{
+                shake += delta;
+            }
+            if(shake > shake_power * 2){
+                shake_direction = -1;
+            }
+            if(shake < - shake_power * 2){
+                shake_direction = 1;
+            }
+            if(shake_duration >= 1){
+                shake_duration -= 1
+            }
+        }
+    }
+
+    var animate=setInterval(function(){
+        update();
+        setGameCanvasTranslate(shake,0);
+        if(shake_duration===0) {
+            clearInterval(animate);
+            core.status.replay.animate=false;
+            if (core.isset(callback)) callback();
+        }
+    }, 50/3);
+}
+
 ////// 打开一个全局商店 //////
 events.prototype.openShop = function(shopId, needVisited) {
     var shop = core.status.shops[shopId];
@@ -1310,7 +1448,8 @@ events.prototype.setHeroIcon = function (name) {
 
 ////// 检查升级事件 //////
 events.prototype.checkLvUp = function () {
-    if (!core.flags.enableLevelUp || core.status.hero.lv>=core.firstData.levelUp.length) return;
+    if (!core.flags.enableLevelUp || !core.isset(core.firstData.levelUp)
+        || core.status.hero.lv>=core.firstData.levelUp.length) return;
     // 计算下一个所需要的数值
     var need=core.firstData.levelUp[core.status.hero.lv].need;
     if (!core.isset(need)) return;
@@ -1445,7 +1584,7 @@ events.prototype.ski = function (direction) {
     }
     else {
         core.moveHero(direction, function () {
-            if (core.status.event.id=='ski') {
+            if (core.status.event.id=='ski' && !core.status.isSkiing) {
                 core.status.event.id=null;
                 core.unLockControl();
                 core.replay();

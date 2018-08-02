@@ -257,16 +257,19 @@ maps.prototype.canMoveHero = function(x,y,direction,floorId) {
 maps.prototype.canMoveDirectly = function (destX,destY) {
 
     // 不可瞬间移动请返回0
-    if (!core.flags.enableMoveDirectly) return 0;
+    if (!core.flags.enableMoveDirectly) return -1;
 
     // 中毒状态：不能
-    if (core.hasFlag('poison')) return 0;
+    if (core.hasFlag('poison')) return -1;
 
     var fromX = core.getHeroLoc('x'), fromY = core.getHeroLoc('y');
     if (fromX==destX&&fromY==destY) return 0;
 
-    if (core.getBlock(fromX,fromY)!=null||core.status.checkBlock.damage[13*fromX+fromY]>0)
-        return 0;
+    // 可以无视起点事件
+    var nowBlockId = core.getBlockId(fromX, fromY);
+    if ((nowBlockId!=null&&nowBlockId!='upFloor'&&nowBlockId!='downFloor')
+        ||core.status.checkBlock.damage[13*fromX+fromY]>0)
+        return -1;
 
     // BFS
     var visited=[], queue=[];
@@ -285,7 +288,7 @@ maps.prototype.canMoveDirectly = function (destX,destY) {
             queue.push(13*nx+ny);
         }
     }
-    return 0;
+    return -1;
 }
 
 maps.prototype.drawBlock = function (block, animate, dx, dy) {
@@ -556,9 +559,8 @@ maps.prototype.getBlockId = function (x, y, floorId, needEnable) {
 }
 
 ////// 显示移动某块的动画，达到{“type”:”move”}的效果 //////
-maps.prototype.moveBlock = function(x,y,steps,time,immediateHide,callback) {
+maps.prototype.moveBlock = function(x,y,steps,time,keep,callback) {
     time = time || 500;
-    core.status.replay.animate=true;
 
     core.clearMap('animate', 0, 0, 416, 416);
 
@@ -567,6 +569,9 @@ maps.prototype.moveBlock = function(x,y,steps,time,immediateHide,callback) {
         if (core.isset(callback)) callback();
         return;
     }
+    var id = block.block.id;
+
+    core.status.replay.animate=true;
 
     // 需要删除该块
     core.removeBlock(x,y);
@@ -624,7 +629,7 @@ maps.prototype.moveBlock = function(x,y,steps,time,immediateHide,callback) {
 
         // 已经移动完毕，消失
         if (moveSteps.length==0) {
-            if (immediateHide) opacityVal=0;
+            if (keep) opacityVal=0;
             else opacityVal -= 0.06;
             core.setOpacity('animate', opacityVal);
             core.clearMap('animate', nowX, nowY-height+32, 32, height);
@@ -633,6 +638,11 @@ maps.prototype.moveBlock = function(x,y,steps,time,immediateHide,callback) {
                 clearInterval(animate);
                 core.clearMap('animate', 0, 0, 416, 416);
                 core.setOpacity('animate', 1);
+                // 不消失
+                if (keep) {
+                    core.setBlock(id, nowX/32, nowY/32);
+                    core.showBlock(nowX/32, nowY/32);
+                }
                 core.status.replay.animate=false;
                 if (core.isset(callback)) callback();
             }
@@ -655,15 +665,17 @@ maps.prototype.moveBlock = function(x,y,steps,time,immediateHide,callback) {
 }
 
 ////// 显示跳跃某块的动画，达到{"type":"jump"}的效果 //////
-maps.prototype.jumpBlock = function(sx,sy,ex,ey,time,immediateHide,callback) {
+maps.prototype.jumpBlock = function(sx,sy,ex,ey,time,keep,callback) {
     time = time || 500;
-    core.status.replay.animate=true;
     core.clearMap('animate', 0, 0, 416, 416);
     var block = core.getBlock(sx,sy);
     if (block==null) {
         if (core.isset(callback)) callback();
         return;
     }
+    var id = block.block.id;
+
+    core.status.replay.animate=true;
 
     // 需要删除该块
     core.removeBlock(sx,sy);
@@ -723,7 +735,7 @@ maps.prototype.jumpBlock = function(sx,sy,ex,ey,time,immediateHide,callback) {
             core.canvas.animate.drawImage(blockImage, animateCurrent * 32, blockIcon * height, 32, height, drawX(), drawY()-height+32, 32, height);
         }
         else {
-            if (immediateHide) opacityVal=0;
+            if (keep) opacityVal=0;
             else opacityVal -= 0.06;
             core.setOpacity('animate', opacityVal);
             core.clearMap('animate', drawX(), drawY()-height+32, 32, height);
@@ -732,6 +744,10 @@ maps.prototype.jumpBlock = function(sx,sy,ex,ey,time,immediateHide,callback) {
                 clearInterval(animate);
                 core.clearMap('animate', 0, 0, 416, 416);
                 core.setOpacity('animate', 1);
+                if (keep) {
+                    core.setBlock(id, ex, ey);
+                    core.showBlock(ex, ey);
+                }
                 core.status.replay.animate=false;
                 if (core.isset(callback)) callback();
             }
@@ -872,6 +888,7 @@ maps.prototype.removeBlockByIds = function (floorId, ids) {
 maps.prototype.setBlock = function (number, x, y, floorId) {
     floorId = floorId || core.status.floorId;
     if (!core.isset(number) || !core.isset(x) || !core.isset(y)) return;
+    if (x<0 || x>12 || y<0 || y>12) return;
 
     var originBlock=core.getBlock(x,y,floorId,false);
     var block = core.maps.initBlock(x,y,number);
@@ -972,6 +989,9 @@ maps.prototype.drawAnimate = function (name, x, y, callback) {
     var ratio = animate.ratio;
     var centerX = 32*x+16, centerY = 32*y+16;
     var index=0;
+
+    // 播放音效
+    core.playSound(animate.se);
 
     var draw = function (index) {
         core.clearMap('animate', 0, 0, 416, 416);

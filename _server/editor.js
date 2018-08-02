@@ -1,6 +1,7 @@
 function editor() {
     this.version = "2.0";
     this.material = {};
+    this.brushMod = "line";//["line","rectangle"]
 }
 
 editor.prototype.init = function (callback) {
@@ -388,7 +389,7 @@ editor.prototype.HTMLescape = function (str_) {
 }
 
 editor.prototype.listen = function () {
-
+    var eui=document.getElementById('eui');
     var uc = eui.getContext('2d');
 
     function fillPos(pos) {
@@ -399,10 +400,12 @@ editor.prototype.listen = function () {
     function eToLoc(e) {
         var scrollLeft = document.documentElement.scrollLeft || document.body.scrollLeft
         var scrollTop = document.documentElement.scrollTop || document.body.scrollTop
+        var xx=e.clientX,yy=e.clientY
+        if(editor.isMobile){xx=e.touches[0].clientX,yy=e.touches[0].clientY}
         editor.loc = {
-            'x': scrollLeft + e.clientX - mid.offsetLeft - mapEdit.offsetLeft,
-            'y': scrollTop + e.clientY - mid.offsetTop - mapEdit.offsetTop,
-            'size': 32
+            'x': scrollLeft + xx - mid.offsetLeft - mapEdit.offsetLeft,
+            'y': scrollTop + yy - mid.offsetTop - mapEdit.offsetTop,
+            'size': editor.isMobile?(32*innerWidth*0.96/416):32
         };
         return editor.loc;
     }//返回可用的组件内坐标
@@ -444,8 +447,10 @@ editor.prototype.listen = function () {
             editor_mode.onmode('loc');
             //editor_mode.loc();
             //tip.whichShow = 1;
+            if(editor.isMobile)editor.showMidMenu(e.clientX,e.clientY);
             return;
         }
+        
 
         holdingPath = 1;
         mouseOutCheck = 2;
@@ -497,9 +502,22 @@ editor.prototype.listen = function () {
         }
         holdingPath = 0;
         e.stopPropagation();
-        var loc = eToLoc(e);
         if (stepPostfix && stepPostfix.length) {
             preMapData = JSON.parse(JSON.stringify(editor.map));
+            if(editor.brushMod==='rectangle'){
+                var x0=stepPostfix[0].x;
+                var y0=stepPostfix[0].y;
+                var x1=stepPostfix[stepPostfix.length-1].x;
+                var y1=stepPostfix[stepPostfix.length-1].y;
+                if(x0>x1){x0^=x1;x1^=x0;x0^=x1;}//swap
+                if(y0>y1){y0^=y1;y1^=y0;y0^=y1;}//swap
+                stepPostfix=[];
+                for(var ii=x0;ii<=x1;ii++){
+                    for(var jj=y0;jj<=y1;jj++){
+                        stepPostfix.push({x:ii,y:jj})
+                    }
+                }
+            }
             currDrawData.pos = JSON.parse(JSON.stringify(stepPostfix));
             currDrawData.info = JSON.parse(JSON.stringify(editor.info));
             reDo = null;
@@ -674,23 +692,32 @@ editor.prototype.listen = function () {
         var locStr='('+editor.lastRightButtonPos[1].x+','+editor.lastRightButtonPos[1].y+')';
         var scrollLeft = document.documentElement.scrollLeft || document.body.scrollLeft;
         var scrollTop = document.documentElement.scrollTop || document.body.scrollTop;
+        chooseThis.children[0].innerHTML='选中此点'+'('+editor.pos.x+','+editor.pos.y+')'
         copyLoc.children[0].innerHTML='复制事件'+locStr+'到此处';
         moveLoc.children[0].innerHTML='交换事件'+locStr+'与此事件的位置';
         midMenu.style='top:'+(y+scrollTop)+'px;left:'+(x+scrollLeft)+'px;';
     }
-    editor.hideMidMenu=function(){midMenu.style='display:none';}
+    editor.hideMidMenu=function(){
+        if(editor.isMobile){
+            setTimeout(function(){
+                midMenu.style='display:none';
+            },200)
+        } else {
+            midMenu.style='display:none';
+        }
+    }
 
     var chooseThis = document.getElementById('chooseThis');
     chooseThis.onmousedown = function(e){
         editor.hideMidMenu();
         e.stopPropagation();
         selectBox.isSelected = false;
-        var loc = eToLoc(e);
-        var pos = locToPos(loc);
+
         editor_mode.onmode('nextChange');
         editor_mode.onmode('loc');
         //editor_mode.loc();
         //tip.whichShow = 1;
+        if(editor.isMobile)editor.showdataarea(false);
     }
 
     var chooseInRight = document.getElementById('chooseInRight');
@@ -825,6 +852,16 @@ editor.prototype.listen = function () {
             ;printf('清空此点及事件成功');
             editor.drawEventBlock();
         });
+    }
+
+    var brushMod=document.getElementById('brushMod');
+    brushMod.onchange=function(){
+        editor.brushMod=brushMod.value;
+    }
+
+    var brushMod2=document.getElementById('brushMod2');
+    if(brushMod2)brushMod2.onchange=function(){
+        editor.brushMod=brushMod2.value;
     }
 
 }//绑定事件
