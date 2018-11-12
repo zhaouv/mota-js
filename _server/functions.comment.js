@@ -55,6 +55,12 @@ functions_comment_c456ea59_6018_45ef_8bcc_211a24c627dc =
                     "_lint": true,
                     "_data": "开一个门后触发的事件"
                 },
+                "afterGetItem": {
+                    "_leaf": true,
+                    "_type": "textarea",
+                    "_lint": true,
+                    "_data": "获得一个道具后触发的事件"
+                },
                 "afterChangeLight": {
                     "_leaf": true,
                     "_type": "textarea",
@@ -84,6 +90,12 @@ functions_comment_c456ea59_6018_45ef_8bcc_211a24c627dc =
                     "_type": "textarea",
                     "_lint": true,
                     "_data": "读档事件后，载入事件前，可以执行的操作"
+                },
+                "canUseQuickShop": {
+                    "_leaf": true,
+                    "_type": "textarea",
+                    "_lint": true,
+                    "_data": "当前能否使用快捷商店"
                 }
             }
         },
@@ -96,6 +108,12 @@ functions_comment_c456ea59_6018_45ef_8bcc_211a24c627dc =
                     "_type": "textarea",
                     "_lint": true,
                     "_data": "怪物特殊属性的定义（获得怪物的特殊属性）"
+                },
+                "getEnemyInfo": {
+                    "_leaf": true,
+                    "_type": "textarea",
+                    "_lint": true,
+                    "_data": "获得某个怪物的当前属性数据\n该函数主要是会被伤害计算和怪物手册等使用"
                 },
                 "getDamageInfo": {
                     "_leaf": true,
@@ -111,10 +129,52 @@ functions_comment_c456ea59_6018_45ef_8bcc_211a24c627dc =
                 }
             }
         },
+        "actions": {
+            "_leaf": false,
+            "_type": "object",
+            "_data": {
+                "onKeyUp": {
+                    "_leaf": true,
+                    "_type": "textarea",
+                    "_lint": true,
+                    "_data": "按键处理；可以在这里自定义快捷键，详见文档-个性化-自定义快捷键"
+                }
+            }
+        },
+        "control": {
+            "_leaf": false,
+            "_type": "object",
+            "_data": {
+                "flyTo": {
+                    "_leaf": true,
+                    "_type": "textarea",
+                    "_lint": true,
+                    "_data": "使用楼层传送器飞到某层"
+                },
+                "updateStatusBar": {
+                    "_leaf": true,
+                    "_type": "textarea",
+                    "_lint": true,
+                    "_data": "更新状态栏"
+                },
+                "updateCheckBlock": {
+                    "_leaf": true,
+                    "_type": "textarea",
+                    "_lint": true,
+                    "_data": "阻激夹域的伤害值计算"
+                }
+            }
+        },
         "ui": {
             "_leaf": false,
             "_type": "object",
             "_data": {
+                "drawStatistics": {
+                    "_leaf": true,
+                    "_type": "textarea",
+                    "_lint": true,
+                    "_data": "地图数据统计项的注册"
+                },
                 "drawAbout": {
                     "_leaf": true,
                     "_type": "textarea",
@@ -127,6 +187,12 @@ functions_comment_c456ea59_6018_45ef_8bcc_211a24c627dc =
             "_leaf": false,
             "_type": "object",
             "_data": {
+                "parallelDo": {
+                    "_leaf": true,
+                    "_type": "textarea",
+                    "_lint": true,
+                    "_data": "并行事件处理"
+                },
                 "plugin": {
                     "_leaf": true,
                     "_type": "textarea",

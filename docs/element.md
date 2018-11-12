@@ -1,6 +1,6 @@
 # 元件说明
 
-?> 目前版本**v2.3.3**，上次更新时间：* {docsify-updated} *
+?> 目前版本**v2.5**，上次更新时间：* {docsify-updated} *
 
 在本章中，将对样板里的各个元件进行说明。各个元件主要包括道具、门、怪物、楼梯等等。
 
@@ -24,13 +24,86 @@
 
 如果需要让剑盾等变成装备，可以直接在`data.js`中设置`'equipment': true`即可。
 
-有关装备更为详细的资料可参见[自定义装备](personalization#自定义装备)的说明。
+从V2.4.1开始，HTML5魔塔样板终于拥有了属于自己的装备页面。
+
+### 装备栏的设置，装备类型
+
+在全塔属性中，有一个`equipName`项，其定义了本塔的所有可装备的装备栏。
+
+其需要是一个不小于1且不大于6的数组，其中每一项为装备栏的名称，**建议是两个汉字**。
+
+例如下面这种写法就是定义了四个装备孔，名称分别为武器、防御、首饰和魔杖。
+
+``` js
+"equipName": ["武器","防具","首饰","魔杖"]
+```
+
+这么定义好后，装备类型即为每个装备孔的索引（从0开始）。
+
+即，武器的装备类型是0，防御的装备类型是1，首饰的装备类型是2，魔杖的装备类型是3。
+
+### 设置每个装备的属性
+
+如果要将一个道具设置为装备，首先需要将其`cls`设为`equips`。
+
+然后在图块属性的`equip`一项中设置装备的具体属性。该项写法如下:
+``` js
+{"type": 0, "atk": 0, "def": 0, "mdef"：0, "animate": "hand"}
+```
+
+type为该装备的类型，必填，和上面装备栏一一对应。例如，0就是武器，2就是首饰等等。
+
+atk/def/mdef为该装备分别增加的攻防魔防数值（支持负数）；如果不加也可省略不写。
+
+animate为该装备的攻击动画，仅对type为0时有效。具体可参见[动画和天气系统](#动画和天气系统)。
+
+下面是几个写法例子。
+
+``` js
+{"type": 0, "atk": 10} // 装备类型是武器，效果是攻击+10，使用默认的攻击动画
+{"type": 0, "atk": 40, "animate": "sword"} // 装备类型为武器，效果是攻击+10，攻击动画是sword
+{"type": 1, "def": 40} // 装备类型是防具，效果是防御+40
+{"type": 1, "def": 100, "mdef": 100} // 装备类型是防具，效果是防御和魔防各+100
+{"type": 3, "atk": -20, "def": 50, "mdef": 50} // 装备类型是魔杖，效果是攻击-20，防御和魔防各+50
+```
+
+### 装备按比例增加属性
+
+从V2.4.2开始，装备可以选择按照比例来增加属性。
+
+在全塔属性中有个`equipPercentage`开关，如果将其打开，则会所有值都按照比例计算。（也就是类似Buff一样）
+
+例如，上面的例子就变成了：
+
+``` js
+{"type": 0, "atk": 10} // 装备类型是武器，效果是攻击提升10%，使用默认的攻击动画
+{"type": 0, "atk": 40, "animate": "sword"} // 装备类型为武器，效果是攻击提升40%，攻击动画是sword
+{"type": 1, "def": 40} // 装备类型是防具，效果是防御提升40%
+{"type": 1, "def": 100, "mdef": 100} // 装备类型是防具，效果是防御和魔防各提升100%
+{"type": 3, "atk": -20, "def": 50, "mdef": 50} // 装备类型是魔杖，效果是攻击下降20%，防御和魔防各提升50%
+```
+
+所有取值全部向下取整。
+
+值得注意的是：多装备增加同一属性使用加法计算；也就是比如武器增加30%攻击，防具增加10%攻击，最终合起来增加的是40%而不是43%的属性。
+
+### 检测是否存在装备
+
+可以使用`core.hasEquip(itemId)`来检测是否装上某个装备。
+
+使用`core.hasItem(itemId)`来检测是否存在一个未装上的装备。
+
+使用`core.getEquip(equipType)`来获得某个装备类型的当前装备。
+
+更多相关API详见[附录：API列表](api)。
 
 ## 门
 
 本塔支持6种门，黄蓝红绿铁花。前五种门需要有对应的钥匙打开，花门只能通过调用`openDoor`事件进行打开。
 
-开门后可触发该层的`afterOpenDoor`事件，有关事件的详细介绍请参见第四章。
+开门后可触发该层的`afterOpenDoor`事件，有关事件的详细介绍请参见[事件](event)。
+
+如果要新增自己的门，请参见[新增门和对应的钥匙](personalization#新增门和对应的钥匙)。
 
 ## 暗墙
 
@@ -43,7 +116,7 @@
 
 // 在该点的事件events中:
 "x,y": [
-    {"type": "openDoor", "loc": [x,y]} // 直接使用开门事件，坐标需写当前点坐标。
+    {"type": "openDoor"} // 直接使用开门事件，坐标可忽略表示当前点
 ]
 ```
 
@@ -53,7 +126,7 @@
 
 ``` text
 yellowDoor, blueDoor, redDoor, greenDoor, specialDoor, steelDoor,
-yellowWall, blueWall, whiteWall, lava, star
+yellowWall, blueWall, whiteWall
 ```
 
 ## 怪物
@@ -64,38 +137,39 @@ yellowWall, blueWall, whiteWall, lava, star
 
 怪物可以有特殊属性，每个怪物可以有多个自定义属性。
 
-怪物的特殊属性所对应的数字（special）在`libs/enemys.js`中的`getSpecialText`中定义，请勿对已有的属性进行修改。
+怪物的特殊属性所对应的数字（special）在脚本编辑中的`getSpecials`中定义，请勿对已有的属性进行修改。
 
 ``` js
-enemys.prototype.getSpecialText = function (enemyId) {
-    if (enemyId == undefined) return "";
-    var enemy = this.enemys[enemyId];
-    var special = enemy.special;
-    var text = [];
-    if (this.hasSpecial(special, 1)) text.push("先攻");
-    if (this.hasSpecial(special, 2)) text.push("魔攻");
-    if (this.hasSpecial(special, 3)) text.push("坚固");
-    if (this.hasSpecial(special, 4)) text.push("2连击");
-    if (this.hasSpecial(special, 5)) text.push("3连击");
-    if (this.hasSpecial(special, 6)) text.push((enemy.n||4)+"连击");
-    if (this.hasSpecial(special, 7)) text.push("破甲");
-    if (this.hasSpecial(special, 8)) text.push("反击");
-    if (this.hasSpecial(special, 9)) text.push("净化");
-    if (this.hasSpecial(special, 10)) text.push("模仿");
-    if (this.hasSpecial(special, 11)) text.push("吸血");
-    if (this.hasSpecial(special, 12)) text.push("中毒");
-    if (this.hasSpecial(special, 13)) text.push("衰弱");
-    if (this.hasSpecial(special, 14)) text.push("诅咒");
-    if (this.hasSpecial(special, 15)) text.push("领域");
-    if (this.hasSpecial(special, 16)) text.push("夹击");
-    if (this.hasSpecial(special, 17)) text.push("仇恨");
-    if (this.hasSpecial(special, 18)) text.push("阻击");
-    if (this.hasSpecial(special, 19)) text.push("自爆");
-    if (this.hasSpecial(special, 20)) text.push("无敌");
-    if (this.hasSpecial(special, 21)) text.push("退化");
-    if (this.hasSpecial(special, 22)) text.push("固伤");
-    if (this.hasSpecial(special, 23)) text.push("重生");
-    return text.join("  ");
+function() {
+	// 获得怪物的特殊属性，每一行定义一个特殊属性。
+	// 分为三项，第一项为该特殊属性的数字，第二项为特殊属性的名字，第三项为特殊属性的描述
+	// 可以直接写字符串，也可以写个function将怪物传进去
+	return [
+		[1, "先攻", "怪物首先攻击"],
+		[2, "魔攻", "怪物无视勇士的防御"],
+		[3, "坚固", "勇士每回合最多只能对怪物造成1点伤害"],
+		[4, "2连击", "怪物每回合攻击2次"],
+		[5, "3连击", "怪物每回合攻击3次"],
+		[6, function(enemy) {return (enemy.n||4)+"连击";}, function(enemy) {return "怪物每回合攻击"+(enemy.n||4)+"次";}],
+		[7, "破甲", "战斗前，怪物附加角色防御的"+Math.floor(100*core.values.breakArmor||0)+"%作为伤害"],
+		[8, "反击", "战斗时，怪物每回合附加角色攻击的"+Math.floor(100*core.values.counterAttack||0)+"%作为伤害，无视角色防御"],
+		[9, "净化", "战斗前，怪物附加勇士魔防的"+core.values.purify+"倍作为伤害"],
+		[10, "模仿", "怪物的攻防和勇士攻防相等"],
+		[11, "吸血", function (enemy) {return "战斗前，怪物首先吸取角色的"+Math.floor(100*enemy.value||0)+"%生命作为伤害"+(enemy.add?"，并把伤害数值加到自身生命上":"");}],
+		[12, "中毒", "战斗后，勇士陷入中毒状态，每一步损失生命"+core.values.poisonDamage+"点"],
+		[13, "衰弱", "战斗后，勇士陷入衰弱状态，攻防暂时下降"+(core.values.weakValue>=1?core.values.weakValue+"点":parseInt(core.values.weakValue*100)+"%")],
+		[14, "诅咒", "战斗后，勇士陷入诅咒状态，战斗无法获得金币和经验"],
+		[15, "领域", function (enemy) {return "经过怪物周围"+(enemy.range||1)+"格时自动减生命"+(enemy.value||0)+"点";}],
+		[16, "夹击", "经过两只相同的怪物中间，勇士生命值变成一半"],
+		[17, "仇恨", "战斗前，怪物附加之前积累的仇恨值作为伤害"+(core.flags.hatredDecrease?"；战斗后，释放一半的仇恨值":"")+"。（每杀死一个怪物获得"+(core.values.hatred||0)+"点仇恨值）"],
+		[18, "阻击", function (enemy) {return "经过怪物的十字领域时自动减生命"+(enemy.value||0)+"点，同时怪物后退一格";}],
+		[19, "自爆", "战斗后勇士的生命值变成1"],
+		[20, "无敌", "勇士无法打败怪物，除非拥有十字架"],
+		[21, "退化", function (enemy) {return "战斗后勇士永久下降"+(enemy.atkValue||0)+"点攻击和"+(enemy.defValue||0)+"点防御";}],
+		[22, "固伤", function (enemy) {return "战斗前，怪物对勇士造成"+(enemy.damage||0)+"点固定伤害，无视勇士魔防。";}],
+		[23, "重生", "怪物被击败后，角色转换楼层则怪物将再次出现"],
+		[24, "激光", function (enemy) {return "经过怪物同行或同列时自动减生命"+(enemy.value||0)+"点";}]
+	];
 }
 ```
 
@@ -138,13 +212,25 @@ N连击怪物的special是6，且我们可以为它定义n代表实际连击数�
 
 领域怪还可以设置`range`选项代表该领域怪的范围，不写则默认为1。
 
-阻击怪同样需要设置value，代表领域伤害的数值。如果勇士生命值扣减到0，则直接死亡触发lose事件。
+**将`flag:no_zone`设置为true可以取消领域效果。**
+
+阻击怪同样需要设置value，代表阻击伤害的数值。如果勇士生命值扣减到0，则直接死亡触发lose事件。
+
+**将`flag:no_snipe`设置为true可以取消阻击效果。**
 
 !> 阻击怪后退的地点不能有任何事件存在，即使是已经被禁用的自定义事件！
 
-请注意如果吸血、领域、阻击中任何两个同时存在，则value会冲突。**因此请勿将吸血、领域或阻击放置在同一个怪物身上。**
+激光怪同样需要设置value，代表激光伤害的数值。
+
+请注意如果吸血、领域、阻击中任何两个同时存在，则value会冲突。**因此请勿将吸血、领域、阻击或激光放置在同一个怪物身上。**
+
+**将`flag:no_laser`设置为true可以免疫激光效果。**
 
 退化怪需要设置'atkValue'和'defValue'表示退化的数值；也可以不设置默认为0。
+
+夹击可以通过全塔属性中的`betweenAttackCeil`设为true可以将伤害向上取整。
+
+**将`flag:no_betweenAttack`设置为true可以免疫夹击效果。**
 
 固伤怪则需要设置`damage`选项，代表战前扣血数值。
 
@@ -175,6 +261,14 @@ floorId指定的是目标楼层的唯一标识符（ID）。
 可以指定time，指定后切换动画时长为指定的数值。
 
 **从2.1.1开始，楼层属性中提供了`upFloor`和`downFloor`两项。如果设置此项（比如`"upFloor": [2,3]`），则写stair:upFloor或者楼传器的落点将用此点来替换楼梯位置（即类似于RM中的上箭头）。**
+
+## 大地图
+
+从V2.4开始，H5魔塔开始支持大地图。
+
+大地图在创建时可以指定宽高，要求**宽和高都不得小于13，且宽高之积不超过1000**。
+
+大地图一旦创建成功则不得修改宽高数值。
 
 ## 动画和天气系统
 
@@ -271,10 +365,23 @@ HTML5魔塔一大亮点就是存在录像系统，可以很方便进行录像回
 - **回退：** 按A可以回退到上一个录像节点（录像播放过程中每50步存一个录像节点）。
 - **存档：** 按S可以在录像播放过程中进行存档。
 - **查看手册：** 按C可以在录像播放过程中查看怪物手册。
-
-上述操作在手机端均有工具栏的对应按钮可点击操作。
+- **浏览地图：** 按PgUp/PgDn可以在录像播放过程中浏览地图。
 
 如果录像出现问题，请加群539113091找小艾反馈Bug。
+
+## 绘图模式
+
+从V2.5开始，样板提供了绘图模式，可以让玩家在画布上任意进行绘制，标记等。
+
+使用M键，或在菜单栏中可以进入绘图模式。
+
+**绘图的内容会自动保存，且以页面为生命周期，和存读档无关，返回标题并重新开始游戏后绘制的内容仍有效，但刷新页面就会消失。**
+
+你可以将绘制内容保存到文件，也可以从文件读取保存的绘制内容。
+
+绘图模式下，状态栏的图标也会相应改变，铅笔为绘制模式，橡皮为擦除模式，存读档为保存和读取绘图文件，退出为返回默认值。
+
+在浏览地图页面中也可以按楼传按钮或M键来开启/关闭该层的绘图显示。
 
 ## 操作说明
 
@@ -297,15 +404,22 @@ HTML5魔塔一大亮点就是存在录像系统，可以很方便进行录像回
 - **[G]** 打开/关闭楼层传送器
 - **[A]** 读取自动存档
 - **[S/D]** 打开/关闭存/读档页面
-- **[K]** 打开/关闭快捷商店选择列表
+- **[K/V]** 打开/关闭快捷商店选择列表
 - **[T]** 打开/关闭工具栏
+- **[Q]** 打开/关闭装备栏
 - **[ESC]** 打开/关闭系统菜单
+- **[B]** 打开数据统计
 - **[H]** 打开帮助页面
 - **[R]** 回放录像
+- **[E]** 显示光标
 - **[SPACE]** 轻按（仅在轻按开关打开时有效）
+- **[M]** 绘图模式
+- **[PgUp/PgDn]** 浏览地图
 - **[1]** 快捷使用破墙镐
 - **[2]** 快捷使用炸弹/圣锤
 - **[3]** 快捷使用中心对称飞行器
+- **[4]** 快捷使用其他道具
+- **[Alt+0~9]** 快捷换装
 
 以上快捷键也能在游戏菜单中的操作说明中看到。
 

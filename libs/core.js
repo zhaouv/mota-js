@@ -31,6 +31,7 @@ function core() {
         'globalAnimate': false,
         'globalTime': null,
         'boxTime': null,
+        'animateTime': null,
         'moveTime': null,
         'speed': null,
         'weather': {
@@ -60,6 +61,7 @@ function core() {
         'isQQ': false, // 是否是QQ
         'isChrome': false, // 是否是Chrome
         'supportCopy': false, // 是否支持复制到剪切板
+        'useLocalForage': true,
 
         'fileInput': null, // FileInput
         'fileReader': null, // 是否支持FileReader
@@ -71,6 +73,15 @@ function core() {
         styles: [],
         scale: 1.0,
     }
+    this.bigmap = {
+        canvas: ["bg", "event", "event2", "fg", "damage", "route"],
+        offsetX: 0, // in pixel
+        offsetY: 0,
+        width: 13, // map width and height
+        height: 13,
+        tempCanvas: null, // A temp canvas for drawing
+    }
+    this.paint = {}
     this.initStatus = {
         'played': false,
         'gameOver': false,
@@ -82,6 +93,8 @@ function core() {
         'floorId': null,
         'thisMap': null,
         'maps': null,
+        'bgmaps': {},
+        'fgmaps': {},
         'checkBlock': {}, // 显伤伤害
 
         'lockControl': false,
@@ -104,7 +117,6 @@ function core() {
             'cursorX': null,
             'cursorY': null,
             "moveDirectly": false,
-            'clickMoveDirectly': true,
         },
 
         // 按下键的时间：为了判定双击
@@ -136,20 +148,24 @@ function core() {
         },
         'textAttribute': {
             'position': "center",
+            "offset": 20,
             "title": [255,215,0,1],
             "background": [0,0,0,0.85],
             "text": [255,255,255,1],
+            "titlefont": 22,
+            "textfont": 16,
             "bold": false,
             "time": 0,
         },
         'curtainColor': null,
-        'usingCenterFly':false,
         'openingDoor': null,
         'isSkiing': false,
 
         // 动画
         'globalAnimateObjs': [],
         'boxAnimateObjs': [],
+        'autotileAnimateObjs': {},
+        'animateObjs': [],
     };
     this.status = {};
 }
@@ -184,7 +200,6 @@ core.prototype.init = function (coreData, callback) {
     document.title = core.firstData.title + " - HTML5魔塔";
     document.getElementById("startLogo").innerHTML = core.firstData.title;
     core.material.items = core.clone(core.items.getItems());
-    core.initStatus.maps = core.maps.initMaps(core.floorIds);
     core.material.enemys = core.clone(core.enemys.getEnemys());
     core.material.icons = core.icons.getIcons();
     core.material.events = core.events.getEvents();
@@ -223,6 +238,30 @@ core.prototype.init = function (coreData, callback) {
     core.platform.isSafari = /Safari/i.test(navigator.userAgent) && !/Chrome/i.test(navigator.userAgent);
     core.platform.isQQ = /QQ/i.test(navigator.userAgent);
     core.platform.isWeChat = /MicroMessenger/i.test(navigator.userAgent);
+    core.platform.useLocalForage = core.getLocalStorage('useLocalForage', !core.platform.isIOS);
+    if (core.platform.useLocalForage) {
+        try {
+            core.setLocalForage("__test__", LZString.compress("__test__"), function() {
+                try {
+                    core.getLocalForage("__test__", null, function(data) {
+                        try {
+                            if (LZString.decompress(data)!="__test__") {
+                                console.log("localForage unsupported!");
+                                core.platform.useLocalForage=false;
+                            }
+                            else {
+                                console.log("localForage supported!")
+                                core.removeLocalForage("__test__");
+                            }
+                        }
+                        catch (e) {console.log(e); core.platform.useLocalForage=false;}
+                    }, function(e) {console.log(e); core.platform.useLocalForage=false;})
+                }
+                catch (e) {console.log(e); core.platform.useLocalForage=false;}
+            }, function(e) {console.log(e); core.platform.useLocalForage=false;})
+        }
+        catch (e) {console.log(e); core.platform.useLocalForage=false;}
+    }
 
     if (window.FileReader) {
         core.platform.fileReader = new FileReader();
@@ -263,10 +302,16 @@ core.prototype.init = function (coreData, callback) {
     core.material.ground = new Image();
     core.material.ground.src = "project/images/ground.png";
 
+    core.bigmap.tempCanvas = document.createElement('canvas').getContext('2d');
+
     core.loader.load(function () {
         console.log(core.material);
         // 设置勇士高度
         core.material.icons.hero.height = core.material.images.hero.height/4;
+        // 行走图
+        core.control.updateHeroIcon();
+
+        core.initStatus.maps = core.maps.initMaps(core.floorIds);
         core.setRequestAnimationFrame();
         core.showStartAnimate();
 
@@ -287,8 +332,8 @@ core.prototype.setRequestAnimationFrame = function () {
 }
 
 ////// 显示游戏开始界面 //////
-core.prototype.showStartAnimate = function (callback) {
-    core.control.showStartAnimate(callback);
+core.prototype.showStartAnimate = function (noAnimate, callback) {
+    core.control.showStartAnimate(noAnimate, callback);
 }
 
 ////// 隐藏游戏开始界面 //////
@@ -312,13 +357,13 @@ core.prototype.resetStatus = function(hero, hard, floorId, route, maps, values) 
 }
 
 ////// 开始游戏 //////
-core.prototype.startGame = function (hard, callback) {
-    core.control.startGame(hard, callback);
+core.prototype.startGame = function (hard, seed, route, callback) {
+    core.events.startGame(hard, seed, route, callback);
 }
 
 ////// 重新开始游戏；此函数将回到标题页面 //////
-core.prototype.restart = function() {
-    core.control.restart();
+core.prototype.restart = function(noAnimate) {
+    core.control.restart(noAnimate);
 }
 
 /////////// 系统事件相关 END ///////////
@@ -347,18 +392,18 @@ core.prototype.keyDown = function(keyCode) {
 }
 
 ////// 根据放开键的code来执行一系列操作 //////
-core.prototype.keyUp = function(keyCode) {
-    return core.actions.keyUp(keyCode);
+core.prototype.keyUp = function(keyCode, altKey) {
+    return core.actions.keyUp(keyCode, altKey);
 }
 
 ////// 点击（触摸）事件按下时 //////
-core.prototype.ondown = function (x ,y) {
-    return core.actions.ondown(x,y);
+core.prototype.ondown = function (loc) {
+    return core.actions.ondown(loc);
 }
 
 ////// 当在触摸屏上滑动时 //////
-core.prototype.onmove = function (x ,y) {
-    return core.actions.onmove(x,y);
+core.prototype.onmove = function (loc) {
+    return core.actions.onmove(loc);
 }
 
 ////// 当点击（触摸）事件放开时 //////
@@ -442,8 +487,8 @@ core.prototype.moveAction = function (callback) {
 }
 
 ////// 转向 //////
-core.prototype.turnHero = function() {
-    core.control.turnHero();
+core.prototype.turnHero = function(direction) {
+    core.control.turnHero(direction);
 }
 
 ////// 勇士能否前往某方向 //////
@@ -617,8 +662,8 @@ core.prototype.drawMap = function (mapName, callback) {
 }
 
 ////// 绘制Autotile //////
-core.prototype.drawAutotile = function(ctx, mapArr, block, size, left, top){
-    core.maps.drawAutotile(ctx, mapArr, block, size, left, top);
+core.prototype.drawAutotile = function(ctx, mapArr, block, size, left, top, status){
+    core.maps.drawAutotile(ctx, mapArr, block, size, left, top, status);
 }
 
 ////// 某个点是否不可通行 //////
@@ -657,13 +702,18 @@ core.prototype.enemyExists = function (x, y, id,floorId) {
 }
 
 ////// 获得某个点的block //////
-core.prototype.getBlock = function (x, y, floorId, needEnable) {
-    return core.maps.getBlock(x,y,floorId,needEnable);
+core.prototype.getBlock = function (x, y, floorId, showDisable) {
+    return core.maps.getBlock(x,y,floorId,showDisable);
 }
 
 ////// 获得某个点的blockId //////
-core.prototype.getBlockId = function (x, y, floorId, needEnable) {
-    return core.maps.getBlockId(x, y, floorId, needEnable);
+core.prototype.getBlockId = function (x, y, floorId, showDisable) {
+    return core.maps.getBlockId(x, y, floorId, showDisable);
+}
+
+////// 获得某个点的blockCls //////
+core.prototype.getBlockCls = function (x, y, floorId, showDisable) {
+    return core.maps.getBlockCls(x, y, floorId, showDisable);
 }
 
 ////// 显示移动某块的动画，达到{“type”:”move”}的效果 //////
@@ -686,7 +736,12 @@ core.prototype.showBlock = function(x, y, floodId) {
     core.maps.showBlock(x,y,floodId);
 }
 
-////// 将某个块从启用变成禁用状态 //////
+////// 将某个块从启用变成禁用状态，但是并不删除它 //////
+core.prototype.hideBlock = function(x, y, floorId) {
+    core.maps.hideBlock(x,y,floorId);
+}
+
+////// 将某个块从启用变成禁用状态，并删除该块 //////
 core.prototype.removeBlock = function (x, y, floorId) {
     core.maps.removeBlock(x,y,floorId);
 }
@@ -704,6 +759,11 @@ core.prototype.removeBlockByIds = function (floorId, ids) {
 ////// 改变图块 //////
 core.prototype.setBlock = function (number, x, y, floorId) {
     core.maps.setBlock(number, x, y, floorId);
+}
+
+////// 改变图层块 //////
+core.prototype.setBgFgBlock = function (name, number, x, y, floorId) {
+    core.maps.setBgFgBlock(name, number, x, y, floorId);
 }
 
 ////// 添加一个全局动画 //////
@@ -762,8 +822,8 @@ core.prototype.setFg = function(color, time, callback) {
 }
 
 ////// 更新全地图显伤 //////
-core.prototype.updateFg = function () {
-    core.control.updateFg();
+core.prototype.updateDamage = function () {
+    core.control.updateDamage();
 }
 
 ////// 测试是否拥有某个特殊属性 //////
@@ -772,13 +832,13 @@ core.prototype.hasSpecial = function (special, test) {
 }
 
 ////// 判断能否战斗 //////
-core.prototype.canBattle = function(enemyId) {
-    return core.enemys.canBattle(enemyId);
+core.prototype.canBattle = function(enemyId, x, y, floorId) {
+    return core.enemys.canBattle(enemyId, x, y, floorId);
 }
 
 ////// 获得伤害数值 //////
-core.prototype.getDamage = function(enemy) {
-    return core.enemys.getDamage(enemy);
+core.prototype.getDamage = function(enemy, x, y, floorId) {
+    return core.enemys.getDamage(enemy, x, y, floorId);
 }
 
 ////// 获得某个物品的个数 //////
@@ -791,14 +851,24 @@ core.prototype.hasItem = function (itemId) {
     return core.items.hasItem(itemId);
 }
 
+////// 是否装备某件装备 //////
+core.prototype.hasEquip = function (itemId) {
+    return core.items.hasEquip(itemId);
+}
+
+////// 获得某个装备类型的当前装备 /////
+core.prototype.getEquip = function (equipType) {
+    return core.items.getEquip(equipType);
+}
+
 ////// 设置某个物品的个数 //////
 core.prototype.setItem = function (itemId, itemNum) {
     core.items.setItem(itemId, itemNum);
 }
 
 ////// 删除某个物品 //////
-core.prototype.removeItem = function (itemId) {
-    return core.items.removeItem(itemId);
+core.prototype.removeItem = function (itemId, itemNum) {
+    return core.items.removeItem(itemId, itemNum);
 }
 
 ////// 使用某个物品 //////
@@ -811,6 +881,21 @@ core.prototype.canUseItem = function (itemId) {
     return core.items.canUseItem(itemId);
 }
 
+////// 换上某件装备 //////
+core.prototype.loadEquip = function (equipId, callback) {
+    core.items.loadEquip(equipId,callback);
+}
+
+////// 卸下某件装备 //////
+core.prototype.unloadEquip = function (equipType, callback) {
+    core.items.unloadEquip(equipType,callback);
+}
+
+////// 比较某件装备与当前装备 //////
+core.prototype.compareEquipment = function (equipId, beComparedEquipId) {
+    return core.items.compareEquipment(equipId, beComparedEquipId);
+}
+
 ////// 增加某个物品的个数 //////
 core.prototype.addItem = function (itemId, itemNum) {
     core.items.addItem(itemId, itemNum);
@@ -818,7 +903,7 @@ core.prototype.addItem = function (itemId, itemNum) {
 
 ////// 获得面前的物品（轻按） //////
 core.prototype.getNextItem = function() {
-    core.events.getNextItem();
+    return core.events.getNextItem();
 }
 
 ////// 获得某个物品 //////
@@ -883,6 +968,18 @@ core.prototype.removeLocalStorage = function (key) {
     core.utils.removeLocalStorage(key);
 }
 
+core.prototype.setLocalForage = function (key, value, successCallback, errorCallback) {
+    core.utils.setLocalForage(key, value, successCallback, errorCallback);
+}
+
+core.prototype.getLocalForage = function (key, defaultValue, successCallback, errorCallback) {
+    core.utils.getLocalForage(key, defaultValue, successCallback, errorCallback);
+}
+
+core.prototype.removeLocalForage = function (key, successCallback, errorCallback) {
+    core.utils.removeLocalForage(key, successCallback, errorCallback);
+}
+
 ////// 深拷贝一个对象 //////
 core.prototype.clone = function (data) {
     return core.utils.clone(data);
@@ -938,6 +1035,11 @@ core.prototype.resetMap = function(floorId) {
     core.maps.resetMap(floorId);
 }
 
+////// 选择录像文件 //////
+core.prototype.chooseReplayFile = function () {
+    core.control.chooseReplayFile();
+}
+
 ////// 开始播放 //////
 core.prototype.startReplay = function (list) {
     core.control.startReplay(list);
@@ -973,6 +1075,11 @@ core.prototype.speedDownReplay = function () {
     core.control.speedDownReplay();
 }
 
+////// 设置播放速度 //////
+core.prototype.setReplaySpeed = function (speed) {
+    core.control.setReplaySpeed(speed);
+}
+
 ////// 回退播放 //////
 core.prototype.rewindReplay = function () {
     core.control.rewindReplay();
@@ -988,8 +1095,14 @@ core.prototype.saveReplay = function () {
     core.control.saveReplay();
 }
 
+////// 回放时查看怪物手册 //////
 core.prototype.bookReplay = function () {
     core.control.bookReplay();
+}
+
+////// 回放录像时浏览地图 //////
+core.prototype.viewMapReplay = function () {
+    core.control.viewMapReplay();
 }
 
 ////// 回放 //////
@@ -1010,6 +1123,11 @@ core.prototype.openBook = function (need) {
 ////// 点击楼层传送器时的打开操作 //////
 core.prototype.useFly = function (need) {
     core.control.useFly(need);
+}
+
+////// 点击装备栏时的打开操作 //////
+core.prototype.openEquipbox = function (need) {
+    core.control.openEquipbox(need);
 }
 
 ////// 点击工具栏时的打开操作 //////
@@ -1139,6 +1257,10 @@ core.prototype.isset = function (val) {
 ////// 获得子数组 //////
 core.prototype.subarray = function (a, b) {
     return core.utils.subarray(a, b);
+}
+
+core.prototype.clamp = function (x, a, b) {
+    return core.utils.clamp(x, a, b);
 }
 
 ////// Base64加密 //////

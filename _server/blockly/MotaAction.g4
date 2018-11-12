@@ -63,18 +63,20 @@ return code;
 */;
 
 shopsub
-    :   '商店 id' IdString '标题' EvalString '图标' IdString BGNL? Newline '快捷商店栏中名称' EvalString BGNL? Newline '使用' ShopUse_List '消耗' EvalString BGNL? Newline '显示文字' EvalString BGNL? Newline shopChoices+ BEND
+    :   '商店 id' IdString '标题' EvalString '图标' IdString BGNL? Newline '快捷商店栏中名称' EvalString '共用times' Bool BGNL? Newline '未开启状态则不显示在列表中' Bool BGNL? NewLine '使用' ShopUse_List '消耗' EvalString BGNL? Newline '显示文字' EvalString BGNL? Newline shopChoices+ BEND
     
 
 /* shopsub
 tooltip : 全局商店,消耗填-1表示每个选项的消耗不同,正数表示消耗数值
 helpUrl : https://ckcz123.github.io/mota-js/#/event?id=%e5%85%a8%e5%b1%80%e5%95%86%e5%ba%97
-default : ["shop1","贪婪之神","blueShop","1F金币商店",null,"20+10*times*(times+1)","勇敢的武士啊, 给我${need}金币就可以："]
+default : ["shop1","贪婪之神","blueShop","1F金币商店",false,false,null,"20+10*times*(times+1)","勇敢的武士啊, 给我${need}金币就可以："]
 var code = {
     'id': IdString_0,
     'name': EvalString_0,
     'icon': IdString_1,
     'textInList': EvalString_1,
+    'commonTimes': Bool_0,
+    'mustEnable': Bool_1,
     'use': ShopUse_List_0,
     'need': EvalString_2,
     'text': EvalString_3,
@@ -181,16 +183,23 @@ return code;
 action
     :   text_0_s
     |   text_1_s
+    |   comment_s
     |   autoText_s
     |   setText_s
     |   tip_s
     |   setValue_s
+    |   setFloor_s
     |   show_s
     |   hide_s
     |   trigger_s
     |   revisit_s
     |   exit_s
     |   setBlock_s
+    |   showFloorImg_s
+    |   hideFloorImg_s
+    |   showBgFgMap_s
+    |   hideBgFgMap_s
+    |   setBgFgBlock_s
     |   setHeroIcon_s
     |   update_s
     |   updateEnemys_s
@@ -229,10 +238,12 @@ action
     |   win_s
     |   lose_s
     |   if_s
+    |   switch_s
     |   while_s
     |   break_s
     |   continue_s
     |   input_s
+    |   input2_s
     |   choices_s
     |   function_s
     |   pass_s
@@ -274,6 +285,19 @@ var code =  '"'+title+EvalString_1+EvalString_2+'",\n';
 return code;
 */;
 
+comment_s
+    :   '添加注释' ':' EvalString Newline
+
+
+/* comment_s
+tooltip : comment：添加一段会被游戏跳过的注释内容
+helpUrl : https://ckcz123.github.io/mota-js/#/event?id=comment%ef%bc%9a%e6%b7%bb%e5%8a%a0%e6%b3%a8%e9%87%8a
+default : ["可以在这里写添加任何注释内容"]
+colour : this.commentColor
+var code = '{"type": "comment", "text": "'+EvalString_0+'"},\n';
+return code;
+*/;
+
 autoText_s
     :   '自动剧情文本: 标题' EvalString? '图像' IdString? '对话框效果' EvalString? '时间' Int BGNL? EvalString Newline
     
@@ -299,33 +323,45 @@ return code;
 */;
 
 setText_s
-    :   '设置剧情文本的属性' '位置' SetTextPosition_List BGNL? '标题颜色' EvalString? '正文颜色' EvalString? '背景色' EvalString? BGNL? '粗体' B_1_List '打字间隔' EvalString? Newline
+    :   '设置剧情文本的属性' '位置' SetTextPosition_List '偏移像素' EvalString? BGNL? '标题颜色' EvalString? '正文颜色' EvalString? '背景色' EvalString? '粗体' B_1_List BGNL? '标题字体大小' EvalString? '正文字体大小' EvalString? '打字间隔' EvalString? Newline
     
 
 /* setText_s
 tooltip : setText：设置剧情文本的属性,颜色为RGB三元组或RGBA四元组,打字间隔为剧情文字添加的时间间隔,为整数或不填
 helpUrl : https://ckcz123.github.io/mota-js/#/event?id=settext%EF%BC%9A%E8%AE%BE%E7%BD%AE%E5%89%A7%E6%83%85%E6%96%87%E6%9C%AC%E7%9A%84%E5%B1%9E%E6%80%A7
-default : [null,"","","",null,'']
+default : [null,"","","","",null,"","",""]
 SetTextPosition_List_0 =SetTextPosition_List_0==='null'?'': ', "position": "'+SetTextPosition_List_0+'"';
 var colorRe = /^(25[0-5]|2[0-4]\d|1\d\d|[1-9]\d|\d),(25[0-5]|2[0-4]\d|1\d\d|[1-9]\d|\d),(25[0-5]|2[0-4]\d|1\d\d|[1-9]\d|\d)(,0(\.\d+)?|,1)?$/;
 if (EvalString_0) {
-  if (!colorRe.test(EvalString_0))throw new Error('颜色格式错误,形如:0~255,0~255,0~255,0~1');
-  EvalString_0 = ', "title": ['+EvalString_0+']';
+  if (!/^\d+$/.test(EvalString_0))throw new Error('像素偏移量必须是整数或不填');
+  EvalString_0 = ', "offset": '+EvalString_0;
 }
 if (EvalString_1) {
   if (!colorRe.test(EvalString_1))throw new Error('颜色格式错误,形如:0~255,0~255,0~255,0~1');
-  EvalString_1 = ', "text": ['+EvalString_1+']';
+  EvalString_1 = ', "title": ['+EvalString_1+']';
 }
 if (EvalString_2) {
   if (!colorRe.test(EvalString_2))throw new Error('颜色格式错误,形如:0~255,0~255,0~255,0~1');
-  EvalString_2 = ', "background": ['+EvalString_2+']';
+  EvalString_2 = ', "text": ['+EvalString_2+']';
 }
 if (EvalString_3) {
-  if (!/^\d+$/.test(EvalString_3))throw new Error('打字时间间隔必须是整数或不填');
-  EvalString_3 = ', "time": '+EvalString_3;
+  if (!colorRe.test(EvalString_3))throw new Error('颜色格式错误,形如:0~255,0~255,0~255,0~1');
+  EvalString_3 = ', "background": ['+EvalString_3+']';
 }
-B_1_List_0 = ', "bold": '+B_1_List_0;
-var code = '{"type": "setText"'+SetTextPosition_List_0+EvalString_0+EvalString_1+EvalString_2+B_1_List_0+EvalString_3+'},\n';
+if (EvalString_4) {
+  if (!/^\d+$/.test(EvalString_4))throw new Error('字体大小必须是整数或不填');
+  EvalString_4 = ', "titlefont": '+EvalString_4;
+}
+if (EvalString_5) {
+  if (!/^\d+$/.test(EvalString_5))throw new Error('字体大小必须是整数或不填');
+  EvalString_5 = ', "textfont": '+EvalString_5;
+}
+if (EvalString_6) {
+  if (!/^\d+$/.test(EvalString_6))throw new Error('打字时间间隔必须是整数或不填');
+  EvalString_6 = ', "time": '+EvalString_6;
+}
+B_1_List_0 = B_1_List_0==='null'?'':', "bold": '+B_1_List_0;
+var code = '{"type": "setText"'+SetTextPosition_List_0+EvalString_0+EvalString_1+EvalString_2+B_1_List_0+EvalString_3+EvalString_4+EvalString_5+EvalString_6+'},\n';
 return code;
 */;
 
@@ -342,7 +378,7 @@ return code;
 */;
 
 setValue_s
-    :   '变量设置' ':' '名称' idString_e '值' expression Newline
+    :   '数值操作' ':' '名称' idString_e '值' expression Newline
     
 
 /* setValue_s
@@ -352,6 +388,21 @@ colour : this.dataColor
 var code = '{"type": "setValue", "name": "'+idString_e_0+'", "value": "'+expression_0+'"},\n';
 return code;
 */;
+
+setFloor_s
+    :   '设置楼层属性' ':' Floor_Meta_List '楼层名' IdString? '值' EvalString Newline
+
+
+/* setFloor_s
+tooltip : setFloor：设置楼层属性；该楼层属性和编辑器中的楼层属性一一对应
+helpUrl : https://ckcz123.github.io/mota-js/#/event?id=setFloor%ef%bc%9a%e8%ae%be%e7%bd%ae%e6%a5%bc%e5%b1%82%e5%b1%9e%e6%80%a7
+default : ["title","","'字符串类型的值要加引号，其他类型则不用'"]
+colour : this.dataColor
+IdString_0 = IdString_0 && (', "floorId": "'+IdString_0+'"');
+var code = '{"type": "setFloor", "name": "'+Floor_Meta_List_0+'"'+IdString_0+', "value": "'+EvalString_0+'"},\n';
+return code;
+*/;
+
 
 show_s
     :   '显示事件' 'x' EvalString? ',' 'y' EvalString? '楼层' IdString? '动画时间' Int? Newline
@@ -472,6 +523,148 @@ var code = '{"type": "setBlock", "number":'+Int_0+floorstr+IdString_0+'},\n';
 return code;
 */;
 
+showFloorImg_s
+    :   '显示贴图' 'x' EvalString? ',' 'y' EvalString? '楼层' IdString? Newline
+
+
+/* showFloorImg_s
+tooltip : showFloorImg: 显示一个贴图，xy为左上角坐标，可用逗号分隔表示多个点
+helpUrl : https://ckcz123.github.io/mota-js/#/event?id=showFloorImg%ef%bc%9a%e6%98%be%e7%a4%ba%e8%b4%b4%e5%9b%be
+default : ["","",""]
+colour : this.eventColor
+var floorstr = '';
+if (EvalString_0 && EvalString_1) {
+  var pattern1 = /^flag:[0-9a-zA-Z_][0-9a-zA-Z_\-:]*$/;
+  if(pattern1.test(EvalString_0) || pattern1.test(EvalString_1)){
+    EvalString_0=MotaActionFunctions.PosString_pre(EvalString_0);
+    EvalString_1=MotaActionFunctions.PosString_pre(EvalString_1);
+    EvalString_0=[EvalString_0,EvalString_1]
+  } else {
+    var pattern2 = /^([+-]?\d+)(,[+-]?\d+)*$/;
+    if(!pattern2.test(EvalString_0) || !pattern2.test(EvalString_1))throw new Error('坐标格式错误,请右键点击帮助查看格式');
+    EvalString_0=EvalString_0.split(',');
+    EvalString_1=EvalString_1.split(',');
+    if(EvalString_0.length!==EvalString_1.length)throw new Error('坐标格式错误,请右键点击帮助查看格式');
+    for(var ii=0;ii<EvalString_0.length;ii++)EvalString_0[ii]='['+EvalString_0[ii]+','+EvalString_1[ii]+']';
+  }
+  floorstr = ', "loc": ['+EvalString_0.join(',')+']';
+}
+IdString_0 = IdString_0 && (', "floorId": "'+IdString_0+'"');
+var code = '{"type": "showFloorImg"'+floorstr+IdString_0+'},\n';
+return code;
+*/;
+
+hideFloorImg_s
+    :   '隐藏贴图' 'x' EvalString? ',' 'y' EvalString? '楼层' IdString? Newline
+
+
+/* hideFloorImg_s
+tooltip : hideFloorImg: 隐藏一个贴图，xy为左上角坐标，可用逗号分隔表示多个点
+helpUrl : https://ckcz123.github.io/mota-js/#/event?id=hideFloorImg%ef%bc%9a%e9%9a%90%e8%97%8f%e8%b4%b4%e5%9b%be
+default : ["","",""]
+colour : this.eventColor
+var floorstr = '';
+if (EvalString_0 && EvalString_1) {
+  var pattern1 = /^flag:[0-9a-zA-Z_][0-9a-zA-Z_\-:]*$/;
+  if(pattern1.test(EvalString_0) || pattern1.test(EvalString_1)){
+    EvalString_0=MotaActionFunctions.PosString_pre(EvalString_0);
+    EvalString_1=MotaActionFunctions.PosString_pre(EvalString_1);
+    EvalString_0=[EvalString_0,EvalString_1]
+  } else {
+    var pattern2 = /^([+-]?\d+)(,[+-]?\d+)*$/;
+    if(!pattern2.test(EvalString_0) || !pattern2.test(EvalString_1))throw new Error('坐标格式错误,请右键点击帮助查看格式');
+    EvalString_0=EvalString_0.split(',');
+    EvalString_1=EvalString_1.split(',');
+    if(EvalString_0.length!==EvalString_1.length)throw new Error('坐标格式错误,请右键点击帮助查看格式');
+    for(var ii=0;ii<EvalString_0.length;ii++)EvalString_0[ii]='['+EvalString_0[ii]+','+EvalString_1[ii]+']';
+  }
+  floorstr = ', "loc": ['+EvalString_0.join(',')+']';
+}
+IdString_0 = IdString_0 && (', "floorId": "'+IdString_0+'"');
+var code = '{"type": "hideFloorImg"'+floorstr+IdString_0+'},\n';
+return code;
+*/;
+
+showBgFgMap_s
+    :   '显示图层块' Bg_Fg_List 'x' EvalString? ',' 'y' EvalString? '楼层' IdString? Newline
+
+
+/* showBgFgMap_s
+tooltip : showBgFgMap: 显示图层块，即背景图层/前景图层的某些图块，xy为左上角坐标，可用逗号分隔表示多个点
+helpUrl : https://ckcz123.github.io/mota-js/#/event?id=showFloorImg%ef%bc%9a%e6%98%be%e7%a4%ba%e8%b4%b4%e5%9b%be
+default : ["bg","","",""]
+colour : this.eventColor
+var floorstr = '';
+if (EvalString_0 && EvalString_1) {
+  var pattern1 = /^flag:[0-9a-zA-Z_][0-9a-zA-Z_\-:]*$/;
+  if(pattern1.test(EvalString_0) || pattern1.test(EvalString_1)){
+    EvalString_0=MotaActionFunctions.PosString_pre(EvalString_0);
+    EvalString_1=MotaActionFunctions.PosString_pre(EvalString_1);
+    EvalString_0=[EvalString_0,EvalString_1]
+  } else {
+    var pattern2 = /^([+-]?\d+)(,[+-]?\d+)*$/;
+    if(!pattern2.test(EvalString_0) || !pattern2.test(EvalString_1))throw new Error('坐标格式错误,请右键点击帮助查看格式');
+    EvalString_0=EvalString_0.split(',');
+    EvalString_1=EvalString_1.split(',');
+    if(EvalString_0.length!==EvalString_1.length)throw new Error('坐标格式错误,请右键点击帮助查看格式');
+    for(var ii=0;ii<EvalString_0.length;ii++)EvalString_0[ii]='['+EvalString_0[ii]+','+EvalString_1[ii]+']';
+  }
+  floorstr = ', "loc": ['+EvalString_0.join(',')+']';
+}
+IdString_0 = IdString_0 && (', "floorId": "'+IdString_0+'"');
+var code = '{"type": "showBgFgMap", "name": "' + Bg_Fg_List_0 + '"' +floorstr+IdString_0+'},\n';
+return code;
+*/;
+
+hideBgFgMap_s
+    :   '隐藏图层块' Bg_Fg_List 'x' EvalString? ',' 'y' EvalString? '楼层' IdString? Newline
+
+
+/* hideBgFgMap_s
+tooltip : hideBgFgMap: 隐藏图层块，即背景图层/前景图层的某些图块，xy为左上角坐标，可用逗号分隔表示多个点
+helpUrl : https://ckcz123.github.io/mota-js/#/event?id=hideFloorImg%ef%bc%9a%e9%9a%90%e8%97%8f%e8%b4%b4%e5%9b%be
+default : ["bg","","",""]
+colour : this.eventColor
+var floorstr = '';
+if (EvalString_0 && EvalString_1) {
+  var pattern1 = /^flag:[0-9a-zA-Z_][0-9a-zA-Z_\-:]*$/;
+  if(pattern1.test(EvalString_0) || pattern1.test(EvalString_1)){
+    EvalString_0=MotaActionFunctions.PosString_pre(EvalString_0);
+    EvalString_1=MotaActionFunctions.PosString_pre(EvalString_1);
+    EvalString_0=[EvalString_0,EvalString_1]
+  } else {
+    var pattern2 = /^([+-]?\d+)(,[+-]?\d+)*$/;
+    if(!pattern2.test(EvalString_0) || !pattern2.test(EvalString_1))throw new Error('坐标格式错误,请右键点击帮助查看格式');
+    EvalString_0=EvalString_0.split(',');
+    EvalString_1=EvalString_1.split(',');
+    if(EvalString_0.length!==EvalString_1.length)throw new Error('坐标格式错误,请右键点击帮助查看格式');
+    for(var ii=0;ii<EvalString_0.length;ii++)EvalString_0[ii]='['+EvalString_0[ii]+','+EvalString_1[ii]+']';
+  }
+  floorstr = ', "loc": ['+EvalString_0.join(',')+']';
+}
+IdString_0 = IdString_0 && (', "floorId": "'+IdString_0+'"');
+var code = '{"type": "hideBgFgMap", "name": "' + Bg_Fg_List_0 + '"' +floorstr+IdString_0+'},\n';
+return code;
+*/;
+
+setBgFgBlock_s
+    :   '转变图层块' Bg_Fg_List '为' Int 'x' PosString? ',' 'y' PosString? '楼层' IdString? Newline
+
+
+/* setBgFgBlock_s
+tooltip : setBgFgBlock：设置某个图层块,忽略坐标楼层则为当前点
+helpUrl : https://ckcz123.github.io/mota-js/#/event?id=setblock%EF%BC%9A%E8%AE%BE%E7%BD%AE%E6%9F%90%E4%B8%AA%E5%9B%BE%E5%9D%97
+colour : this.eventColor
+default : ["bg",0,"","",""]
+var floorstr = '';
+if (PosString_0 && PosString_1) {
+    floorstr = ', "loc": ['+PosString_0+','+PosString_1+']';
+}
+IdString_0 = IdString_0 && (', "floorId": "'+IdString_0+'"');
+var code = '{"type": "setBgFgBlock", "name": "' + Bg_Fg_List_0 + '", "number":'+Int_0+floorstr+IdString_0+'},\n';
+return code;
+*/;
+
 setHeroIcon_s
     :   '更改角色行走图' EvalString? Newline
     
@@ -564,7 +757,7 @@ helpUrl : https://ckcz123.github.io/mota-js/#/event?id=changefloor%EF%BC%9A%E6%A
 default : ["MT1","0","0",null,500]
 colour : this.dataColor
 DirectionEx_List_0 = DirectionEx_List_0 && (', "direction": "'+DirectionEx_List_0+'"');
-Int_0 = Int_0 ?(', "time": '+Int_0):'';
+Int_0 = (Int_0!=='')  ?(', "time": '+Int_0):'';
 var floorstr = '';
 if (PosString_0 && PosString_1) {
     floorstr = ', "loc": ['+PosString_0+','+PosString_1+']';
@@ -654,27 +847,28 @@ return code;
 */;
 
 viberate_s
-    :   '画面震动' '时间' Int Newline
+    :   '画面震动' '时间' Int '不等待执行完毕' Bool Newline
 
 
 /* viberate_s
 tooltip : viberate: 画面震动
 helpUrl : https://ckcz123.github.io/mota-js/#/event?id=viberate%ef%bc%9a%e7%94%bb%e9%9d%a2%e9%9c%87%e5%8a%a8
-default : [2000]
+default : [2000,false]
 colour : this.soundColor
 Int_0 = Int_0 ?(', "time": '+Int_0):'';
-var code = '{"type": "viberate"' + Int_0 + '},\n';
+var async = Bool_0?', "async": true':''
+var code = '{"type": "viberate"' + Int_0 + async + '},\n';
 return code;
 */;
 
 animate_s
-    :   '显示动画' IdString '位置' EvalString? Newline
+    :   '显示动画' IdString '位置' EvalString? '不等待执行完毕' Bool Newline
     
 
 /* animate_s
 tooltip : animate：显示动画,位置填hero或者1,2形式的位置,或者不填代表当前事件点
 helpUrl : https://ckcz123.github.io/mota-js/#/event?id=animate%EF%BC%9A%E6%98%BE%E7%A4%BA%E5%8A%A8%E7%94%BB
-default : ["zone","hero"]
+default : ["zone","hero",false]
 colour : this.soundColor
 if (EvalString_0) {
   if(/^flag:[0-9a-zA-Z_][0-9a-zA-Z_\-]*,flag:[0-9a-zA-Z_][0-9a-zA-Z_\-]*$/.test(EvalString_0)) {
@@ -687,7 +881,8 @@ if (EvalString_0) {
     throw new Error('此处只能填hero或者1,2形式的位置,或者不填代表当前事件点');
   }
 }
-var code = '{"type": "animate", "name": "'+IdString_0+'"'+EvalString_0+'},\n';
+var async = Bool_0?', "async": true':'';
+var code = '{"type": "animate", "name": "'+IdString_0+'"'+EvalString_0+async+'},\n';
 return code;
 */;
 
@@ -717,28 +912,32 @@ return code;
 */;
 
 animateImage_0_s
-    : '图片淡入' EvalString '起点像素位置' 'x' PosString 'y' PosString '动画时间' Int Newline
+    : '图片淡入' EvalString '起点像素位置' 'x' PosString 'y' PosString '动画时间' Int '保留图片' Bool '不等待执行完毕' Bool Newline
     
 
 /* animateImage_0_s
 tooltip : animageImage：图片淡入
 helpUrl : https://ckcz123.github.io/mota-js/#/event?id=animateimage%EF%BC%9A%E5%9B%BE%E7%89%87%E6%B7%A1%E5%85%A5%E6%B7%A1%E5%87%BA
-default : ["bg.jpg","0","0",500]
+default : ["bg.jpg","0","0",500,true,false]
 colour : this.printColor
-var code = '{"type": "animateImage", "action": "show", "name": "'+EvalString_0+'", "loc": ['+PosString_0+','+PosString_1+'], "time": '+Int_0+'},\n';
+var keep = Bool_0?', "keep": true':'';
+var async = Bool_1?', "async": true':'';
+var code = '{"type": "animateImage", "action": "show", "name": "'+EvalString_0+'", "loc": ['+PosString_0+','+PosString_1+'], "time": '+Int_0+keep+async+'},\n';
 return code;
 */;
 
 animateImage_1_s
-    : '图片淡出' EvalString '起点像素位置' 'x' PosString 'y' PosString '动画时间' Int Newline
+    : '图片淡出' EvalString '起点像素位置' 'x' PosString 'y' PosString '动画时间' Int '清除图片' Bool '不等待执行完毕' Bool Newline
     
 
 /* animateImage_1_s
 tooltip : animageImage：图片淡出
 helpUrl : https://ckcz123.github.io/mota-js/#/event?id=animateimage%EF%BC%9A%E5%9B%BE%E7%89%87%E6%B7%A1%E5%85%A5%E6%B7%A1%E5%87%BA
-default : ["bg.jpg","0","0",500]
+default : ["bg.jpg","0","0",500,true,false]
 colour : this.printColor
-var code = '{"type": "animateImage", "action": "hide", "name": "'+EvalString_0+'", "loc": ['+PosString_0+','+PosString_1+'], "time": '+Int_0+'},\n';
+var keep = Bool_0?', "keep": true':'';
+var async = Bool_1?', "async": true':'';
+var code = '{"type": "animateImage", "action": "hide", "name": "'+EvalString_0+'", "loc": ['+PosString_0+','+PosString_1+'], "time": '+Int_0+keep+async+'},\n';
 return code;
 */;
 
@@ -769,26 +968,28 @@ return code;
 
 moveImage_0_s
     :   '图片移动' EvalString '起点像素位置' 'x' PosString 'y' PosString BGNL
-        '终点像素位置' 'x' PosString 'y' PosString '移动时间' Int Newline
+        '终点像素位置' 'x' PosString 'y' PosString '移动时间' Int '保留图片' Bool '不等待执行完毕' Bool Newline
     
 
 /* moveImage_0_s
 tooltip : moveImage：图片移动
 helpUrl : https://ckcz123.github.io/mota-js/#/event?id=moveimage%EF%BC%9A%E5%9B%BE%E7%89%87%E7%A7%BB%E5%8A%A8
-default : ["bg.jpg","0","0","0","0",500]
+default : ["bg.jpg","0","0","0","0",500,true,false]
 colour : this.printColor
-var code = '{"type": "moveImage", "name": "'+EvalString_0+'", "from": ['+PosString_0+','+PosString_1+'], "to": ['+PosString_2+','+PosString_3+'], "time": '+Int_0+'},\n';
+var keep = Bool_0?', "keep": true':'';
+var async = Bool_1?', "async": true':'';
+var code = '{"type": "moveImage", "name": "'+EvalString_0+'", "from": ['+PosString_0+','+PosString_1+'], "to": ['+PosString_2+','+PosString_3+'], "time": '+Int_0+keep+async+'},\n';
 return code;
 */;
 
 setFg_0_s
-    :   '更改画面色调' Number ',' Number ',' Number ',' Number '动画时间' Int? Newline
+    :   '更改画面色调' Number ',' Number ',' Number ',' Number '动画时间' Int? '不等待执行完毕' Bool Newline
     
 
 /* setFg_0_s
 tooltip : setFg: 更改画面色调,动画时间可不填
 helpUrl : https://ckcz123.github.io/mota-js/#/event?id=setfg%EF%BC%9A%E6%9B%B4%E6%94%B9%E7%94%BB%E9%9D%A2%E8%89%B2%E8%B0%83
-default : [255,255,255,1,500]
+default : [255,255,255,1,500,false]
 colour : this.soundColor
 var limit = function(v,min,max) {
     if(v>max) return max;
@@ -800,21 +1001,23 @@ Number_1 = limit(Number_1,0,255);
 Number_2 = limit(Number_2,0,255);
 Number_3 = limit(Number_3,0,1);
 Int_0 = Int_0 ?(', "time": '+Int_0):'';
-var code = '{"type": "setFg", "color": ['+Number_0+','+Number_1+','+Number_2+','+Number_3+']'+Int_0 +'},\n';
+var async = Bool_0?', "async": true':'';
+var code = '{"type": "setFg", "color": ['+Number_0+','+Number_1+','+Number_2+','+Number_3+']'+Int_0 +async+'},\n';
 return code;
 */;
 
 setFg_1_s
-    :   '恢复画面色调' '动画时间' Int? Newline
+    :   '恢复画面色调' '动画时间' Int? '不等待执行完毕' Bool Newline
     
 
 /* setFg_1_s
 tooltip : setFg: 恢复画面色调,动画时间可不填
 helpUrl : https://ckcz123.github.io/mota-js/#/event?id=setfg%EF%BC%9A%E6%9B%B4%E6%94%B9%E7%94%BB%E9%9D%A2%E8%89%B2%E8%B0%83
-default : [500]
+default : [500,false]
 colour : this.soundColor
 Int_0 = Int_0 ?(', "time": '+Int_0):'';
-var code = '{"type": "setFg"'+Int_0 +'},\n';
+var async = Bool_0?', "async": true':'';
+var code = '{"type": "setFg"'+Int_0 +async+'},\n';
 return code;
 */;
 
@@ -955,16 +1158,17 @@ return code;
 */;
 
 setVolume_s
-    :   '设置音量' Int '渐变时间' Int? Newline
+    :   '设置音量' Int '渐变时间' Int? '不等待执行完毕' Bool Newline
     
 
 /* setVolume_s
 tooltip : setVolume: 设置音量
 helpUrl : https://ckcz123.github.io/mota-js/#/event?id=setvolume%EF%BC%9A%E8%AE%BE%E7%BD%AE%E9%9F%B3%E9%87%8F
-default : [90, 500]
+default : [90, 500, false]
 colour : this.soundColor
 Int_1 = Int_1?(', "time": '+Int_1):""
-var code = '{"type": "setVolume", "value": '+Int_0+Int_1+'},\n';
+var async = Bool_0?', "async": true':'';
+var code = '{"type": "setVolume", "value": '+Int_0+Int_1+async+'},\n';
 return code;
 */;
 
@@ -993,15 +1197,28 @@ return code;
 */;
 
 input_s
-    :   '接受用户输入,提示' ':' EvalString Newline
+    :   '接受用户输入数字,提示' ':' EvalString Newline
     
 
 /* input_s
-tooltip : input：接受用户输入, 事件只能接受非负整数输入, 所有非法的输入将全部变成0
-helpUrl : https://ckcz123.github.io/mota-js/#/event?id=input%EF%BC%9A%E6%8E%A5%E5%8F%97%E7%94%A8%E6%88%B7%E8%BE%93%E5%85%A5
+tooltip : input：接受用户输入数字, 事件只能接受非负整数输入, 所有非法的输入将全部变成0
+helpUrl : https://ckcz123.github.io/mota-js/#/event?id=input%ef%bc%9a%e6%8e%a5%e5%8f%97%e7%94%a8%e6%88%b7%e8%be%93%e5%85%a5%e6%95%b0%e5%ad%97
 default : ["请输入一个数"]
 colour : this.dataColor
 var code = '{"type": "input", "text": "'+EvalString_0+'"},\n';
+return code;
+*/;
+
+input2_s
+    :   '接受用户输入文本,提示' ':' EvalString Newline
+
+
+/* input2_s
+tooltip : input2：接受用户输入文本, 允许用户输入任何形式的文本
+helpUrl : https://ckcz123.github.io/mota-js/#/event?id=input2%ef%bc%9a%e6%8e%a5%e5%8f%97%e7%94%a8%e6%88%b7%e8%be%93%e5%85%a5%e6%96%87%e6%9c%ac
+default : ["请输入文本"]
+colour : this.dataColor
+var code = '{"type": "input2", "text": "'+EvalString_0+'"},\n';
 return code;
 */;
 
@@ -1017,6 +1234,33 @@ var code = ['{"type": "if", "condition": "',expression_0,'",\n',
     '"true": [\n',action_0,'],\n',
     '"false": [\n',action_1,']\n',
 '},\n'].join('');
+return code;
+*/;
+
+switch_s
+    :   '多重分歧 条件判定' ':' expression BGNL? Newline switchCase_s+ BEND Newline
+
+
+/* switch_s
+tooltip : switch: 多重条件分歧
+helpUrl : https://ckcz123.github.io/mota-js/#/event?id=switch%EF%BC%9A%E5%A4%9A%E9%87%8D%E6%9D%A1%E4%BB%B6%E5%88%86%E6%AD%A7
+default : ["判别值"]
+colour : this.eventColor
+var code = ['{"type": "switch", "condition": "',expression_0,'", "caseList": [\n',
+    switchCase_s_0,
+'], },\n'].join('');
+return code;
+*/;
+
+switchCase_s
+    :   '如果是' expression '的场合' BGNL? Newline action+
+
+
+/* switchCase_s
+tooltip : 选项的选择
+helpUrl : https://ckcz123.github.io/mota-js/#/event?id=switch%EF%BC%9A%E5%A4%9A%E9%87%8D%E6%9D%A1%E4%BB%B6%E5%88%86%E6%AD%A7
+colour : this.subColor
+var code = '{"case": "'+expression_0+'", "action": [\n'+action_0+']},\n';
 return code;
 */;
 
@@ -1254,7 +1498,7 @@ Stair_List
     /*Stair_List ['loc','upFloor','downFloor']*/;
 
 SetTextPosition_List
-    :   '不改变'|'上'|'中'|'下'
+    :   '不改变'|'距离顶部'|'居中'|'距离底部'
     /*SetTextPosition_List ['null','up','center','down']*/;
 
 ShopUse_List
@@ -1276,6 +1520,14 @@ B_0_List
 B_1_List
     :   '不改变'|'设为粗体'|'取消粗体'
     /*B_1_List ['null','true','false']*/;
+
+Bg_Fg_List
+    :   '背景层'|'前景层'
+    /*Bg_Fg_List ['bg','fg']*/;
+
+Floor_Meta_List
+    :   '楼层中文名'|'状态栏名称'|'能否使用楼传'|'能否打开快捷商店'|'是否不可浏览地图'|'默认地面ID'|'楼层贴图'|'宝石血瓶效果'|'上楼点坐标'|'下楼点坐标'|'背景音乐'|'画面色调'|'天气和强度'|'是否地下层'
+    /*Floor_Meta_List ['title','name','canFlyTo', 'canUseQuickShop', 'cannotViewMap', 'defaultGround', 'images', 'item_ratio', 'upFloor', 'downFloor', 'bgm', 'color', 'weather', 'underGround']*/;
 
 Bool:   'TRUE' 
     |   'FALSE'
@@ -1307,12 +1559,12 @@ IdString
     ;
 
 FixedId_List
-    :   'item:blueKey'|'status:hp'|'status:atk'|'status:def'|'item:yellowKey'
-    ;
+    :   '生命'|'攻击'|'防御'|'魔防'|'黄钥匙'|'蓝钥匙'|'红钥匙'|'金币'|'经验'
+    /*FixedId_List ['status:hp','status:atk','status:def','status:mdef','item:yellowKey','item:blueKey','item:redKey','status:money','status:experience']*/;
 
 Id_List
-    :   'flag' | 'status' | 'item'
-    ;
+    :   '变量' | '状态' | '物品'
+    /*Id_List ['flag','status','item']*/;
 
 //转blockly后不保留需要加"
 EvalString
@@ -1366,6 +1618,7 @@ this.evisitor.printColor=70;
 this.evisitor.dataColor=130;
 this.evisitor.eventColor=220;
 this.evisitor.soundColor=20;
+this.evisitor.commentColor=285;
 */
 
 /* Function_1
@@ -1396,8 +1649,10 @@ ActionParser.prototype.parse = function (obj,type) {
         obj.floorType=obj.floorId;
         delete obj.floorId;
       }
+      if (!this.isset(obj.time)) obj.time=500;
       return MotaActionBlocks['changeFloor_m'].xmlText([
-        obj.floorType||'floorId',obj.floorId,obj.stair||'loc',obj.loc[0],obj.loc[1],obj.direction,obj.time||0,!this.isset(obj.portalWithoutTrigger)
+        obj.floorType||'floorId',obj.floorId,obj.stair||'loc',obj.loc[0],obj.loc[1],obj.direction,
+        obj.time,!this.isset(obj.portalWithoutTrigger)
       ]);
 
     case 'point':
@@ -1428,7 +1683,7 @@ ActionParser.prototype.parse = function (obj,type) {
             choice.text,choice.need||'',text_effect,text_choices]);
         }
         return MotaActionBlocks['shopsub'].xmlText([
-          obj.id,obj.name,obj.icon,obj.textInList,obj.use,obj.need,parser.EvalString(obj.text),text_choices,next
+          obj.id,obj.name,obj.icon,obj.textInList,obj.commonTimes,obj.mustEnable,obj.use,obj.need,parser.EvalString(obj.text),text_choices,next
         ]);
       }
       var next=null;
@@ -1493,13 +1748,16 @@ ActionParser.prototype.parseAction = function() {
       this.next = MotaActionBlocks['autoText_s'].xmlText([
         '','','',data.time,this.EvalString(data.text),this.next]);
       break;
+    case "comment": // 注释
+      this.next = MotaActionBlocks['comment_s'].xmlText([data.text,this.next]);
+      break;
     case "setText": // 设置剧情文本的属性
       var setTextfunc = function(a){return a?JSON.stringify(a).slice(1,-1):null;}
       data.title=setTextfunc(data.title);
       data.text=setTextfunc(data.text);
       data.background=setTextfunc(data.background);
       this.next = MotaActionBlocks['setText_s'].xmlText([
-        data.position,data.title,data.text,data.background,data.bold,data.time,this.next]);
+        data.position,data.offset,data.title,data.text,data.background,data.bold,data.titlefont,data.textfont,data.time,this.next]);
       break;
     case "tip":
       this.next = MotaActionBlocks['tip_s'].xmlText([
@@ -1534,6 +1792,59 @@ ActionParser.prototype.parseAction = function() {
       this.next = MotaActionBlocks['setBlock_s'].xmlText([
         data.number||0,data.loc[0],data.loc[1],data.floorId||'',this.next]);
       break;
+    case "showFloorImg": // 显示贴图
+      data.loc=data.loc||[];
+      if (!(data.loc[0] instanceof Array))
+        data.loc = [data.loc];
+      var x_str=[],y_str=[];
+      data.loc.forEach(function (t) {
+        x_str.push(t[0]);
+        y_str.push(t[1]);
+      })
+      this.next = MotaActionBlocks['showFloorImg_s'].xmlText([
+        x_str.join(','),y_str.join(','),data.floorId||'',this.next]);
+      break;
+    case "hideFloorImg": // 隐藏贴图
+      data.loc=data.loc||[];
+      if (!(data.loc[0] instanceof Array))
+        data.loc = [data.loc];
+      var x_str=[],y_str=[];
+      data.loc.forEach(function (t) {
+        x_str.push(t[0]);
+        y_str.push(t[1]);
+      })
+      this.next = MotaActionBlocks['hideFloorImg_s'].xmlText([
+        x_str.join(','),y_str.join(','),data.floorId||'',this.next]);
+      break;
+    case "showBgFgMap": // 显示图层块
+      data.loc=data.loc||[];
+      if (!(data.loc[0] instanceof Array))
+        data.loc = [data.loc];
+      var x_str=[],y_str=[];
+      data.loc.forEach(function (t) {
+        x_str.push(t[0]);
+        y_str.push(t[1]);
+      })
+      this.next = MotaActionBlocks['showBgFgMap_s'].xmlText([
+        data.name||'bg', x_str.join(','),y_str.join(','),data.floorId||'',this.next]);
+      break;
+    case "hideBgFgMap": // 隐藏图层块
+      data.loc=data.loc||[];
+      if (!(data.loc[0] instanceof Array))
+        data.loc = [data.loc];
+      var x_str=[],y_str=[];
+      data.loc.forEach(function (t) {
+        x_str.push(t[0]);
+        y_str.push(t[1]);
+      })
+      this.next = MotaActionBlocks['hideBgFgMap_s'].xmlText([
+        data.name||'bg', x_str.join(','),y_str.join(','),data.floorId||'',this.next]);
+      break;
+    case "setBgFgBlock": // 设置图块
+      data.loc=data.loc||['',''];
+      this.next = MotaActionBlocks['setBgFgBlock_s'].xmlText([
+        data.name||"bg", data.number||0,data.loc[0],data.loc[1],data.floorId||'',this.next]);
+      break;
     case "setHeroIcon": // 改变勇士
       this.next = MotaActionBlocks['setHeroIcon_s'].xmlText([
         data.name||"",this.next]);
@@ -1561,7 +1872,7 @@ ActionParser.prototype.parseAction = function() {
     case "changeFloor": // 楼层转换
       data.loc=data.loc||['','']
       this.next = MotaActionBlocks['changeFloor_s'].xmlText([
-        data.floorId,data.loc[0],data.loc[1],data.direction,this.time||0,this.next]);
+        data.floorId,data.loc[0],data.loc[1],data.direction,data.time||0,this.next]);
       break;
     case "changePos": // 直接更换勇士位置, 不切换楼层
       if(this.isset(data.loc)){
@@ -1582,10 +1893,10 @@ ActionParser.prototype.parseAction = function() {
       var animate_loc = data.loc||'';
       if(animate_loc && animate_loc!=='hero')animate_loc = animate_loc[0]+','+animate_loc[1];
       this.next = MotaActionBlocks['animate_s'].xmlText([
-        data.name,animate_loc,this.next]);
+        data.name,animate_loc,data.async||false,this.next]);
       break;
     case "viberate": // 画面震动
-      this.next = MotaActionBlocks['viberate_s'].xmlText([data.time||0, this.next]);
+      this.next = MotaActionBlocks['viberate_s'].xmlText([data.time||0, data.async||false, this.next]);
       break;
     case "showImage": // 显示图片
       if(this.isset(data.name)){
@@ -1599,10 +1910,10 @@ ActionParser.prototype.parseAction = function() {
     case "animateImage": // 显示图片
       if(data.action == 'show'){
         this.next = MotaActionBlocks['animateImage_0_s'].xmlText([
-          data.name,data.loc[0],data.loc[1],data.time,this.next]);
+          data.name,data.loc[0],data.loc[1],data.time,data.keep||false,data.async||false,this.next]);
       } else if (data.action == 'hide') {
         this.next = MotaActionBlocks['animateImage_1_s'].xmlText([
-          data.name,data.loc[0],data.loc[1],data.time,this.next]);
+          data.name,data.loc[0],data.loc[1],data.time,data.keep||false,data.async||false,this.next]);
       }
       break;
     case "showGif": // 显示动图
@@ -1616,7 +1927,7 @@ ActionParser.prototype.parseAction = function() {
         break;
     case "moveImage": // 移动图片
       this.next = MotaActionBlocks['moveImage_0_s'].xmlText([
-        data.name, data.from[0], data.from[1], data.to[0], data.to[1], data.time, this.next
+        data.name, data.from[0], data.from[1], data.to[0], data.to[1], data.time, data.keep||false, data.async||false, this.next
       ]);
       break;
     case "setFg": // 颜色渐变
@@ -1624,10 +1935,10 @@ ActionParser.prototype.parseAction = function() {
         var alpha = data.color[3];
         if (alpha==undefined || alpha==null) alpha=1;
         this.next = MotaActionBlocks['setFg_0_s'].xmlText([
-          data.color[0],data.color[1],data.color[2],alpha,data.time||0,this.next]);
+          data.color[0],data.color[1],data.color[2],alpha,data.time||0,data.async||false,this.next]);
       } else {
         this.next = MotaActionBlocks['setFg_1_s'].xmlText([
-          data.time||0,this.next]);
+          data.time||0,data.async||false,this.next]);
       }
       break;
     case "setWeather": // 更改天气
@@ -1673,7 +1984,7 @@ ActionParser.prototype.parseAction = function() {
       break
     case "setVolume":
       this.next = MotaActionBlocks['setVolume_s'].xmlText([
-        data.value, data.time, this.next]);
+        data.value, data.time, data.async||false, this.next]);
       break
     case "setValue":
       this.next = MotaActionBlocks['setValue_s'].xmlText([
@@ -1681,8 +1992,16 @@ ActionParser.prototype.parseAction = function() {
         MotaActionBlocks['evalString_e'].xmlText([data.value]),
         this.next]);
       break;
+    case "setFloor":
+      this.next = MotaActionBlocks['setFloor_s'].xmlText([
+        data.name, data.floorId||null, data.value, this.next]);
+      break;
     case "input":
       this.next = MotaActionBlocks['input_s'].xmlText([
+        data.text,this.next]);
+      break;
+    case "input2":
+      this.next = MotaActionBlocks['input2_s'].xmlText([
         data.text,this.next]);
       break;
     case "if": // 条件判断
@@ -1691,6 +2010,15 @@ ActionParser.prototype.parseAction = function() {
         this.insertActionList(data["true"]),
         this.insertActionList(data["false"]),
         this.next]);
+      break;
+    case "switch": // 多重条件分歧
+      var case_caseList = null;
+      for(var ii=data.caseList.length-1,caseNow;caseNow=data.caseList[ii];ii--) {
+        case_caseList=MotaActionBlocks['switchCase_s'].xmlText([
+          this.isset(caseNow.case)?MotaActionBlocks['evalString_e'].xmlText([caseNow.case]):"值",this.insertActionList(caseNow.action),case_caseList]);
+      }
+      this.next = MotaActionBlocks['switch_s'].xmlText([
+        MotaActionBlocks['evalString_e'].xmlText([data.condition]),case_caseList,this.next]);
       break;
     case "choices": // 提供选项
       var text_choices = null;

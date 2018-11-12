@@ -83,22 +83,35 @@ editor_file = function (editor, callback) {
         } */
         var filename = 'project/floors/' + editor.currentFloorId + '.js';
         var datastr = ['main.floors.', editor.currentFloorId, '=\n{'];
-        if (editor.currentFloorData.map == 'new')
+        if (editor.currentFloorData.map == 'new') {
+            /*
             editor.currentFloorData.map = editor.map.map(function (v) {
                 return v.map(function () {
                     return 0
                 })
             });
-        else
-            editor.currentFloorData.map = editor.map.map(function (v) {
-                return v.map(function (v) {
-                    return v.idnum || v || 0
-                })
-            });
+            */
+            var width = parseInt(document.getElementById('newMapWidth').value);
+            var height = parseInt(document.getElementById('newMapHeight').value);
+            var row = [];
+            for (var i=0;i<width;i++) row.push(0);
+            editor.currentFloorData.map = [];
+            for (var i=0;i<height;i++) editor.currentFloorData.map.push(row);
+        }
+        else{
+            for(var ii=0,name;name=['map','bgmap','fgmap'][ii];ii++){
+                var mapArray=editor[name].map(function (v) {
+                    return v.map(function (v) {
+                        return v.idnum || v || 0
+                    })
+                });
+                editor.currentFloorData[name]=mapArray;
+            }
+        }
         for (var ii in editor.currentFloorData)
             if (editor.currentFloorData.hasOwnProperty(ii)) {
-                if (ii == 'map')
-                    datastr = datastr.concat(['\n"', ii, '": [\n', formatMap(editor.currentFloorData[ii]), '\n],']);
+                if (['map','bgmap','fgmap'].indexOf(ii)!==-1)
+                    datastr = datastr.concat(['\n"', ii, '": [\n', formatMap(editor.currentFloorData[ii],ii!='map'), '\n],']);
                 else
                     datastr = datastr.concat(['\n"', ii, '": ', JSON.stringify(editor.currentFloorData[ii], null, 4), ',']);
             }
@@ -115,14 +128,15 @@ editor_file = function (editor, callback) {
         if (!isset(callback)) {
             printe('未设置callback');
             throw('未设置callback')
-        }
-        ;
+        };
         var currData=editor.currentFloorData;
         var saveStatus = document.getElementById('newMapStatus').checked;
         editor.currentFloorData = {
             floorId: saveFilename,
             title: saveStatus?currData.title:"新建楼层",
             name: saveStatus?currData.name:"0",
+            width: parseInt(document.getElementById('newMapWidth').value),
+            height: parseInt(document.getElementById('newMapHeight').value),
             canFlyTo: saveStatus?currData.canFlyTo:true,
             canUseQuickShop: saveStatus?currData.canUseQuickShop:true,
             cannotViewMap: saveStatus?currData.cannotViewMap:false,
@@ -232,6 +246,32 @@ editor_file = function (editor, callback) {
         else if (image.indexOf('enemy')==0)
             saveSetting('enemys', templateActions, tempcallback);
         else tempcallback(null);
+    }
+
+    editor_file.registerAutotile = function (filename, callback) {
+        var idnum = 140;
+        while (editor.core.maps.blocksInfo[idnum]) idnum++;
+
+        var iconActions = [];
+        var mapActions = [];
+
+        iconActions.push(["add", "['autotile']['" + filename + "']", 0]);
+        mapActions.push(["add", "['" + idnum + "']", {'cls': 'autotile', 'id': filename, 'noPass': true}]);
+
+        var templist = [];
+        var tempcallback = function (err) {
+            templist.push(err);
+            if (templist.length == 2) {
+                if (templist[0] != null || templist[1] != null)
+                    callback((templist[0] || '') + '\n' + (templist[1] || ''));
+                //这里如果一个成功一个失败会出严重bug
+                else
+                    callback(null);
+            }
+        }
+
+        saveSetting('icons', iconActions, tempcallback);
+        saveSetting('maps', mapActions, tempcallback);
     }
 
     editor_file.changeIdAndIdnum = function (id, idnum, info, callback) {
@@ -436,15 +476,25 @@ editor_file = function (editor, callback) {
         }
         ;
         if (isset(actionList) && actionList.length > 0) {
-            actionList.forEach(function (value) {
+            var tempmap=[];
+            for(var ii=0;ii<actionList.length;ii++){
+                var value=actionList[ii];
+                // 是tilesets 且未定义 且在这里是第一次定义
+                if(idnum>=editor.core.icons.tilesetStartOffset && !isset(editor.core.maps.blocksInfo[idnum]) && tempmap.indexOf(idnum)===-1){
+                    actionList.splice(ii,0,["add","['" + idnum + "']",{"cls": "tileset", "id": "X"+idnum, "noPass": true}]);
+                    tempmap.push(idnum);
+                    ii++;
+                }
                 value[1] = "['" + idnum + "']" + value[1];
-            });
+            }
             saveSetting('maps', actionList, function (err) {
                 callback([
                     (function () {
-                        var locObj = Object.assign({}, editor.core.maps.blocksInfo[idnum]);
+                        var sourceobj=editor.core.maps.blocksInfo[idnum];
+                        if(!isset(sourceobj) && idnum>=editor.core.icons.tilesetStartOffset)sourceobj={"cls": "tileset", "id": "X"+idnum, "noPass": true}
+                        var locObj = Object.assign({}, sourceobj);
                         Object.keys(editor_file.comment._data.maps._data).forEach(function (v) {
-                            if (!isset(editor.core.maps.blocksInfo[idnum][v]))
+                            if (!isset(sourceobj[v]))
                                 locObj[v] = null;
                         });
                         locObj.idnum = idnum;
@@ -456,9 +506,11 @@ editor_file = function (editor, callback) {
         } else {
             callback([
                 (function () {
-                    var locObj = Object.assign({}, editor.core.maps.blocksInfo[idnum]);
+                    var sourceobj=editor.core.maps.blocksInfo[idnum];
+                    if(!isset(sourceobj) && idnum>=editor.core.icons.tilesetStartOffset)sourceobj={"cls": "tileset", "id": "X"+idnum, "noPass": true}
+                    var locObj = Object.assign({}, sourceobj);
                     Object.keys(editor_file.comment._data.maps._data).forEach(function (v) {
-                        if (!isset(editor.core.maps.blocksInfo[idnum][v]))
+                        if (!isset(sourceobj[v]))
                             locObj[v] = null;
                     });
                     locObj.idnum = idnum;
@@ -551,6 +603,8 @@ editor_file = function (editor, callback) {
                             delete(locObj[v]);
                         });
                         delete(locObj.map);
+                        delete(locObj.bgmap);
+                        delete(locObj.fgmap);
                         return locObj;
                     })(),
                     editor_file.comment._data.floors._data.floor,
@@ -570,6 +624,8 @@ editor_file = function (editor, callback) {
                         delete(locObj[v]);
                     });
                     delete(locObj.map);
+                    delete(locObj.bgmap);
+                    delete(locObj.fgmap);
                     return locObj;
                 })(),
                 editor_file.comment._data.floors._data.floor,
@@ -694,20 +750,27 @@ editor_file = function (editor, callback) {
         return true
     }
 
-    var formatMap = function (mapArr) {
-        //把13*13或者1*169数组格式化
+    var formatMap = function (mapArr,trySimplify) {
+        if(!mapArr || JSON.stringify(mapArr)==JSON.stringify([]))return '';
+        if(trySimplify){
+            //检查是否是全0二维数组
+            var jsoncheck=JSON.stringify(mapArr).replace(/\D/g,'');
+            if(jsoncheck==Array(jsoncheck.length+1).join('0'))return '';
+        }
+        //把二维数组格式化
         var formatArrStr = '';
         var arr = JSON.stringify(mapArr).replace(/\s+/g, '').split('],[');
-        for (var i = 0; i < 13; i++) {
+        var si=mapArr.length-1,sk=mapArr[0].length-1;
+        for (var i = 0; i <= si; i++) {
             var a = [];
             formatArrStr += '    [';
-            if (i == 0 || i == 12) a = arr[i].split(/\D+/).join(' ').trim().split(' ');
+            if (i == 0 || i == si) a = arr[i].split(/\D+/).join(' ').trim().split(' ');
             else a = arr[i].split(/\D+/);
-            for (var k = 0; k < 13; k++) {
+            for (var k = 0; k <= sk; k++) {
                 var num = parseInt(a[k]);
-                formatArrStr += Array(Math.max(4 - String(num).length, 0)).join(' ') + num + (k == 12 ? '' : ',');
+                formatArrStr += Array(Math.max(4 - String(num).length, 0)).join(' ') + num + (k == sk ? '' : ',');
             }
-            formatArrStr += ']' + (i == 12 ? '' : ',\n');
+            formatArrStr += ']' + (i == si ? '' : ',\n');
         }
         return formatArrStr;
     }

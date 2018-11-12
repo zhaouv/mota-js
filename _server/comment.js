@@ -19,10 +19,11 @@ comment_c456ea59_6018_45ef_8bcc_211a24c627dc =
                                     "keys",
                                     "items",
                                     "constants",
-                                    "tools"
+                                    "tools",
+                                    "equips"
                                 ]
                             },
-                            "_data": "只能取keys(钥匙) items(宝石、血瓶) constants(永久物品) tools(消耗道具)"
+                            "_data": "只能取keys(钥匙) items(宝石、血瓶) constants(永久物品) tools(消耗道具) equips(装备)"
                         },
                         "name": {
                             "_leaf": true,
@@ -35,7 +36,12 @@ comment_c456ea59_6018_45ef_8bcc_211a24c627dc =
                             "_type": "textarea",
                             "_string": true,
                             "_data": "道具在道具栏中显示的描述"
-                        }
+                        },
+                        "equip": {
+                            "_leaf": true,
+                            "_type": "textarea",
+                            "_data": "装备属性设置，仅对cls为equips有效。\n如果此项不为null，需要是一个对象，里面可含\"type\"，\"atk\"，\"def\"，\"mdef\"，\"animate\"五项，分别对应装备部位、攻防魔防和动画。\n具体详见文档（元件说明-装备）和已有的几个装备的写法。"
+                        }, 
                     }
                 },
                 "itemEffect": {
@@ -57,14 +63,14 @@ comment_c456ea59_6018_45ef_8bcc_211a24c627dc =
                     "_type": "textarea",
                     "_string": true,
                     "_lint": true,
-                    "_data": "cls为tools或contants时的使用物品效果。"
+                    "_data": "cls为tools或constants时的使用物品效果。"
                 },
                 "canUseItemEffect": {
                     "_leaf": true,
                     "_type": "textarea",
                     "_string": true,
                     "_lint": true,
-                    "_data": "cls为tools或contants时对当前能否使用该物品的判断。"
+                    "_data": "cls为tools或constants时对当前能否使用该物品的判断。"
                 }
             }
         },
@@ -112,7 +118,8 @@ comment_c456ea59_6018_45ef_8bcc_211a24c627dc =
                 "special": {
                     "_leaf": true,
                     "_type": "textarea",
-                    "_data": "特殊属性\n\n0:无,1:先攻,2:魔攻,3:坚固,4:2连击,\n5:3连击,6:n连击,7:破甲,8:反击,9:净化,\n10:模仿,11:吸血,12:中毒,13:衰弱,14:诅咒,\n15:领域,16:夹击,17:仇恨,18:阻击,19:自爆,\n20:无敌,21:退化,22:固伤,23:重生\n\n多个属性例如用[1,4,11]表示先攻2连击吸血\n模仿怪的攻防设为0就好"
+                    "_range": "thiseval==null || thiseval instanceof Array || (thiseval==~~thiseval && thiseval>=0)",
+                    "_data": "特殊属性\n\n0:无,1:先攻,2:魔攻,3:坚固,4:2连击,\n5:3连击,6:n连击,7:破甲,8:反击,9:净化,\n10:模仿,11:吸血,12:中毒,13:衰弱,14:诅咒,\n15:领域,16:夹击,17:仇恨,18:阻击,19:自爆,\n20:无敌,21:退化,22:固伤,23:重生,24:激光\n\n多个属性例如用[1,4,11]表示先攻2连击吸血\n模仿怪的攻防设为0就好"
                 },
                 "value": {
                     "_leaf": true,
@@ -205,7 +212,7 @@ comment_c456ea59_6018_45ef_8bcc_211a24c627dc =
                             "pushBox"
                         ]
                     },
-                    "_data": "图块的默认触发器"
+                    "_data": "该图块的默认触发器"
                 },
                 "noPass": {
                     "_leaf": true,
@@ -217,7 +224,25 @@ comment_c456ea59_6018_45ef_8bcc_211a24c627dc =
                             false
                         ]
                     },
-                    "_data": "图块默认可通行状态"
+                    "_data": "该图块是否不可通行；true代表不可通行，false代表可通行，null代表使用系统缺省值"
+                },
+                "canBreak": {
+                    "_leaf": true,
+                    "_type": "checkbox",
+                    "_bool": "bool",
+                    "_data": "该图块是否可被破墙或地震"
+                },
+                "cannotOut": {
+                    "_leaf": true,
+                    "_type": "textarea",
+                    "_range": "thiseval==null||(thiseval instanceof Array)",
+                    "_data": "该图块的不可出方向\n可以在这里定义在该图块时不能前往哪个方向，可以达到悬崖之类的效果\n例如 [\"up\", \"left\"] 代表在该图块时不能往上和左走\n此值对背景层、事件层、前景层上的图块均有效"
+                },
+                "cannotIn": {
+                    "_leaf": true,
+                    "_type": "textarea",
+                    "_range": "thiseval==null||(thiseval instanceof Array)",
+                    "_data": "该图块的不可入方向\n可以在这里定义不能从哪个方向访问该图块，可以达到悬崖之类的效果\n例如 [\"down\", \"right\"] 代表不能从下或右访问此图块\n此值对背景层、事件层、前景层上的图块均有效"
                 }
             }
         },
@@ -244,6 +269,18 @@ comment_c456ea59_6018_45ef_8bcc_211a24c627dc =
                             "_leaf": true,
                             "_type": "textarea",
                             "_data": "显示在状态栏中的层数"
+                        },
+                        "width": {
+                            "_leaf": true,
+                            "_type": "textarea",
+                            "_range": "false",
+                            "_data": "地图x方向大小,这里不能更改,仅能在新建地图时设置,null视为13"
+                        },
+                        "height": {
+                            "_leaf": true,
+                            "_type": "textarea",
+                            "_range": "false",
+                            "_data": "地图y方向大小,这里不能更改,仅能在新建地图时设置,null视为13"
                         },
                         "canFlyTo": {
                             "_leaf": true,
@@ -360,7 +397,8 @@ comment_c456ea59_6018_45ef_8bcc_211a24c627dc =
                         "cannotMove": {
                             "_leaf": true,
                             "_type": "textarea",
-                            "_data": "该点不可通行的方向 \n 可以在这里定义该点不能前往哪个方向，可以达到悬崖之类的效果\n例如 [\"up\", \"left\"], // 代表该点不能往上和左走"
+                            "_range": "thiseval==null||(thiseval instanceof Array)",
+                            "_data": "该点不可通行的方向 \n 可以在这里定义该点不能前往哪个方向，可以达到悬崖之类的效果\n例如 [\"up\", \"left\"] 代表该点不能往上和左走"
                         }
                     }
                 }

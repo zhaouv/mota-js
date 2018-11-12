@@ -8,12 +8,13 @@ function actions() {
 }
 
 actions.prototype.init = function () {
-
+    this.actionsdata = functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a.actions;
 }
 
 ////// 按下某个键时 //////
 actions.prototype.onkeyDown = function (e) {
-    if (core.isset(core.status.replay)&&core.status.replay.replaying&&core.status.event.id!='save'&&(core.status.event.id||"").indexOf('book')!=0) return;
+    if (core.isset(core.status.replay)&&core.status.replay.replaying
+        &&core.status.event.id!='save'&&(core.status.event.id||"").indexOf('book')!=0&&core.status.event.id!='viewMaps') return;
     if (!core.isset(core.status.holdingKeys))core.status.holdingKeys=[];
     var isArrow={37:true,38:true,39:true,40:true}[e.keyCode]
     if(isArrow && !core.status.lockControl){
@@ -32,7 +33,8 @@ actions.prototype.onkeyDown = function (e) {
 
 ////// 放开某个键时 //////
 actions.prototype.onkeyUp = function(e) {
-    if (core.isset(core.status.replay)&&core.status.replay.replaying&&core.status.event.id!='save'&&(core.status.event.id||"").indexOf('book')!=0) {
+    if (core.isset(core.status.replay)&&core.status.replay.replaying
+        &&core.status.event.id!='save'&&(core.status.event.id||"").indexOf('book')!=0&&core.status.event.id!='viewMaps') {
         if (e.keyCode==27) // ESCAPE
             core.stopReplay();
         else if (e.keyCode==90) // Z
@@ -47,6 +49,16 @@ actions.prototype.onkeyUp = function(e) {
             core.saveReplay();
         else if (e.keyCode==67)
             core.bookReplay();
+        else if (e.keyCode==33||e.keyCode==34)
+            core.viewMapReplay();
+        else if (e.keyCode>=49 && e.keyCode<=51)
+            core.setReplaySpeed(e.keyCode-48);
+        else if (e.keyCode==52)
+            core.setReplaySpeed(6);
+        else if (e.keyCode==53)
+            core.setReplaySpeed(12);
+        else if (e.keyCode==54)
+            core.setReplaySpeed(24);
         return;
     }
 
@@ -59,10 +71,10 @@ actions.prototype.onkeyUp = function(e) {
                 break;
             }
         }
-        this.keyUp(e.keyCode);
+        this.keyUp(e.keyCode, e.altKey);
     } else {
         if (e.keyCode==17) core.status.ctrlDown = false;
-        this.keyUp(e.keyCode);
+        this.keyUp(e.keyCode, e.altKey);
     }
 }
 
@@ -77,7 +89,8 @@ actions.prototype.pressKey = function (keyCode) {
 
 ////// 根据按下键的code来执行一系列操作 //////
 actions.prototype.keyDown = function(keyCode) {
-    if (core.isset(core.status.replay)&&core.status.replay.replaying&&core.status.event.id!='save'&&(core.status.event.id||"").indexOf('book')!=0) return;
+    if (core.isset(core.status.replay)&&core.status.replay.replaying
+        &&core.status.event.id!='save'&&(core.status.event.id||"").indexOf('book')!=0&&core.status.event.id!='viewMaps') return;
     if (core.status.lockControl) {
         // Ctrl跳过对话
         if (keyCode==17) {
@@ -106,6 +119,10 @@ actions.prototype.keyDown = function(keyCode) {
         }
         if (core.status.event.id=='selectShop') {
             this.keyDownQuickShop(keyCode);
+            return;
+        }
+        if (core.status.event.id=='equipbox') {
+            this.keyDownEquipbox(keyCode);
             return;
         }
         if (core.status.event.id=='toolbox') {
@@ -165,40 +182,14 @@ actions.prototype.keyDown = function(keyCode) {
         case 40:
             core.moveHero('down');
             break;
-        case 13: case 32: case 67: case 51: // 快捷键3：飞
-        // 因为加入了两次的检测机制,从keydown转移到keyup,同时保证位置信息正确,但以下情况会触发作图的bug:
-        // 在鼠标的路线移动中使用飞,绿块会滞后一格,显示的位置不对,同时也不会倍以下的代码清除
-        if (core.status.heroStop && core.hasItem('centerFly')) {
-            if (core.status.usingCenterFly) {
-                if (core.canUseItem('centerFly')) {
-                    core.useItem('centerFly');
-                    core.clearMap('ui', core.getHeroLoc('x')*32,core.getHeroLoc('y')*32,32,32);
-                }
-                else {
-                    core.drawTip('当前不能使用中心对称飞行器');
-                    core.clearMap('ui', (12-core.getHeroLoc('x'))*32,(12-core.getHeroLoc('y'))*32,32,32);
-                }
-                core.status.usingCenterFly = false;
-            } else if (keyCode==51) {
-                core.status.usingCenterFly = true;
-                core.setAlpha('ui', 0.5);
-                core.fillRect('ui',(12-core.getHeroLoc('x'))*32,(12-core.getHeroLoc('y'))*32,32,32,core.canUseItem('centerFly')?'#00FF00':'#FF0000');
-                core.setAlpha('ui', 1);
-                core.drawTip("请确认当前中心对称飞行器的位置");
-            }
-        }
         break;
-    }
-    if (core.status.usingCenterFly && keyCode!=51) {
-        core.clearMap('ui', (12-core.getHeroLoc('x'))*32,(12-core.getHeroLoc('y'))*32,32,32);
-        core.status.usingCenterFly= false;
     }
 }
 
 ////// 根据放开键的code来执行一系列操作 //////
-actions.prototype.keyUp = function(keyCode, fromReplay) {
-    if (!fromReplay&&core.isset(core.status.replay)&&core.status.replay.replaying&&core.status.event.id!='save'&&(core.status.event.id||"").indexOf('book')!=0)
-        return;
+actions.prototype.keyUp = function(keyCode, altKey) {
+    if (core.isset(core.status.replay)&&core.status.replay.replaying
+        &&core.status.event.id!='save'&&(core.status.event.id||"").indexOf('book')!=0&&core.status.event.id!='viewMaps') return;
 
     if (core.status.lockControl) {
         core.status.holdingKeys = [];
@@ -247,6 +238,10 @@ actions.prototype.keyUp = function(keyCode, fromReplay) {
             this.keyUpToolbox(keyCode);
             return;
         }
+        if (core.status.event.id=='equipbox') {
+            this.keyUpEquipbox(keyCode, altKey);
+            return;
+        }
         if (core.status.event.id=='save' || core.status.event.id=='load' || core.status.event.id=='replayLoad') {
             this.keyUpSL(keyCode);
             return;
@@ -283,122 +278,20 @@ actions.prototype.keyUp = function(keyCode, fromReplay) {
             this.keyUpReplay(keyCode);
             return;
         }
+        if (core.status.event.id=='centerFly') {
+            this.keyUpCenterFly(keyCode);
+            return;
+        }
+        if (core.status.event.id=='paint') {
+            this.keyUpPaint(keyCode);
+        }
         return;
     }
 
     if(!core.status.played)
         return;
 
-    switch (keyCode) {
-        case 27: // ESC
-            if (core.status.heroStop)
-                core.openSettings(true);
-            break;
-        case 71: // G
-            if (core.status.heroStop)
-                core.useFly(true);
-            break;
-        case 88: // X
-            if (core.status.heroStop)
-                core.openBook(true);
-            break;
-        case 65: // A
-            if (core.status.heroStop)
-                core.doSL("autoSave", "load");
-            break;
-        case 83: // S
-            if (core.status.heroStop)
-                core.save(true);
-            break;
-        case 68: // D
-            if (core.status.heroStop)
-                core.load(true);
-            break;
-        case 69: // E
-            if (core.status.heroStop)
-                core.ui.drawCursor();
-            break;
-        case 84: // T
-            if (core.status.heroStop)
-                core.openToolbox(true);
-            break;
-        case 90: // Z
-            if (core.status.heroStop)
-                core.turnHero();
-            break;
-        case 75: case 86: // K/V
-            if (core.status.heroStop)
-                core.openQuickShop(true);
-            break;
-        case 32: // SPACE
-            if (core.status.heroStop)
-                core.getNextItem();
-            break;
-        case 72: // H
-            if (core.status.heroStop)
-                core.ui.drawHelp();
-            break;
-        case 82: // R
-            if (core.status.heroStop) {
-                if (core.hasFlag('debug')) {
-                    core.drawText("\t[系统提示]调试模式下无法回放录像");
-                }
-                else {
-                    core.ui.drawReplay();
-                }
-            }
-            break;
-        case 33: case 34: // PAGEUP/PAGEDOWN
-        if (core.status.heroStop) {
-            if (core.flags.enableViewMaps) {
-                core.ui.drawMaps(core.floorIds.indexOf(core.status.floorId));
-            }
-            else {
-                core.drawTip("本塔不允许浏览地图！");
-            }
-        }
-        break;
-        case 37: // UP
-            break;
-        case 38: // DOWN
-            break;
-        case 39: // RIGHT
-            break;
-        case 40: // DOWN
-            break;
-        case 49: // 快捷键1：破
-            if (core.status.heroStop && core.hasItem('pickaxe')) {
-                if (core.canUseItem('pickaxe')) {
-                    core.useItem('pickaxe');
-                }
-                else {
-                    core.drawTip('当前不能使用破墙镐');
-                }
-            }
-            break;
-        case 50: // 快捷键2：炸
-            if (core.status.heroStop) {
-                if (core.hasItem('bomb')) {
-                    if (core.canUseItem('bomb')) {
-                        core.useItem('bomb');
-                    }
-                    else {
-                        core.drawTip('当前不能使用炸弹');
-                    }
-                }
-                else if (core.hasItem('hammer')) {
-                    if (core.canUseItem('hammer')) {
-                        core.useItem('hammer');
-                    }
-                    else {
-                        core.drawTip('当前不能使用圣锤');
-                    }
-
-                }
-            }
-            break;
-
-    }
+    this.actionsdata.onKeyUp(keyCode, altKey);
 
     if (core.isset(core.status.automaticRoute)&&core.status.automaticRoute.autoHeroMove) {
         core.stopAutomaticRoute();
@@ -409,8 +302,18 @@ actions.prototype.keyUp = function(keyCode, fromReplay) {
 }
 
 ////// 点击（触摸）事件按下时 //////
-actions.prototype.ondown = function (x ,y) {
-    if (core.isset(core.status.replay)&&core.status.replay.replaying&&core.status.event.id!='save'&&(core.status.event.id||"").indexOf('book')!=0) return;
+actions.prototype.ondown = function (loc) {
+    if (core.isset(core.status.replay)&&core.status.replay.replaying
+        &&core.status.event.id!='save'&&(core.status.event.id||"").indexOf('book')!=0&&core.status.event.id!='viewMaps') return;
+
+    // 画板
+    if (core.status.played && (core.status.event||{}).id=='paint') {
+        this.ondownPaint(loc.x/core.domStyle.scale, loc.y/core.domStyle.scale);
+        return;
+    }
+
+    var x = parseInt(loc.x / loc.size), y = parseInt(loc.y / loc.size);
+
     if (!core.status.played || core.status.lockControl) {
         this.onclick(x, y, []);
         if (core.timeout.onDownTimeout==null) {
@@ -429,7 +332,7 @@ actions.prototype.ondown = function (x ,y) {
     }
 
     core.status.downTime = new Date();
-    core.clearMap('ui', 0, 0, 416,416);
+    core.clearMap('route');
     var pos={'x':x,'y':y}
     core.status.stepPostfix=[];
     core.status.stepPostfix.push(pos);
@@ -437,10 +340,18 @@ actions.prototype.ondown = function (x ,y) {
 }
 
 ////// 当在触摸屏上滑动时 //////
-actions.prototype.onmove = function (x ,y) {
-    if (core.isset(core.status.replay)&&core.status.replay.replaying&&core.status.event.id!='save'&&(core.status.event.id||"").indexOf('book')!=0) return;
-    // if (core.status.holdingPath==0){return;}
-    //core.status.mouseOutCheck =1;
+actions.prototype.onmove = function (loc) {
+    if (core.isset(core.status.replay)&&core.status.replay.replaying
+        &&core.status.event.id!='save'&&(core.status.event.id||"").indexOf('book')!=0&&core.status.event.id!='viewMaps') return;
+
+    // 画板
+    if (core.status.played && (core.status.event||{}).id=='paint') {
+        this.onmovePaint(loc.x/core.domStyle.scale, loc.y/core.domStyle.scale)
+        return;
+    }
+
+    var x = parseInt(loc.x / loc.size), y = parseInt(loc.y / loc.size);
+
     var pos={'x':x,'y':y};
     var pos0=core.status.stepPostfix[core.status.stepPostfix.length-1];
     var directionDistance=[pos.y-pos0.y,pos0.x-pos.x,pos0.y-pos.y,pos.x-pos0.x];
@@ -462,7 +373,14 @@ actions.prototype.onmove = function (x ,y) {
 
 ////// 当点击（触摸）事件放开时 //////
 actions.prototype.onup = function () {
-    if (core.isset(core.status.replay)&&core.status.replay.replaying&&core.status.event.id!='save'&&(core.status.event.id||"").indexOf('book')!=0) return;
+    if (core.isset(core.status.replay)&&core.status.replay.replaying
+        &&core.status.event.id!='save'&&(core.status.event.id||"").indexOf('book')!=0&&core.status.event.id!='viewMaps') return;
+
+    // 画板
+    if (core.status.played && (core.status.event||{}).id=='paint') {
+        this.onupPaint()
+        return;
+    }
 
     clearTimeout(core.timeout.onDownTimeout);
     core.timeout.onDownTimeout = null;
@@ -476,14 +394,14 @@ actions.prototype.onup = function () {
         for(var ii=1;ii<core.status.stepPostfix.length;ii++){
             var pos0 = core.status.stepPostfix[ii-1];
             var pos = core.status.stepPostfix[ii];
-            stepPostfix.push({'direction': direction[pos.x-pos0.x][pos.y-pos0.y], 'x': pos.x, 'y': pos.y});
+            stepPostfix.push({'direction': direction[pos.x-pos0.x][pos.y-pos0.y], 'x': pos.x+parseInt(core.bigmap.offsetX/32), 'y': pos.y+parseInt(core.bigmap.offsetY/32)});
         }
         var posx=core.status.stepPostfix[0].x;
         var posy=core.status.stepPostfix[0].y;
         core.status.stepPostfix=[];
         if (!core.status.lockControl) {
-            core.canvas.ui.clearRect(0, 0, 416,416);
-            core.canvas.ui.restore();
+            core.clearMap('route');
+            core.canvas.route.restore();
         }
 
         // 长按
@@ -525,7 +443,8 @@ actions.prototype.getClickLoc = function (x, y) {
 
 ////// 具体点击屏幕上(x,y)点时，执行的操作 //////
 actions.prototype.onclick = function (x, y, stepPostfix) {
-    if (core.isset(core.status.replay)&&core.status.replay.replaying&&core.status.event.id!='save'&&(core.status.event.id||"").indexOf('book')!=0) return;
+    if (core.isset(core.status.replay)&&core.status.replay.replaying
+        &&core.status.event.id!='save'&&(core.status.event.id||"").indexOf('book')!=0&&core.status.event.id!='viewMaps') return;
     // console.log("Click: (" + x + "," + y + ")");
 
     stepPostfix=stepPostfix||[];
@@ -533,27 +452,15 @@ actions.prototype.onclick = function (x, y, stepPostfix) {
     // 非游戏屏幕内
     if (x<0 || y<0 || x>12 || y>12) return;
 
-    // 中心对称飞行器
-    if (core.status.usingCenterFly) {
-        if (x!=12-core.getHeroLoc('x') || y!=12-core.getHeroLoc('y')) {
-            core.clearMap('ui', (12-core.getHeroLoc('x'))*32,(12-core.getHeroLoc('y'))*32,32,32);
-        } else {
-            if (core.canUseItem('centerFly')) {
-                core.useItem('centerFly');
-                core.clearMap('ui', core.getHeroLoc('x')*32,core.getHeroLoc('y')*32,32,32);
-                return;
-            }
-            else {
-                core.drawTip('当前不能使用中心对称飞行器');
-                core.clearMap('ui', (12-core.getHeroLoc('x'))*32,(12-core.getHeroLoc('y'))*32,32,32);
-            }
-        }
-        core.status.usingCenterFly= false;
-    }
-
     // 寻路
     if (!core.status.lockControl) {
-        core.setAutomaticRoute(x, y, stepPostfix);
+        core.setAutomaticRoute(x+parseInt(core.bigmap.offsetX/32), y+parseInt(core.bigmap.offsetY/32), stepPostfix);
+        return;
+    }
+
+    // 中心对称飞行器
+    if (core.status.event.id == 'centerFly') {
+        this.clickCenterFly(x, y);
         return;
     }
 
@@ -604,6 +511,12 @@ actions.prototype.onclick = function (x, y, stepPostfix) {
         this.clickQuickShop(x,y);
         return;
     }
+
+    // 装备栏
+    if (core.status.event.id == 'equipbox') {
+        this.clickEquipbox(x,y);
+        return;
+    } 
 
     // 工具栏
     if (core.status.event.id == 'toolbox') {
@@ -679,8 +592,15 @@ actions.prototype.onclick = function (x, y, stepPostfix) {
 
 ////// 滑动鼠标滚轮时的操作 //////
 actions.prototype.onmousewheel = function (direct) {
-    if (core.isset(core.status.replay)&&core.status.replay.replaying&&core.status.event.id!='save'&&(core.status.event.id||"").indexOf('book')!=0) return;
     // 向下滚动是 -1 ,向上是 1
+
+    if (core.isset(core.status.replay)&&core.status.replay.replaying
+        &&core.status.event.id!='save'&&(core.status.event.id||"").indexOf('book')!=0&&core.status.event.id!='viewMaps') {
+        // 滚轮控制速度
+        if (direct==1) core.speedUpReplay();
+        if (direct==-1) core.speedDownReplay();
+        return;
+    }
 
     // 楼层飞行器
     if (core.status.lockControl && core.status.event.id == 'fly') {
@@ -705,8 +625,8 @@ actions.prototype.onmousewheel = function (direct) {
 
     // 浏览地图
     if (core.status.lockControl && core.status.event.id == 'viewMaps') {
-        if (direct==1) this.clickViewMaps(6,2);
-        if (direct==-1) this.clickViewMaps(6,10);
+        if (direct==1) this.clickViewMaps(6,3);
+        if (direct==-1) this.clickViewMaps(6,9);
         return;
     }
 }
@@ -747,6 +667,32 @@ actions.prototype.keyDownCtrl = function () {
     }
 }
 
+//////
+actions.prototype.clickCenterFly = function(x, y) {
+    if (x==core.status.event.data.poxX && y==core.status.event.data.posY) {
+        if (core.canUseItem('centerFly')) {
+            core.useItem('centerFly');
+        }
+        else {
+            core.drawTip('当前不能使用中心对称飞行器');
+        }
+    }
+    core.ui.closePanel();
+}
+
+actions.prototype.keyUpCenterFly = function (keycode) {
+    if (keycode==51 ||  keycode==13 || keycode==32 || keycode==67) {
+        if (core.canUseItem('centerFly')) {
+            core.useItem('centerFly');
+        }
+        else {
+            core.drawTip('当前不能使用中心对称飞行器');
+        }
+    }
+    core.ui.closePanel();
+}
+
+
 ////// 点击确认框时 //////
 actions.prototype.clickConfirmBox = function (x,y) {
     if ((x == 4 || x == 5) && y == 7 && core.isset(core.status.event.data.yes))
@@ -783,6 +729,12 @@ actions.prototype.keyUpConfirmBox = function (keycode) {
 actions.prototype.clickAction = function (x,y) {
 
     if (core.status.event.data.type=='text') {
+
+        // 打字机效果显示全部文字
+        if (core.status.event.interval!=null) {
+            core.insertAction({"type": "text", "text": core.status.event.ui, "showAll": true});
+        }
+
         // 文字
         core.doAction();
         return;
@@ -834,6 +786,10 @@ actions.prototype.keyDownAction = function (keycode) {
 ////// 自定义事件时，放开某个键的操作 //////
 actions.prototype.keyUpAction = function (keycode) {
     if (core.status.event.data.type=='text' && (keycode==13 || keycode==32 || keycode==67)) {
+        // 打字机效果显示全部文字
+        if (core.status.event.interval!=null) {
+            core.insertAction({"type": "text", "text": core.status.event.ui, "showAll": true});
+        }
         core.doAction();
         return;
     }
@@ -923,7 +879,7 @@ actions.prototype.keyUpBook = function (keycode) {
 
 ////// 怪物手册属性显示界面时的点击操作 //////
 actions.prototype.clickBookDetail = function () {
-    core.clearMap('data', 0, 0, 416, 416);
+    core.clearMap('data');
     core.status.event.id = 'book';
 }
 
@@ -934,24 +890,15 @@ actions.prototype.clickFly = function(x,y) {
     if ((x==10 || x==11) && y==10) core.ui.drawFly(core.status.event.data-10);
     if ((x==10 || x==11) && y==4) core.ui.drawFly(core.status.event.data+10);
     if (x>=5 && x<=7 && y==12) core.ui.closePanel();
-    if (x>=0 && x<=9 && y>=3 && y<=11) {
-        var index=core.status.hero.flyRange.indexOf(core.status.floorId);
-        var stair=core.status.event.data<index?"upFloor":"downFloor";
-        if (core.status.event.data==index && core.floors[core.status.floorId].underGround)
-            stair = "upFloor";
-        var floorId=core.status.event.data;
-        var toFloor = core.status.hero.flyRange[floorId];
-        core.status.route.push("fly:"+toFloor);
-        core.ui.closePanel();
-        core.changeFloor(toFloor, stair);
-    }
+    if (x>=0 && x<=9 && y>=3 && y<=11)
+        core.control.flyTo(core.status.hero.flyRange[core.status.event.data]);
     return;
 }
 
 ////// 楼层传送器界面时，按下某个键的操作 //////
 actions.prototype.keyDownFly = function (keycode) {
     if (keycode==37) core.ui.drawFly(core.status.event.data-10);
-    else if ( keycode==38) core.ui.drawFly(core.status.event.data+1);
+    else if (keycode==38) core.ui.drawFly(core.status.event.data+1);
     else if (keycode==39) core.ui.drawFly(core.status.event.data+10);
     else if (keycode==40) core.ui.drawFly(core.status.event.data-1);
     return;
@@ -968,24 +915,55 @@ actions.prototype.keyUpFly = function (keycode) {
 
 ////// 查看地图界面时的点击操作 //////
 actions.prototype.clickViewMaps = function (x,y) {
+    if (!core.isset(core.status.event.data)) {
+        core.ui.drawMaps(core.floorIds.indexOf(core.status.floorId));
+        return;
+    }
+
     var now = core.floorIds.indexOf(core.status.floorId);
-    var nextId = core.status.event.data;
-    if(y<=4) {
-        nextId++;
-        while (nextId<core.floorIds.length && nextId!=now && core.floors[core.floorIds[nextId]].cannotViewMap)
-            nextId++;
-        if (nextId<core.floorIds.length)
-            core.ui.drawMaps(nextId);
+    var index = core.status.event.data.index;
+    var cx = core.status.event.data.x, cy = core.status.event.data.y;
+    var floorId = core.floorIds[index], mw = core.floors[floorId].width||13, mh = core.floors[floorId].height||13;
+
+    if (x==0 && y==0) {
+        core.status.event.data.damage = !core.status.event.data.damage;
+        core.ui.drawMaps(index, cx, cy);
+        return;
     }
-    else if (y>=8) {
-        nextId--;
-        while (nextId>=0 && nextId!=now && core.floors[core.floorIds[nextId]].cannotViewMap)
-            nextId--;
-        if (nextId>=0)
-            core.ui.drawMaps(nextId);
+
+    if (x>=2 && x<=10 && y<=1 && mh>13) {
+        core.ui.drawMaps(index, cx, cy-1);
+        return;
     }
-    else {
-        core.clearMap('data', 0, 0, 416, 416);
+    if (x>=2 && x<=10 && y>=11 && mh>13) {
+        core.ui.drawMaps(index, cx, cy+1);
+        return;
+    }
+    if (x<=1 && y>=2 && y<=10) {
+        core.ui.drawMaps(index, cx-1, cy);
+        return;
+    }
+    if (x>=11 && y>=2 && y<=10) {
+        core.ui.drawMaps(index, cx+1, cy);
+        return;
+    }
+
+    if(y<=4 && (mh==13 || (x>=2 && x<=10))) {
+        index++;
+        while (index<core.floorIds.length && index!=now && core.status.maps[core.floorIds[index]].cannotViewMap)
+            index++;
+        if (index<core.floorIds.length)
+            core.ui.drawMaps(index);
+    }
+    else if (y>=8 && (mh==13 || (x>=2 && x<=10))) {
+        index--;
+        while (index>=0 && index!=now && core.status.maps[core.floorIds[index]].cannotViewMap)
+            index--;
+        if (index>=0)
+            core.ui.drawMaps(index);
+    }
+    else if (x>=2 && x<=10 && y>=5 && y<=7) {
+        core.clearMap('data');
         core.setOpacity('data', 1);
         core.ui.closePanel();
     }
@@ -993,24 +971,49 @@ actions.prototype.clickViewMaps = function (x,y) {
 
 ////// 查看地图界面时，按下某个键的操作 //////
 actions.prototype.keyDownViewMaps = function (keycode) {
-    if (keycode==37 || keycode==38 || keycode==33) {
-        this.clickViewMaps(6,2);
-    }
-    else if (keycode==39 || keycode==40 || keycode==34) {
-        this.clickViewMaps(6,10);
-    }
+    if (!core.isset(core.status.event.data)) return;
+
+    var floorId = core.floorIds[core.status.event.data.index], mh = core.floors[floorId].height||13;
+
+    if (keycode==38||keycode==33) this.clickViewMaps(6, 3);
+    if (keycode==40||keycode==34) this.clickViewMaps(6, 9);
+    if (keycode==87 && mh>13) this.clickViewMaps(6,0);
+    if (keycode==65) this.clickViewMaps(0,6);
+    if (keycode==83 && mh>13) this.clickViewMaps(6,12);
+    if (keycode==68) this.clickViewMaps(12,6);
     return;
 }
 
 ////// 查看地图界面时，放开某个键的操作 //////
 actions.prototype.keyUpViewMaps = function (keycode) {
-    if (keycode==27 || keycode==13 || keycode==32 || keycode==67) {
-        core.clearMap('data', 0, 0, 416, 416);
+    if (!core.isset(core.status.event.data)) {
+        core.ui.drawMaps(core.floorIds.indexOf(core.status.floorId));
+        return;
+    }
+
+    if (keycode==27 || keycode==13 || keycode==32 || (!core.status.replay.replaying && keycode==67)) {
+        core.clearMap('data');
         core.setOpacity('data', 1);
         core.ui.closePanel();
+        return;
     }
-    if (keycode==88) {
-        core.openBook(false);
+    if (keycode==86) {
+        core.status.event.data.damage = !core.status.event.data.damage;
+        core.ui.drawMaps(core.status.event.data);
+        return;
+    }
+    if (keycode==77) {
+        core.status.event.data.paint = !core.status.event.data.paint;
+        core.ui.drawMaps(core.status.event.data);
+        return;
+    }
+    if (keycode==88 || (core.status.replay.replaying && keycode==67)) {
+        if (core.isset(core.status.replay)&&core.status.replay.replaying) {
+            core.bookReplay();
+        } else {
+            core.openBook(false);
+        }
+        return;
     }
     return;
 }
@@ -1022,6 +1025,18 @@ actions.prototype.clickShop = function(x,y) {
     if (x >= 5 && x <= 7) {
         var topIndex = 6 - parseInt(choices.length / 2);
         if (y>=topIndex && y<topIndex+choices.length) {
+
+            // 检查能否使用快捷商店
+            var reason = core.events.canUseQuickShop(shop.id);
+            if (core.isset(reason)) {
+                core.drawText(reason);
+                return false;
+            }
+            if (!shop.visited) {
+                if (shop.times==0) core.drawTip("该商店尚未开启");
+                else core.drawTip("该商店已失效");
+                return;
+            }
 
             core.status.event.selection=y-topIndex;
 
@@ -1051,6 +1066,8 @@ actions.prototype.clickShop = function(x,y) {
             });
             core.updateStatusBar();
             shop.times++;
+            if (shop.commonTimes)
+                core.setFlag('commonTimes', shop.times);
             core.events.openShop(core.status.event.data.id);
         }
         // 离开
@@ -1110,12 +1127,12 @@ actions.prototype.keyUpShop = function (keycode) {
 
 ////// 快捷商店界面时的点击操作 //////
 actions.prototype.clickQuickShop = function(x, y) {
-    var shopList = core.status.shops, keys = Object.keys(shopList);
+    var shopList = core.status.shops, keys = Object.keys(shopList).filter(function (shopId) {return shopList[shopId].visited || !shopList[shopId].mustEnable});
     if (x >= 5 && x <= 7) {
         var topIndex = 6 - parseInt(keys.length / 2);
         if (y>=topIndex && y<topIndex+keys.length) {
             var reason = core.events.canUseQuickShop(keys[y - topIndex]);
-            if (core.isset(reason)) {
+            if (!core.flags.enableDisabledShop && core.isset(reason)) {
                 core.drawText(reason);
                 return;
             }
@@ -1147,7 +1164,7 @@ actions.prototype.keyUpQuickShop = function (keycode) {
         core.ui.closePanel();
         return;
     }
-    var shopList = core.status.shops, keys = Object.keys(shopList);
+    var shopList = core.status.shops, keys = Object.keys(shopList).filter(function (shopId) {return shopList[shopId].visited || !shopList[shopId].mustEnable});
     if (keycode==13 || keycode==32 || keycode==67) {
         var topIndex = 6 - parseInt(keys.length / 2);
         this.clickQuickShop(6, topIndex+core.status.event.selection);
@@ -1157,6 +1174,12 @@ actions.prototype.keyUpQuickShop = function (keycode) {
 
 ////// 工具栏界面时的点击操作 //////
 actions.prototype.clickToolbox = function(x,y) {
+    // 装备栏
+    if (x>=10 && x<=12 && y==0) {
+        core.ui.closePanel();
+        core.openEquipbox();
+        return;
+    }
     // 返回
     if (x>=10 && x<=12 && y==12) {
         core.ui.closePanel();
@@ -1175,36 +1198,37 @@ actions.prototype.clickToolbox = function(x,y) {
         return;
     }
     */
-
-    // 当前页面
-    var page = parseInt((core.status.event.selection%1000)/12)+1;
-
+    var toolsPage = core.status.event.data.toolsPage;
+    var constantsPage = core.status.event.data.constantsPage;
     // 上一页
-    if ((x == 3 || x == 4) && y == 12) {
-        if (page>1) {
-            core.ui.drawToolbox(core.status.event.selection-12);
+    if (x == 3 || x == 4) {
+        if (y == 7 && toolsPage>1) {
+            core.status.event.data.toolsPage--;
+            core.ui.drawToolbox(core.status.event.selection);
         }
-        return;
+        if (y == 12 && constantsPage>1) {
+            core.status.event.data.toolsPage--;
+            core.ui.drawToolbox(core.status.event.selection);
+        }
     }
     // 下一页
-    if ((x == 8 || x == 9) && y == 12) {
-        var toolPage = Math.ceil(Object.keys(core.status.hero.items.tools).length/12),
-            constantPage = Math.ceil(Object.keys(core.status.hero.items.constants).length/12);
-        if (page<toolPage) {
-            core.ui.drawToolbox(12*page);
+    if (x == 8 || x == 9) {
+        if (y == 7 && toolsPage<Math.ceil(Object.keys(core.status.hero.items.tools).length/12)) {
+            core.status.event.data.toolsPage++;
+            core.ui.drawToolbox(core.status.event.selection);
         }
-        else if (page<constantPage) {
-            core.ui.drawToolbox(1000+12*page);
+        if (y == 12 && constantsPage<Math.ceil(Object.keys(core.status.hero.items.constants).length/12)) {
+            core.status.event.data.constantsPage++;
+            core.ui.drawToolbox(core.status.event.selection);
         }
-        return;
     }
 
-    var index=parseInt(12*(page-1)+x/2);
+    var index=parseInt(x/2);;
     if (y==4) index+=0;
     else if (y==6) index+=6;
-    else if (y==9) index+=1000;
-    else if (y==11) index+=1006;
-    else index=-1;
+    else if (y==9) index+=12;
+    else if (y==11) index+=18;
+    else index =-1;
 
     if (index>=0)
         this.clickToolboxIndex(index);
@@ -1213,17 +1237,19 @@ actions.prototype.clickToolbox = function(x,y) {
 ////// 选择工具栏界面中某个Index后的操作 //////
 actions.prototype.clickToolboxIndex = function(index) {
     var items = null;
-    var ii=index;
-    if (ii<1000)
+    var select;
+    if (index<12) {
+        select = index + 12 * (core.status.event.data.toolsPage-1);
         items = Object.keys(core.status.hero.items.tools).sort();
+    }
     else {
-        ii-=1000;
+        select = index%12 + 12 * (core.status.event.data.constantsPage-1);
         items = Object.keys(core.status.hero.items.constants).sort();
     }
     if (items==null) return;
-    if (ii>=items.length) return;
-    var itemId=items[ii];
-    if (itemId==core.status.event.data) {
+    if (select>=items.length) return;
+    var itemId=items[select];
+    if (itemId==core.status.event.data.selectId) {
         core.events.useItem(itemId);
     }
     else {
@@ -1237,67 +1263,95 @@ actions.prototype.keyDownToolbox = function (keycode) {
 
     var tools = Object.keys(core.status.hero.items.tools).sort();
     var constants = Object.keys(core.status.hero.items.constants).sort();
-    var index=core.status.event.selection;
-    var page=parseInt(index%1000/12), offset=12*page;
+    var index = core.status.event.selection;
+    var toolsPage = core.status.event.data.toolsPage;
+    var constantsPage = core.status.event.data.constantsPage;
+    var toolsTotalPage = Math.ceil(tools.length/12);
+    var constantsTotalPage = Math.ceil(constants.length/12);
+    var toolsLastIndex = toolsPage<toolsTotalPage?11:(tools.length+11)%12;
+    var constantsLastIndex = 12+(constantsPage<constantsTotalPage?11:(constants.length+11)%12);
 
     if (keycode==37) { // left
-        if ((index>0 && index<1000) || index>1000) {
-            this.clickToolboxIndex(index-1);
-            return;
+        if (index==0) { // 处理向前翻页
+            if (toolsPage > 1) {
+                core.status.event.data.toolsPage--;
+                index = 11;
+            }
+            else return; // 第一页不向前翻
         }
-        if (index==1000 && tools.length>0) {
-            this.clickToolboxIndex(tools.length-1);
-            return;
+        else if (index==12) {
+            if (constantsPage == 1) {
+                if (toolsTotalPage==0) return;
+                core.status.event.data.toolsPage = toolsTotalPage;
+                index = (tools.length+11)%12;
+            }
+            else {
+                core.status.event.data.constantsPage--;
+                index = 23;
+            }
         }
+        else index -= 1 ;
+        this.clickToolboxIndex(index);
+        return;
     }
     if (keycode==38) { // up
-        if ((index>offset+5 && index<1000) || index>offset+1005) {
-            this.clickToolboxIndex(index-6);
-            return;
+        if (index>=12&&index<=17) { // 进入tools
+            if (toolsTotalPage==0) return;
+            if (toolsLastIndex>=6) index = Math.min(toolsLastIndex, index-6);
+            else index = Math.min(toolsLastIndex, index-12);
         }
-        if (index>=offset+1000 && index<=offset+1005) {
-            if (tools.length>offset+6) {
-                this.clickToolboxIndex(Math.min(tools.length-1, index-1000+6));
-            }
-            else if (tools.length>offset) {
-                this.clickToolboxIndex(Math.min(tools.length-1, index-1000));
-            }
-            return;
-        }
+        else if (index<6) return; // 第一行没有向上
+        else index -= 6;
+        this.clickToolboxIndex(index);
+        return;
     }
     if (keycode==39) { // right
-        if ((index<tools.length-1) || (index>=1000 && index<constants.length+1000)) {
-            this.clickToolboxIndex(index+1);
-            return;
+        if (toolsPage<toolsTotalPage && index==11) {
+            core.status.event.data.toolsPage++;
+            index = 0;
         }
-        if (index==tools.length-1 && constants.length>0) {
-            this.clickToolboxIndex(1000);
-            return;
+        else if (constantsPage<constantsTotalPage && index==23) {
+            core.status.event.data.constantsPage++;
+            index = 12;
         }
+        else if (index == toolsLastIndex) {
+            if (constantsTotalPage==0) return;
+            core.status.event.data.constantsPage = 1;
+            index = 12;
+        }
+        else if(index==constantsLastIndex) // 一个物品无操作
+            return;
+        else index++;
+        this.clickToolboxIndex(index);
+        return;
     }
     if (keycode==40) { // down
-        if (index<=offset+5) {
-            if (tools.length>offset+6) {
-                this.clickToolboxIndex(Math.min(tools.length-1, index+6));
-            }
-            else if (constants.length>offset) {
-                this.clickToolboxIndex(1000+Math.min(constants.length-1, index));
-            }
-            return;
+        var nextIndex = null;
+        if (index<=5) {
+            if (toolsLastIndex > 5) nextIndex = Math.min(toolsLastIndex, index + 6);
+            else index+=6;
         }
-        if (index>offset+5 && index<offset+1000 && constants.length>offset) {
-            this.clickToolboxIndex(1000+Math.min(constants.length-1, index-6));
-            return;
+        if (nextIndex==null && index<=11) {
+            if (constantsTotalPage == 0) return;
+            nextIndex = Math.min(index+6, constantsLastIndex);
         }
-        if (index>=offset+1000 && index<=offset+1005 && constants.length>offset+6) {
-            this.clickToolboxIndex(Math.min(1000+constants.length-1, index+6));
-            return;
+        if (nextIndex==null && index<=17) {
+            if (constantsLastIndex > 17) nextIndex = Math.min(constantsLastIndex, index+6);
         }
+        if (nextIndex!=null) {
+            this.clickToolboxIndex(nextIndex);
+        }
+        return;
     }
 }
 
 ////// 工具栏界面时，放开某个键的操作 //////
 actions.prototype.keyUpToolbox = function (keycode) {
+    if (keycode==81){
+        core.ui.closePanel();
+        core.openEquipbox();
+        return;
+    }
     if (keycode==84 || keycode==27 || keycode==88) {
         core.ui.closePanel();
         return;
@@ -1325,6 +1379,171 @@ actions.prototype.keyUpToolbox = function (keycode) {
 
 }
 
+
+////// 装备栏界面时的点击操作 //////
+actions.prototype.clickEquipbox = function(x,y) {
+    // 道具栏
+    if (x>=10 && x<=12 && y==0) {
+        core.ui.closePanel();
+        core.openToolbox();
+        return;
+    }
+    // 返回
+    if (x>=10 && x<=12 && y==12) {
+        core.ui.closePanel();
+        return;
+    }
+
+    // 当前页面
+    var page = core.status.event.data.page;
+
+    // 上一页
+    if ((x == 3 || x == 4) && y == 12) {
+        if (page>1) {
+            core.status.event.data.page--;
+            core.ui.drawEquipbox(core.status.event.selection);
+        }
+        return;
+    }
+    // 下一页
+    if ((x == 8 || x == 9) && y == 12) {
+        var lastPage = Math.ceil(Object.keys(core.status.hero.items.equips).length/12);
+        if (page<lastPage) {
+            core.status.event.data.page++;
+            core.ui.drawEquipbox(core.status.event.selection);
+        }
+        return;
+    }
+
+    var index=parseInt(x/2);
+    if (y==4) index+=0;
+    else if (y==6) index+=6;
+    else if (y==9) index+=12;
+    else if (y==11) index+=18;
+    else index=-1;
+
+    if (index>=0) {
+        if (index<12) index = parseInt(index/2);
+        this.clickEquipboxIndex(index);
+    }
+}
+
+////// 选择装备栏界面中某个Index后的操作 //////
+actions.prototype.clickEquipboxIndex = function(index) {
+    if (index<6) {
+        if (index>=(main.equipName||[]).length) return;
+        if (index==core.status.event.selection && core.isset(core.status.hero.equipment[index])) {
+            core.unloadEquip(index);
+            core.status.route.push("unEquip:"+index);
+        }
+    }
+    else if (index>=12) {
+        var equips = Object.keys(core.status.hero.items.equips||{}).sort();
+        if (index==core.status.event.selection) {
+            var equipId = equips[index-12 + (core.status.event.data.page-1)*12];
+            core.loadEquip(equipId);
+            core.status.route.push("equip:"+equipId);
+        }
+    } 
+    core.ui.drawEquipbox(index);
+}
+
+////// 装备栏界面时，按下某个键的操作 //////
+actions.prototype.keyDownEquipbox = function (keycode) {
+    if (!core.isset(core.status.event.data)) return;
+
+    var equipCapacity = (main.equipName||[]).length;
+    var ownEquipment = Object.keys(core.status.hero.items.equips).sort();
+    var index = core.status.event.selection;
+    var page = core.status.event.data.page;
+    var totalPage = Math.ceil(ownEquipment.length/12);
+    var totalLastIndex = 12+(page<totalPage?11:(ownEquipment.length+11)%12);
+
+    if (keycode==37) { // left
+        if (index==0) return;
+        if (index==12) {
+            if (page > 1) {
+                core.status.event.data.page--;
+                index = 23;
+            }
+            else if (page == 1)
+                index = equipCapacity - 1;
+            else return;
+        }
+        else index -= 1;
+        this.clickEquipboxIndex(index);
+        return;
+    }
+    if (keycode==38) { // up
+        if (index<3) return;
+        else if (index<6) index -= 3;
+        else if (index < 18) {
+            index = parseInt((index-12)/2);
+            if (equipCapacity>3) index = Math.min(equipCapacity-1, index + 3);
+            else index = Math.min(equipCapacity-1, index);
+        }
+        else index -= 6;
+        this.clickEquipboxIndex(index);
+        return;
+    }
+    if (keycode==39) { // right
+        if (page<totalPage && index==23) {
+            core.status.event.data.page++;
+            index = 12;
+        }
+        else if (index==equipCapacity-1) {
+            if (totalPage==0) return;
+            index = 12;
+        }
+        else if (index==totalLastIndex)
+            return;
+        else index++;
+        this.clickEquipboxIndex(index);
+        return;
+    }
+    if (keycode==40) { // down
+        if (index<3) {
+            if (equipCapacity>3) index = Math.min(index+3, equipCapacity-1);
+            else {
+                if (totalPage == 0) return;
+                index = Math.min(2*index+1+12, totalLastIndex);
+            }
+        }
+        else if (index < 6) {
+            if (totalPage == 0) return;
+            index = Math.min(2*(index-3)+1+12, totalLastIndex);
+        }
+        else if (index < 18)
+            index = Math.min(index+6, totalLastIndex);
+        else return;
+        this.clickEquipboxIndex(index);
+        return;
+    }
+}
+
+////// 装备栏界面时，放开某个键的操作 //////
+actions.prototype.keyUpEquipbox = function (keycode, altKey) {
+    if (altKey && keycode>=48 && keycode<=57) {
+        core.items.quickSaveEquip(keycode-48);
+        return;
+    }
+    if (keycode==84){
+        core.ui.closePanel();
+        core.openToolbox();
+        return;
+    }
+    if (keycode==81 || keycode==27 || keycode==88) {
+        core.ui.closePanel();
+        return;
+    }
+    if (!core.isset(core.status.event.data.selectId)) return;
+
+    if (keycode==13 || keycode==32 || keycode==67) {
+        this.clickEquipboxIndex(core.status.event.selection);
+        return;
+    }
+}
+
 ////// 存读档界面时的点击操作 //////
 actions.prototype.clickSL = function(x,y) {
 
@@ -1345,14 +1564,23 @@ actions.prototype.clickSL = function(x,y) {
     if (x>=10 && x<=12 && y==12) {
         core.ui.closePanel();
         if (!core.isPlaying()) {
-            core.showStartAnimate();
+            core.showStartAnimate(true);
         }
         return;
     }
     // 删除
     if (x>=0 && x<=2 && y==12) {
-        core.status.event.selection=!core.status.event.selection;
-        core.ui.drawSLPanel(index);
+
+        if (core.status.event.id=='save') {
+            core.status.event.selection=!core.status.event.selection;
+            core.ui.drawSLPanel(index);
+        }
+        else {
+            var index = parseInt(prompt("请输入读档编号"))||0;
+            if (index>0) {
+                core.doSL(index, core.status.event.id);
+            }
+        }
         return;
     }
 
@@ -1373,8 +1601,12 @@ actions.prototype.clickSL = function(x,y) {
                 core.drawTip("无法删除自动存档！");
             }
             else {
-                core.removeLocalStorage("save"+id);
-                core.ui.drawSLPanel(index);
+                // core.removeLocalStorage("save"+id);
+                core.removeLocalForage("save"+id, function() {
+                    core.ui.drawSLPanel(index, true);
+                }, function() {
+                    core.drawTip("无法删除存档！");
+                })
             }
         }
         else {
@@ -1444,7 +1676,7 @@ actions.prototype.keyUpSL = function (keycode) {
     if (keycode==27 || keycode==88 || (core.status.event.id == 'save' && keycode==83) || (core.status.event.id == 'load' && keycode==68)) {
         core.ui.closePanel();
         if (!core.isPlaying()) {
-            core.showStartAnimate();
+            core.showStartAnimate(true);
         }
         return;
     }
@@ -1457,13 +1689,25 @@ actions.prototype.keyUpSL = function (keycode) {
         }
         return;
     }
+    if (keycode==69 && core.status.event.id == 'load') { // E
+        var index = parseInt(prompt("请输入读档编号"))||0;
+        if (index>0) {
+            core.doSL(index, core.status.event.id);
+        }
+        return;
+    }
     if (keycode==46) {
         if (offset==0) {
             core.drawTip("无法删除自动存档！");
         }
         else {
-            core.removeLocalStorage("save"+(5*page+offset));
-            core.ui.drawSLPanel(index);
+            // core.removeLocalStorage("save"+(5*page+offset));
+            // core.ui.drawSLPanel(index);
+            core.removeLocalForage("save"+(5*page+offset), function() {
+                core.ui.drawSLPanel(index, true);
+            }, function() {
+                core.drawTip("无法删除存档！");
+            })
         }
     }
 }
@@ -1504,31 +1748,38 @@ actions.prototype.clickSwitchs = function (x,y) {
                 break;
             case 3:
                 core.flags.displayEnemyDamage=!core.flags.displayEnemyDamage;
-                core.updateFg();
+                core.updateDamage();
                 core.setLocalStorage('enemyDamage', core.flags.displayEnemyDamage);
                 core.ui.drawSwitchs();
                 break;
             case 4:
                 core.flags.displayCritical=!core.flags.displayCritical;
-                core.updateFg();
+                core.updateDamage();
                 core.setLocalStorage('critical', core.flags.displayCritical);
                 core.ui.drawSwitchs();
                 break;
             case 5:
                 core.flags.displayExtraDamage=!core.flags.displayExtraDamage;
-                core.updateFg();
+                core.updateDamage();
                 core.setLocalStorage('extraDamage', core.flags.displayExtraDamage);
                 core.ui.drawSwitchs();
                 break;
             case 6:
-                core.status.automaticRoute.clickMoveDirectly=!core.status.automaticRoute.clickMoveDirectly;
-                core.setLocalStorage('clickMoveDirectly', core.status.automaticRoute.clickMoveDirectly);
+                core.platform.useLocalForage=!core.platform.useLocalForage;
+                core.setLocalStorage('useLocalForage', core.platform.useLocalForage);
                 core.ui.drawSwitchs();
                 break;
             case 7:
-                window.open(core.firstData.name+".zip", "_blank");
+                core.setFlag('clickMove', !core.getFlag('clickMove', true));
+                core.ui.drawSwitchs();
                 break;
             case 8:
+                window.open(core.platform.isPC?"editor.html":"editor-mobile.html", "_blank");
+                break;
+            case 9:
+                window.open(core.firstData.name+".zip", "_blank");
+                break;
+            case 10:
                 core.status.event.selection=0;
                 core.ui.drawSettings();
                 break;
@@ -1581,20 +1832,16 @@ actions.prototype.clickSettings = function (x,y) {
                 core.ui.drawQuickShop();
                 break;
             case 2:
-                if (!core.flags.enableViewMaps) {
-                    core.drawTip("本塔不允许浏览地图！");
-                }
-                else {
-                    core.drawText("\t[系统提示]即将进入浏览地图模式。\n\n点击地图上半部分，或按[↑]键可查看前一张地图\n点击地图下半部分，或按[↓]键可查看后一张地图\n点击地图中间，或按[ESC]键可离开浏览地图模式\n此模式下可以打开怪物手册以查看某层楼的怪物属性", function () {
-                        core.ui.drawMaps(core.floorIds.indexOf(core.status.floorId));
-                    })
-                }
+                core.ui.drawMaps();
                 break;
             case 3:
+                core.ui.drawPaint();
+                break;
+            case 4:
                 core.status.event.selection=0;
                 core.ui.drawSyncSave();
                 break;
-            case 4:
+            case 5:
                 core.status.event.selection=1;
                 core.ui.drawConfirmBox("你确定要返回标题页面吗？", function () {
                     core.ui.closePanel();
@@ -1604,65 +1851,16 @@ actions.prototype.clickSettings = function (x,y) {
                     core.ui.drawSettings();
                 });
                 break;
-            case 5:
-                core.ui.drawStatistics();
-                /*
-                core.ui.drawWaiting("正在拉取统计信息，请稍后...");
-
-                var formData = new FormData();
-                formData.append('type', 'statistics');
-                formData.append('name', core.firstData.name);
-                formData.append('version', core.firstData.version);
-
-                var xhr = new XMLHttpRequest();
-                xhr.open("POST", "/games/upload.php");
-
-                xhr.onload = function(e) {
-                    if (xhr.status==200) {
-                        var response = JSON.parse(xhr.response);
-                        if (response.code<0) {
-                            core.drawText("出错啦！\n无法拉取统计信息。\n错误原因："+response.msg);
-                        }
-                        else {
-                            var text="\t[本塔统计信息]";
-                            var toAdd=false;
-                            response.data.forEach(function (t) {
-                                if (toAdd) text+="\n\n";
-                                toAdd=true;
-                                if (t.hard!='') text+=t.hard+"难度： "
-                                text+="已有"+t.people+"人次游戏，"+t.score+"人次通关。";
-                                t.info.forEach(function(ending) {
-                                    if (ending.ending!='') {
-                                        text+="\n"+ending.ending+"： 已有"+ending.score+"人次通关。";
-                                    }
-                                    if (core.isset(ending.max) && ending.max>0) {
-                                        text+="\n当前MAX为"+ending.max+"，最早由 "+(ending.username||"匿名")+" 于"+core.formatDate(new Date(1000*ending.timestamp))+"打出。";
-                                    }
-                                })
-                            })
-                            core.drawText(text);
-                        }
-                    }
-                    else {
-                        core.drawText("出错啦！\n无法拉取统计信息。\n错误原因：HTTP "+xhr.status);
-                    }
-                };
-                xhr.ontimeout = function() {
-                    core.drawText("出错啦！\n无法拉取统计信息。\n错误原因：Timeout");
-                }
-                xhr.onerror = function() {
-                    core.drawText("出错啦！\n无法拉取统计信息。\n错误原因：XHR Error");
-                }
-                xhr.send(formData);
-                */
-                break;
             case 6:
-                core.ui.drawHelp();
+                core.ui.drawStatistics();
                 break;
             case 7:
-                core.ui.drawAbout();
+                core.ui.drawHelp();
                 break;
             case 8:
+                core.ui.drawAbout();
+                break;
+            case 9:
                 core.ui.closePanel();
                 break;
         }
@@ -1735,10 +1933,12 @@ actions.prototype.clickSyncSave = function (x,y) {
                         core.ui.drawConfirmBox("所有本地存档都将被覆盖，确认？", function () {
                             for (var i=1;i<=5*(main.savePages||30);i++) {
                                 if (i<=data.length) {
-                                    core.setLocalStorage("save"+i, data[i-1]);
+                                    // core.setLocalStorage("save"+i, data[i-1]);
+                                    core.setLocalForage("save"+i, data[i-1]);
                                 }
                                 else {
-                                    core.removeLocalStorage("save"+i);
+                                    // core.removeLocalStorage("save"+i);
+                                    core.removeLocalForage("save"+i);
                                 }
                             }
                             core.drawText("读取成功！\n你的本地所有存档均已被覆盖。");
@@ -1748,14 +1948,20 @@ actions.prototype.clickSyncSave = function (x,y) {
                         })
                     }
                     else {
-                        core.setLocalStorage("save"+core.status.saveIndex, data);
-                        core.drawText("同步成功！\n单存档已覆盖至存档"+core.status.saveIndex);
+                        // core.setLocalStorage("save"+core.status.saveIndex, data);
+                        core.setLocalForage("save"+core.status.saveIndex, data, function() {
+                            core.drawText("同步成功！\n单存档已覆盖至存档"+core.status.saveIndex);
+                        })
                     }
                 }, function () {
 
                 });
                 break;
             case 4:
+                core.status.event.selection=0;
+                core.ui.drawReplay();
+                break;
+            case 5:
                 if (core.hasFlag('debug')) {
                     core.drawText("\t[系统提示]调试模式下无法下载录像");
                     break;
@@ -1767,11 +1973,11 @@ actions.prototype.clickSyncSave = function (x,y) {
                     'route': core.encodeRoute(core.status.route)
                 }));
                 break;
-            case 5:
+            case 6:
                 core.status.event.selection=0;
                 core.ui.drawStorageRemove();
                 break;
-            case 6:
+            case 7:
                 core.status.event.selection=3;
                 core.ui.drawSettings();
                 break;
@@ -1867,6 +2073,7 @@ actions.prototype.clickLocalSaveSelect = function (x,y) {
 
     if (y>=topIndex && y<topIndex+choices.length) {
         var selection = y - topIndex;
+        /*
         switch (selection) {
             case 0:
                 saves=[];
@@ -1883,15 +2090,21 @@ actions.prototype.clickLocalSaveSelect = function (x,y) {
             case 2:
                 break;
         }
-    }
-    if (core.isset(saves)) {
-        var content = {
-            "name": core.firstData.name,
-            "version": core.firstData.version,
-            "data": saves
+        */
+        if (selection<2) {
+            core.control.getSaves(selection==0?null:core.status.saveIndex, function(saves) {
+                if (core.isset(saves)) {
+                    var content = {
+                        "name": core.firstData.name,
+                        "version": core.firstData.version,
+                        "data": saves
+                    }
+                    core.download(core.firstData.name+"_"+core.formatDate2(new Date())+".h5save", JSON.stringify(content));
+                }
+            })
         }
-        core.download(core.firstData.name+"_"+core.formatDate2(new Date())+".h5save", JSON.stringify(content));
     }
+
     core.status.event.selection=2;
     core.ui.drawSyncSave();
 }
@@ -1933,15 +2146,46 @@ actions.prototype.clickStorageRemove = function (x, y) {
         var selection = y - topIndex;
         switch (selection) {
             case 0:
-                localStorage.clear();
-                core.drawText("\t[操作成功]你的所有存档已被清空。");
+                if (core.platform.useLocalForage) {
+                    core.ui.drawWaiting("正在清空，请稍后...");
+                    localforage.clear(function () {
+                        core.ui.closePanel();
+                        core.drawText("\t[操作成功]你的所有存档已被清空。");
+                        core.status.saveIndex = 1;
+                        core.setLocalStorage('saveIndex2', 1);
+                    });
+                }
+                else {
+                    localStorage.clear();
+                    core.drawText("\t[操作成功]你的所有存档已被清空。");
+                    core.status.saveIndex = 1;
+                    core.setLocalStorage('saveIndex2', 1);
+                }
                 break;
             case 1:
-                for (var i=1;i<=5*(main.savePages||30);i++) {
-                    core.removeLocalStorage("save"+i);
+                if (core.platform.useLocalForage) {
+                    core.ui.drawWaiting("正在清空，请稍后...");
+                    for (var i=1;i<=5*(main.savePages||30);i++) {
+                        // core.removeLocalStorage("save"+i);
+                        core.removeLocalForage("save"+i);
+                    }
+                    core.removeLocalForage("autoSave", function() {
+                        core.ui.closePanel();
+                        core.drawText("\t[操作成功]当前塔的存档已被清空。");
+                        core.status.saveIndex = 1;
+                        core.setLocalStorage('saveIndex2', 1);
+                    });
                 }
-                core.drawText("\t[操作成功]当前塔的存档已被清空。");
-                core.removeLocalStorage("autoSave");
+                else {
+                    for (var i=1;i<=5*(main.savePages||30);i++) {
+                        // core.removeLocalStorage("save"+i);
+                        core.removeLocalStorage("save"+i);
+                    }
+                    core.removeLocalStorage("autoSave");
+                    core.drawText("\t[操作成功]当前塔的存档已被清空。");
+                    core.status.saveIndex = 1;
+                    core.setLocalStorage('saveIndex2', 1);
+                }
                 break;
             case 2:
                 core.status.event.selection=5;
@@ -1990,15 +2234,8 @@ actions.prototype.clickReplay = function (x, y) {
             case 0:
                 {
                     core.ui.closePanel();
-                    var hard=core.status.hard, route=core.clone(core.status.route);
-                    var seed = core.getFlag('seed');
-                    core.resetStatus(core.firstData.hero, hard, core.firstData.floorId, null, core.initStatus.maps);
-                    core.events.setInitData(hard);
-                    core.setFlag('seed', seed);
-                    core.setFlag('rand', seed);
-                    core.changeFloor(core.status.floorId, null, core.firstData.hero.loc, null, function() {
-                        core.startReplay(route);
-                    }, true);
+                    var hard=core.status.hard, seed = core.getFlag('seed');
+                    core.startGame(hard, seed, core.clone(core.status.route));
                     break;
                 }
             case 1:
@@ -2011,6 +2248,22 @@ actions.prototype.clickReplay = function (x, y) {
                     break;
                 }
             case 2:
+                core.chooseReplayFile();
+                break;
+            case 3:
+                if (core.hasFlag('debug')) {
+                    core.drawText("\t[系统提示]调试模式下无法下载录像");
+                    break;
+                }
+                core.download(core.firstData.name+"_"+core.formatDate2(new Date())+".h5route", JSON.stringify({
+                    'name': core.firstData.name,
+                    'hard': core.status.hard,
+                    'seed': core.getFlag('seed'),
+                    'route': core.encodeRoute(core.status.route)
+                }));
+                break;
+                break;
+            case 4:
                 core.ui.closePanel();
                 break;
         }
@@ -2047,6 +2300,15 @@ actions.prototype.clickKeyBoard = function (x, y) {
     if (y==3 && x>=1 && x<=11) {
         core.ui.closePanel();
         core.keyUp(112+x-1); // F1-F12: 112-122
+    }
+    if (y==3 && x==12) {
+        var val = prompt();
+        if (val!=null) {
+            try {
+                eval(val);
+            }
+            catch (e) {}
+        }
     }
     if (y==4 && x>=1 && x<=10) {
         core.ui.closePanel();
@@ -2156,5 +2418,110 @@ actions.prototype.clickAbout = function () {
     if (core.isPlaying())
         core.ui.closePanel();
     else
-        core.restart();
+        core.restart(true);
 }
+
+
+////// 绘图相关 //////
+
+actions.prototype.ondownPaint = function (x, y) {
+    x+=core.bigmap.offsetX;
+    y+=core.bigmap.offsetY;
+    if (!core.status.event.data.erase) {
+        core.canvas.route.beginPath();
+        core.canvas.route.moveTo(x, y);
+    }
+    core.status.event.data.x = x;
+    core.status.event.data.y = y;
+}
+
+actions.prototype.onmovePaint = function (x, y) {
+    if (core.status.event.data.x==null) return;
+    x+=core.bigmap.offsetX;
+    y+=core.bigmap.offsetY;
+    if (core.status.event.data.erase) {
+        core.clearMap('route', x-10, y-10, 20, 20);
+        return;
+    }
+    var midx = (core.status.event.data.x+x)/2, midy = (core.status.event.data.y+y)/2;
+    core.canvas.route.quadraticCurveTo(midx, midy, x, y);
+    core.canvas.route.stroke();
+    core.status.event.data.x = x;
+    core.status.event.data.y = y;
+}
+
+actions.prototype.onupPaint = function () {
+    core.status.event.data.x = null;
+    core.status.event.data.y = null;
+    // 保存
+    core.paint[core.status.floorId] = LZString.compress(core.utils.encodeCanvas(core.canvas.route).join(","));
+}
+
+actions.prototype.setPaintMode = function (mode) {
+    if (mode == 'paint') core.status.event.data.erase = false;
+    else if (mode == 'erase') core.status.event.data.erase = true;
+    else return;
+
+    core.drawTip("进入"+(core.status.event.data.erase?"擦除":"绘图")+"模式");
+}
+
+actions.prototype.clearPaint = function () {
+    core.clearMap('route');
+    core.paint[core.status.floorId] = null;
+    core.drawTip("已清空绘图内容");
+}
+
+actions.prototype.savePaint = function () {
+    var data = {};
+    for (var floorId in core.paint) {
+        if (core.isset(core.paint[floorId]))
+            data[floorId] = LZString.decompress(core.paint[floorId]);
+    }
+    core.download(core.firstData.name+".h5paint", JSON.stringify({
+        'name': core.firstData.name,
+        'paint': data
+    }));
+}
+
+actions.prototype.loadPaint = function () {
+    core.readFile(function (obj) {
+        if (obj.name!=core.firstData.name) {
+            alert("绘图文件和游戏不一致！");
+            return;
+        }
+        if (!core.isset(obj.paint)) {
+            alert("无效的绘图文件！");
+            return;
+        }
+        core.paint = {};
+        for (var floorId in obj.paint) {
+            if (core.isset(obj.paint[floorId]))
+                core.paint[floorId] = LZString.compress(obj.paint[floorId]);
+        }
+
+        core.clearMap('route');
+        var value = core.paint[core.status.floorId];
+        if (core.isset(value)) value = LZString.decompress(value).split(",");
+        core.utils.decodeCanvas(value, 32*core.bigmap.width, 32*core.bigmap.height);
+        core.canvas.route.drawImage(core.bigmap.tempCanvas.canvas, 0, 0);
+
+        core.drawTip("读取绘图文件成功");
+    })
+}
+
+actions.prototype.exitPaint = function () {
+    core.clearMap('route');
+    core.ui.closePanel();
+    core.statusBar.image.shop.style.opacity = 1;
+    core.updateStatusBar();
+    core.drawTip("退出绘图模式");
+}
+
+actions.prototype.keyUpPaint = function (keycode) {
+    if (keycode==27 || keycode==88 || keycode==77 || keycode==13 || keycode==32 || keycode==67) {
+        this.exitPaint();
+        return;
+    }
+}
+
+////// 绘图相关 END //////

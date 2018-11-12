@@ -170,7 +170,7 @@
     -moz-box-sizing: border-box;
     -webkit-box-sizing: border-box;
     background: url(project/images/ground.png) repeat;
-    z-index: 150;
+    z-index: 135;
     display: none;
 }
 #statusBar .status{
@@ -222,9 +222,13 @@ p#hard {
     margin: 0 6px 6px 0;
 }
 
-span#poison, span#weak, span#curse {
+span#poison, span#weak, span#curse, span#pickaxe, span#bomb, span#fly {
     font-style: normal;
     font-size: 1em;
+}
+
+p#name {
+    font-style: normal;
 }
 
 .gameCanvas {
@@ -246,11 +250,11 @@ span#poison, span#weak, span#curse {
     overflow: hidden;
 }
 
-#curtain {
-    z-index: 100;
+#gameDraw {
     position: absolute;
-    opacity: 0;
     background: #000000;
+    overflow: hidden;
+    z-index: 135;
 }
 
 #bg {
@@ -273,12 +277,28 @@ span#poison, span#weak, span#curse {
     z-index: 60;
 }
 
+#damage {
+    z-index: 65;
+}
+
 #animate {
     z-index: 70;
 }
 
 #weather {
     z-index: 80;
+}
+
+#route {
+    z-index: 95;
+}
+
+#curtain {
+    z-index: 100;
+}
+
+#image {
+    z-index: 105;
 }
 
 #ui {

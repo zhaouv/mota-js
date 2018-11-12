@@ -4,7 +4,7 @@ editor_mode = function (editor) {
     function editor_mode() {
         this.ids = {
             'loc': 'left2',
-            'emenyitem': 'left3',
+            'enemyitem': 'left3',
             'floor': 'left4',
             'tower': 'left5',
             'functions': 'left8',
@@ -71,6 +71,7 @@ editor_mode = function (editor) {
                     if (key === '_data') continue;
                     if (cobj[key] instanceof Function) cobj[key] = cobj[key](args);
                 }
+                if (cobj._hide)continue;
                 if (cobj._leaf) {
                     var leafnode = editor_mode.objToTr_(obj, commentObj, field, cfield, vobj, cobj);
                     outstr.push(leafnode[0]);
@@ -199,7 +200,7 @@ editor_mode = function (editor) {
         switch (mode) {
             case 'loc':
 
-                editor.file.editLoc(editor_mode.pos.x, editor_mode.pos.y, actionList, function (objs_) {/*console.log(objs_);*/
+                editor.file.editLoc(editor_mode.pos.x, editor_mode.pos.y, actionList, function (objs_) {//console.log(objs_);
                     if (objs_.slice(-1)[0] != null) {
                         printe(objs_.slice(-1)[0]);
                         throw(objs_.slice(-1)[0])
@@ -208,10 +209,10 @@ editor_mode = function (editor) {
                     editor.drawEventBlock();
                 });
                 break;
-            case 'emenyitem':
+            case 'enemyitem':
 
                 if (editor_mode.info.images == 'enemys' || editor_mode.info.images == 'enemy48') {
-                    editor.file.editEnemy(editor_mode.info.id, actionList, function (objs_) {/*console.log(objs_);*/
+                    editor.file.editEnemy(editor_mode.info.id, actionList, function (objs_) {//console.log(objs_);
                         if (objs_.slice(-1)[0] != null) {
                             printe(objs_.slice(-1)[0]);
                             throw(objs_.slice(-1)[0])
@@ -219,7 +220,7 @@ editor_mode = function (editor) {
                         ;printf('修改成功')
                     });
                 } else if (editor_mode.info.images == 'items') {
-                    editor.file.editItem(editor_mode.info.id, actionList, function (objs_) {/*console.log(objs_);*/
+                    editor.file.editItem(editor_mode.info.id, actionList, function (objs_) {//console.log(objs_);
                         if (objs_.slice(-1)[0] != null) {
                             printe(objs_.slice(-1)[0]);
                             throw(objs_.slice(-1)[0])
@@ -227,7 +228,7 @@ editor_mode = function (editor) {
                         ;printf('修改成功')
                     });
                 } else {
-                    editor.file.editMapBlocksInfo(editor_mode.info.idnum, actionList, function (objs_) {/*console.log(objs_);*/
+                    editor.file.editMapBlocksInfo(editor_mode.info.idnum, actionList, function (objs_) {//console.log(objs_);
                         if (objs_.slice(-1)[0] != null) {
                             printe(objs_.slice(-1)[0]);
                             throw(objs_.slice(-1)[0])
@@ -238,7 +239,7 @@ editor_mode = function (editor) {
                 break;
             case 'floor':
 
-                editor.file.editFloor(actionList, function (objs_) {/*console.log(objs_);*/
+                editor.file.editFloor(actionList, function (objs_) {//console.log(objs_);
                     if (objs_.slice(-1)[0] != null) {
                         printe(objs_.slice(-1)[0]);
                         throw(objs_.slice(-1)[0])
@@ -248,7 +249,7 @@ editor_mode = function (editor) {
                 break;
             case 'tower':
 
-                editor.file.editTower(actionList, function (objs_) {/*console.log(objs_);*/
+                editor.file.editTower(actionList, function (objs_) {//console.log(objs_);
                     if (objs_.slice(-1)[0] != null) {
                         printe(objs_.slice(-1)[0]);
                         throw(objs_.slice(-1)[0])
@@ -258,7 +259,7 @@ editor_mode = function (editor) {
                 break;
             case 'functions':
 
-                editor.file.editFunctions(actionList, function (objs_) {/*console.log(objs_);*/
+                editor.file.editFunctions(actionList, function (objs_) {//console.log(objs_);
                     if (objs_.slice(-1)[0] != null) {
                         printe(objs_.slice(-1)[0]);
                         throw(objs_.slice(-1)[0])
@@ -300,7 +301,7 @@ editor_mode = function (editor) {
         var objs = [];
         editor.file.editLoc(editor_mode.pos.x, editor_mode.pos.y, [], function (objs_) {
             objs = objs_;
-            /*console.log(objs_)*/
+            //console.log(objs_)
         });
         //只查询不修改时,内部实现不是异步的,所以可以这么写
         var tableinfo = editor_mode.objToTable_(objs[0], objs[1]);
@@ -310,11 +311,11 @@ editor_mode = function (editor) {
         if (Boolean(callback)) callback();
     }
 
-    editor_mode.prototype.emenyitem = function (callback) {
+    editor_mode.prototype.enemyitem = function (callback) {
         //editor.info=editor.ids[editor.indexs[201]];
         if (!core.isset(editor.info)) return;
 
-        if (Object.keys(editor.info).length !== 0) editor_mode.info = editor.info;//避免editor.info被清空导致无法获得是物品还是怪物
+        if (Object.keys(editor.info).length !== 0 && editor.info.idnum!=17) editor_mode.info = editor.info;//避免editor.info被清空导致无法获得是物品还是怪物
 
         if (!core.isset(editor_mode.info.id)) {
             // document.getElementById('table_a3f03d4c_55b8_4ef6_b362_b345783acd72').innerHTML = '';
@@ -322,6 +323,7 @@ editor_mode = function (editor) {
             document.getElementById('newIdIdnum').style.display = 'block';
             return;
         }
+
         document.getElementById('newIdIdnum').style.display = 'none';
         document.getElementById('enemyItemTable').style.display = 'block';
 
@@ -329,19 +331,19 @@ editor_mode = function (editor) {
         if (editor_mode.info.images == 'enemys' || editor_mode.info.images == 'enemy48') {
             editor.file.editEnemy(editor_mode.info.id, [], function (objs_) {
                 objs = objs_;
-                /*console.log(objs_)*/
+                //console.log(objs_)
             });
         } else if (editor_mode.info.images == 'items') {
             editor.file.editItem(editor_mode.info.id, [], function (objs_) {
                 objs = objs_;
-                /*console.log(objs_)*/
+                //console.log(objs_)
             });
         } else {
             /* document.getElementById('table_a3f03d4c_55b8_4ef6_b362_b345783acd72').innerHTML='';
             return; */
             editor.file.editMapBlocksInfo(editor_mode.info.idnum, [], function (objs_) {
                 objs = objs_;
-                /*console.log(objs_)*/
+                //console.log(objs_)
             });
         }
         //只查询不修改时,内部实现不是异步的,所以可以这么写
@@ -356,7 +358,7 @@ editor_mode = function (editor) {
         var objs = [];
         editor.file.editFloor([], function (objs_) {
             objs = objs_;
-            /*console.log(objs_)*/
+            //console.log(objs_)
         });
         //只查询不修改时,内部实现不是异步的,所以可以这么写
         var tableinfo = editor_mode.objToTable_(objs[0], objs[1]);
@@ -369,7 +371,7 @@ editor_mode = function (editor) {
         var objs = [];
         editor.file.editTower([], function (objs_) {
             objs = objs_;
-            /*console.log(objs_)*/
+            //console.log(objs_)
         });
         //只查询不修改时,内部实现不是异步的,所以可以这么写
         var tableinfo = editor_mode.objToTable_(objs[0], objs[1]);
@@ -382,7 +384,7 @@ editor_mode = function (editor) {
         var objs = [];
         editor.file.editFunctions([], function (objs_) {
             objs = objs_;
-            /*console.log(objs_)*/
+            //console.log(objs_)
         });
         //只查询不修改时,内部实现不是异步的,所以可以这么写
         var tableinfo = editor_mode.objToTable_(objs[0], objs[1]);
@@ -469,6 +471,12 @@ editor_mode = function (editor) {
                 printe("楼层名不合法！请使用字母、数字、下划线，且不能以数字开头！");
                 return;
             }
+            var width = parseInt(document.getElementById('newMapWidth').value);
+            var height = parseInt(document.getElementById('newMapHeight').value);
+            if (!core.isset(width) || !core.isset(height) || width<13 || height<13 || width*height>1000) {
+                printe("新建地图的宽高都不得小于13，且宽高之积不能超过1000");
+                return;
+            }
 
             editor_mode.onmode('');
             editor.file.saveNewFile(newFileName.value, function (err) {
@@ -477,7 +485,7 @@ editor_mode = function (editor) {
                     throw(err)
                 }
                 core.floorIds.push(newFileName.value);
-                editor.file.editTower([['change', "['main']['floorIds']", core.floorIds]], function (objs_) {/*console.log(objs_);*/
+                editor.file.editTower([['change', "['main']['floorIds']", core.floorIds]], function (objs_) {//console.log(objs_);
                     if (objs_.slice(-1)[0] != null) {
                         printe(objs_.slice(-1)[0]);
                         throw(objs_.slice(-1)[0])
@@ -491,21 +499,44 @@ editor_mode = function (editor) {
         var appendPicCanvas = document.getElementById('appendPicCanvas');
         var bg = appendPicCanvas.children[0];
         var source = appendPicCanvas.children[1];
+        var source_ctx=source.getContext('2d');
         var picClick = appendPicCanvas.children[2];
         var sprite = appendPicCanvas.children[3];
+        var sprite_ctx=sprite.getContext('2d');
         var appendPicSelection = document.getElementById('appendPicSelection');
+        
+        [source_ctx,sprite_ctx].forEach(function(ctx){
+            ctx.mozImageSmoothingEnabled = false;
+            ctx.webkitImageSmoothingEnabled = false;
+            ctx.msImageSmoothingEnabled = false;
+            ctx.imageSmoothingEnabled = false;
+        })
 
         var selectAppend = document.getElementById('selectAppend');
         var selectAppend_str = [];
-        ["terrains", "animates", "enemys", "enemy48", "items", "npcs", "npc48"].forEach(function (image) {
+        ["terrains", "animates", "enemys", "enemy48", "items", "npcs", "npc48", "autotile"].forEach(function (image) {
             selectAppend_str.push(["<option value='", image, "'>", image, '</option>\n'].join(''));
         });
         selectAppend.innerHTML = selectAppend_str.join('');
         selectAppend.onchange = function () {
+
             var value = selectAppend.value;
+
+            if (value == 'autotile') {
+                editor_mode.appendPic.imageName = 'autotile';
+                for (var jj=0;jj<4;jj++) appendPicSelection.children[jj].style = 'display:none';
+                if (editor_mode.appendPic.img) {
+                    sprite.style.width = (sprite.width = editor_mode.appendPic.img.width) / ratio + 'px';
+                    sprite.style.height = (sprite.height = editor_mode.appendPic.img.height) / ratio + 'px';
+                    sprite_ctx.clearRect(0, 0, sprite.width, sprite.height);
+                    sprite_ctx.drawImage(editor_mode.appendPic.img, 0, 0);
+                }
+                return;
+            }
+
             var ysize = selectAppend.value.indexOf('48') === -1 ? 32 : 48;
             editor_mode.appendPic.imageName = value;
-            var img = editor.material.images[value];
+            var img = core.material.images[value];
             editor_mode.appendPic.toImg = img;
             var num = ~~img.width / 32;
             editor_mode.appendPic.num = num;
@@ -521,7 +552,7 @@ editor_mode = function (editor) {
             }
             sprite.style.width = (sprite.width = img.width) / ratio + 'px';
             sprite.style.height = (sprite.height = img.height + ysize) / ratio + 'px';
-            sprite.getContext('2d').drawImage(img, 0, 0);
+            sprite_ctx.drawImage(img, 0, 0);
         }
         selectAppend.onchange();
 
@@ -530,13 +561,13 @@ editor_mode = function (editor) {
             var loadImage = function (content, callback) {
                 var image = new Image();
                 try {
+                    image.onload = function () {
+                        callback(image);
+                    }
                     image.src = content;
                     if (image.complete) {
                         callback(image);
                         return;
-                    }
-                    image.onload = function () {
-                        callback(image);
                     }
                 }
                 catch (e) {
@@ -548,11 +579,23 @@ editor_mode = function (editor) {
                     editor_mode.appendPic.img = image;
                     editor_mode.appendPic.width = image.width;
                     editor_mode.appendPic.height = image.height;
-                    var ysize = selectAppend.value.indexOf('48') === -1 ? 32 : 48;
-                    for (var ii = 0; ii < 3; ii++) {
-                        var newsprite = appendPicCanvas.children[ii];
-                        newsprite.style.width = (newsprite.width = Math.floor(image.width / 32) * 32) / ratio + 'px';
-                        newsprite.style.height = (newsprite.height = Math.floor(image.height / ysize) * ysize) / ratio + 'px';
+
+                    if (selectAppend.value == 'autotile') {
+                        for (var ii = 0; ii < 3; ii++) {
+                            var newsprite = appendPicCanvas.children[ii];
+                            newsprite.style.width = (newsprite.width = image.width) / ratio + 'px';
+                            newsprite.style.height = (newsprite.height = image.height) / ratio + 'px';
+                        }
+                        sprite_ctx.clearRect(0, 0, sprite.width, sprite.height);
+                        sprite_ctx.drawImage(image, 0, 0);
+                    }
+                    else {
+                        var ysize = selectAppend.value.indexOf('48') === -1 ? 32 : 48;
+                        for (var ii = 0; ii < 3; ii++) {
+                            var newsprite = appendPicCanvas.children[ii];
+                            newsprite.style.width = (newsprite.width = Math.floor(image.width / 32) * 32) / ratio + 'px';
+                            newsprite.style.height = (newsprite.height = Math.floor(image.height / ysize) * ysize) / ratio + 'px';
+                        }
                     }
 
                     //画灰白相间的格子
@@ -570,7 +613,8 @@ editor_mode = function (editor) {
                     }
 
                     //把导入的图片画出
-                    source.getContext('2d').drawImage(image, 0, 0);
+                    source_ctx.drawImage(image, 0, 0);
+                    editor_mode.appendPic.sourceImageData=source_ctx.getImageData(0,0,image.width,image.height);
 
                     //重置临时变量
                     selectAppend.onchange();
@@ -578,6 +622,151 @@ editor_mode = function (editor) {
             }, null, 'img');
 
             return;
+        }
+
+        var changeColorInput=document.getElementById('changeColorInput')
+        changeColorInput.oninput=function(){
+            var delta=(~~changeColorInput.value)*30;
+            var imgData=editor_mode.appendPic.sourceImageData;
+            var nimgData=new ImageData(imgData.width,imgData.height);
+            // ImageData .data 形如一维数组,依次排着每个点的 R(0~255) G(0~255) B(0~255) A(0~255)
+            var getPixel=function(imgData, x, y) {
+                var offset = (x + y * imgData.width) * 4;
+                var r = imgData.data[offset+0];
+                var g = imgData.data[offset+1];
+                var b = imgData.data[offset+2];
+                var a = imgData.data[offset+3];
+                return [r,g,b,a];
+            }
+            var setPixel=function(imgData, x, y, rgba) {
+                var offset = (x + y * imgData.width) * 4;
+                imgData.data[offset+0]=rgba[0];
+                imgData.data[offset+1]=rgba[1];
+                imgData.data[offset+2]=rgba[2];
+                imgData.data[offset+3]=rgba[3];
+            }
+            var convert=function(rgba,delta){
+                var round=Math.round;
+                // rgbToHsl hue2rgb hslToRgb from https://github.com/carloscabo/colz.git
+                //--------------------------------------------
+                // The MIT License (MIT)
+                //
+                // Copyright (c) 2014 Carlos Cabo
+                //
+                // Permission is hereby granted, free of charge, to any person obtaining a copy
+                // of this software and associated documentation files (the "Software"), to deal
+                // in the Software without restriction, including without limitation the rights
+                // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+                // copies of the Software, and to permit persons to whom the Software is
+                // furnished to do so, subject to the following conditions:
+                //
+                // The above copyright notice and this permission notice shall be included in all
+                // copies or substantial portions of the Software.
+                //
+                // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+                // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+                // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+                // AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+                // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+                // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+                // SOFTWARE.
+                //--------------------------------------------
+                // https://github.com/carloscabo/colz/blob/master/public/js/colz.class.js
+                var rgbToHsl = function (rgba) {
+                    var arg, r, g, b, h, s, l, d, max, min;
+                
+                    arg = rgba;
+                
+                    if (typeof arg[0] === 'number') {
+                      r = arg[0];
+                      g = arg[1];
+                      b = arg[2];
+                    } else {
+                      r = arg[0][0];
+                      g = arg[0][1];
+                      b = arg[0][2];
+                    }
+                
+                    r /= 255;
+                    g /= 255;
+                    b /= 255;
+                
+                    max = Math.max(r, g, b);
+                    min = Math.min(r, g, b);
+                    l = (max + min) / 2;
+                
+                    if (max === min) {
+                      h = s = 0; // achromatic
+                    } else {
+                      d = max - min;
+                      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+                
+                      switch (max) {
+                      case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+                      case g: h = (b - r) / d + 2; break;
+                      case b: h = (r - g) / d + 4; break;
+                      }
+                
+                      h /= 6;
+                    }
+                
+                    //CARLOS
+                    h = round(h * 360);
+                    s = round(s * 100);
+                    l = round(l * 100);
+                
+                    return [h, s, l];
+                }
+                //
+                var hue2rgb = function (p, q, t) {
+                    if (t < 0) { t += 1; }
+                    if (t > 1) { t -= 1; }
+                    if (t < 1 / 6) { return p + (q - p) * 6 * t; }
+                    if (t < 1 / 2) { return q; }
+                    if (t < 2 / 3) { return p + (q - p) * (2 / 3 - t) * 6; }
+                    return p;
+                }
+                var hslToRgb = function (hsl) {
+                    var arg, r, g, b, h, s, l, q, p;
+                
+                    arg = hsl;
+                
+                    if (typeof arg[0] === 'number') {
+                      h = arg[0] / 360;
+                      s = arg[1] / 100;
+                      l = arg[2] / 100;
+                    } else {
+                      h = arg[0][0] / 360;
+                      s = arg[0][1] / 100;
+                      l = arg[0][2] / 100;
+                    }
+                
+                    if (s === 0) {
+                      r = g = b = l; // achromatic
+                    } else {
+                
+                      q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+                      p = 2 * l - q;
+                      r = hue2rgb(p, q, h + 1 / 3);
+                      g = hue2rgb(p, q, h);
+                      b = hue2rgb(p, q, h - 1 / 3);
+                    }
+                    return [round(r * 255), round(g * 255), round(b * 255)];
+                }
+                //
+                var hsl=rgbToHsl(rgba)
+                hsl[0]=(hsl[0]+delta)%360
+                var nrgb=hslToRgb(hsl)
+                nrgb.push(rgba[3])
+                return nrgb
+            }
+            for(var x=0; x<imgData.width; x++){
+                for(var y=0 ; y<imgData.height; y++){
+                    setPixel(nimgData,x,y,convert(getPixel(imgData,x,y),delta))
+                }
+            }
+            source_ctx.clearRect(0, 0, imgData.width, imgData.height);
+            source_ctx.putImageData(nimgData, 0, 0);
         }
 
         var left1 = document.getElementById('left1');
@@ -601,7 +790,7 @@ editor_mode = function (editor) {
         picClick.onclick = function (e) {
             var loc = eToLoc(e);
             var pos = locToPos(loc);
-            /*console.log(e,loc,pos);*/
+            //console.log(e,loc,pos);
             var num = editor_mode.appendPic.num;
             var ii = editor_mode.appendPic.index;
             if (ii + 1 >= num) editor_mode.appendPic.index = ii + 1 - num;
@@ -616,14 +805,63 @@ editor_mode = function (editor) {
 
         var appendConfirm = document.getElementById('appendConfirm');
         appendConfirm.onclick = function () {
+
+            var confirmAutotile = function () {
+                var image = editor_mode.appendPic.img;
+                if (image.width % 96 !=0 || image.height != 128) {
+                    printe("不合法的Autotile图片！");
+                    return;
+                }
+                var imgData = source_ctx.getImageData(0,0,image.width,image.height);
+                sprite_ctx.putImageData(imgData, 0, 0);
+                var imgbase64 = sprite.toDataURL().split(',')[1];
+
+                // Step 1: List文件名
+                fs.readdir('./project/images', function (err, data) {
+                    if (err) {
+                        printe(err);
+                        throw(err);
+                    }
+
+                    // Step 2: 选择Autotile文件名
+                    var filename;
+                    for (var i=1;;++i) {
+                        filename = 'autotile'+i;
+                        if (data.indexOf(filename+".png")==-1) break;
+                    }
+
+                    // Step 3: 写入文件
+                    fs.writeFile('./project/images/'+filename+".png", imgbase64, 'base64', function (err, data) {
+                        if (err) {
+                            printe(err);
+                            throw(err);
+                        }
+                        // Step 4: 自动注册
+                        editor_file.registerAutotile(filename, function (err) {
+                            if (err) {
+                                printe(err);
+                                throw(err);
+                            }
+                            printe('自动元件'+filename+'注册成功,请F5刷新编辑器');
+                        })
+
+                    })
+
+                })
+
+            }
+
+            if (selectAppend.value == 'autotile') {
+                confirmAutotile();
+                return;
+            }
+
             var ysize = selectAppend.value.indexOf('48') === -1 ? 32 : 48;
-            var sprited = sprite.getContext('2d');
-            //sprited.drawImage(img, 0, 0);
             var height = editor_mode.appendPic.toImg.height;
-            var sourced = source.getContext('2d');
             for (var ii = 0, v; v = editor_mode.appendPic.selectPos[ii]; ii++) {
-                var imgData = sourced.getImageData(v.x * 32, v.y * ysize, 32, ysize);
-                sprited.putImageData(imgData, ii * 32, height);
+                var imgData = source_ctx.getImageData(v.x * 32, v.y * ysize, 32, ysize);
+                sprite_ctx.putImageData(imgData, ii * 32, height);
+                // sprite_ctx.drawImage(editor_mode.appendPic.img, v.x * 32, v.y * ysize, 32, ysize,  ii * 32, height,  32, ysize)
             }
             var imgbase64 = sprite.toDataURL().split(',')[1];
             fs.writeFile('./project/images/' + editor_mode.appendPic.imageName + '.png', imgbase64, 'base64', function (err, data) {
@@ -640,6 +878,34 @@ editor_mode = function (editor) {
             editor_mode.onmode('nextChange');
             editor_mode.onmode(editModeSelect.value);
             if(editor.isMobile)editor.showdataarea(false);
+        }
+
+        editor_mode.checkFloorIds = function(thiseval){
+            var oldvalue = data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d.main.floorIds;
+            fs.readdir('project/floors',function(err, data){
+                if(err){
+                    printe(err);
+                    throw Error(err);
+                }
+                var newfiles=thiseval.map(function(v){return v+'.js'});
+                var notExist='';
+                for(var name,ii=0;name=newfiles[ii];ii++){
+                    if(data.indexOf(name)===-1)notExist=name;
+                }
+                if(notExist){
+                    var discard=confirm('文件'+notExist+'不存在, 保存会导致工程无法打开, 是否放弃更改');
+                    if(discard){
+                        editor.file.editTower([['change', "['main']['floorIds']", oldvalue]], function (objs_) {//console.log(objs_);
+                            if (objs_.slice(-1)[0] != null) {
+                                printe(objs_.slice(-1)[0]);
+                                throw(objs_.slice(-1)[0])
+                            }
+                            ;printe('已放弃floorIds的修改');
+                        });
+                    }
+                }
+            });
+            return true
         }
 
         if (Boolean(callback)) callback();

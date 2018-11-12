@@ -2,7 +2,7 @@ function main() {
 
     //------------------------ 用户修改内容 ------------------------//
 
-    this.version = "2.3.3"; // 游戏版本号；如果更改了游戏内容建议修改此version以免造成缓存问题。
+    this.version = "2.5"; // 游戏版本号；如果更改了游戏内容建议修改此version以免造成缓存问题。
 
     this.useCompress = false; // 是否使用压缩文件
     // 当你即将发布你的塔时，请使用“JS代码压缩工具”将所有js代码进行压缩，然后将这里的useCompress改为true。
@@ -10,7 +10,7 @@ function main() {
     // 如果要进行剧本的修改请务必将其改成false。
 
     this.bgmRemote = false; // 是否采用远程BGM
-    this.bgmRemoteRoot = "https://gitee.com/ckcz123/h5music/raw/master/"; // 远程BGM的根目录
+    this.bgmRemoteRoot = "https://h5mota.com/music/"; // 远程BGM的根目录
 
     this.isCompetition = false; // 是否是比赛模式
 
@@ -42,7 +42,7 @@ function main() {
         'gameCanvas': document.getElementsByClassName('gameCanvas'),
         'gif': document.getElementById('gif'),
         'gif2': document.getElementById('gif2'),
-        'curtain': document.getElementById('curtain'),
+        'gameDraw': document.getElementById('gameDraw'),
         'startButtons': document.getElementById('startButtons'),
         'playGame': document.getElementById('playGame'),
         'loadGame': document.getElementById('loadGame'),
@@ -50,15 +50,20 @@ function main() {
         'levelChooseButtons': document.getElementById('levelChooseButtons'),
         'data': document.getElementById('data'),
         'statusLabels': document.getElementsByClassName('statusLabel'),
+        'statusTexts': document.getElementsByClassName('statusText'),
         'floorCol': document.getElementById('floorCol'),
+        'nameCol': document.getElementById('nameCol'),
         'lvCol': document.getElementById('lvCol'),
         'hpmaxCol': document.getElementById('hpmaxCol'),
+        'manaCol': document.getElementById('manaCol'),
         'mdefCol': document.getElementById('mdefCol'),
         'moneyCol': document.getElementById('moneyCol'),
         'expCol': document.getElementById('expCol'),
         'upCol': document.getElementById('upCol'),
         'keyCol': document.getElementById('keyCol'),
+        'pzfCol': document.getElementById('pzfCol'),
         'debuffCol': document.getElementById('debuffCol'),
+        'skillCol': document.getElementById('skillCol'),
         'hard': document.getElementById('hard'),
     };
     this.mode = 'play';
@@ -66,7 +71,7 @@ function main() {
         'loader', 'control', 'utils', 'items', 'icons', 'maps', 'enemys', 'events', 'actions', 'data', 'ui', 'core'
     ];
     this.pureData = [ 
-        "data","enemys","icons","maps","items","functions"
+        'data', 'enemys', 'icons', 'maps', 'items', 'functions'
     ];
     this.materials = [
         'animates', 'enemys', 'hero', 'items', 'npcs', 'terrains', 'enemy48', 'npc48'
@@ -75,15 +80,18 @@ function main() {
     this.statusBar = {
         'image': {
             'floor': document.getElementById('img-floor'),
+            'name': document.getElementById('img-name'),
             'lv': document.getElementById('img-lv'),
             'hpmax': document.getElementById('img-hpmax'),
             'hp': document.getElementById("img-hp"),
+            'mana': document.getElementById("img-mana"),
             'atk': document.getElementById("img-atk"),
             'def': document.getElementById("img-def"),
             'mdef': document.getElementById("img-mdef"),
             'money': document.getElementById("img-money"),
             'experience': document.getElementById("img-experience"),
             'up': document.getElementById("img-up"),
+            'skill': document.getElementById('img-skill'),
             'book': document.getElementById("img-book"),
             'fly': document.getElementById("img-fly"),
             'toolbox': document.getElementById("img-toolbox"),
@@ -94,6 +102,7 @@ function main() {
         },
         'icons': {
             'floor': 0,
+            'name': null,
             'lv': 1,
             'hpmax': 2,
             'hp': 3,
@@ -116,23 +125,36 @@ function main() {
             'speedDown': 20,
             'speedUp': 21,
             'rewind': 22,
+            'equipbox': 23,
+            'mana': 24,
+            'skill': 25,
+            'paint': 26,
+            'erase': 27,
+            'empty': 28,
+            'exit': 29,
         },
         'floor': document.getElementById('floor'),
+        'name': document.getElementById('name'),
         'lv': document.getElementById('lv'),
         'hpmax': document.getElementById('hpmax'),
         'hp': document.getElementById('hp'),
+        'mana': document.getElementById('mana'),
         'atk': document.getElementById('atk'),
         'def': document.getElementById("def"),
         'mdef': document.getElementById('mdef'),
         'money': document.getElementById("money"),
         'experience': document.getElementById("experience"),
         'up': document.getElementById('up'),
+        'skill': document.getElementById('skill'),
         'yellowKey': document.getElementById("yellowKey"),
         'blueKey': document.getElementById("blueKey"),
         'redKey': document.getElementById("redKey"),
         'poison': document.getElementById('poison'),
         'weak':document.getElementById('weak'),
         'curse': document.getElementById('curse'),
+        'pickaxe': document.getElementById('pickaxe'),
+        'bomb': document.getElementById('bomb'),
+        'fly': document.getElementById('fly'),
         'hard': document.getElementById("hard")
     }
     this.floors = {}
@@ -177,7 +199,7 @@ main.prototype.init = function (mode, callback) {
 
             main.loaderFloors(function() {
                 var coreData = {};
-                ["dom", "statusBar", "canvas", "images", "materials",
+                ["dom", "statusBar", "canvas", "images", "tilesets", "materials",
                 "animates", "bgms", "sounds", "floorIds", "floors"].forEach(function (t) {
                     coreData[t] = main[t];
                 })
@@ -307,8 +329,7 @@ main.dom.data.onmousedown = function (e) {
         }
         var loc = main.core.getClickLoc(e.clientX, e.clientY);
         if (loc == null) return;
-        var x = parseInt(loc.x / loc.size), y = parseInt(loc.y / loc.size);
-        main.core.ondown(x, y);
+        main.core.ondown(loc);
     } catch (ee) {}
 }
 
@@ -318,8 +339,7 @@ main.dom.data.onmousemove = function (e) {
         e.stopPropagation();
         var loc = main.core.getClickLoc(e.clientX, e.clientY);
         if (loc == null) return;
-        var x = parseInt(loc.x / loc.size), y = parseInt(loc.y / loc.size);
-        main.core.onmove(x, y);
+        main.core.onmove(loc);
     }catch (ee) {}
 }
 
@@ -346,9 +366,7 @@ main.dom.data.ontouchstart = function (e) {
         e.preventDefault();
         var loc = main.core.getClickLoc(e.targetTouches[0].clientX, e.targetTouches[0].clientY);
         if (loc == null) return;
-        var x = parseInt(loc.x / loc.size), y = parseInt(loc.y / loc.size);
-        //main.core.onclick(x, y, []);
-        main.core.ondown(x, y);
+        main.core.ondown(loc);
     }catch (ee) {}
 }
 
@@ -358,14 +376,14 @@ main.dom.data.ontouchmove = function (e) {
         e.preventDefault();
         var loc = main.core.getClickLoc(e.targetTouches[0].clientX, e.targetTouches[0].clientY);
         if (loc == null) return;
-        var x = parseInt(loc.x / loc.size), y = parseInt(loc.y / loc.size);
-        main.core.onmove(x, y);
+        main.core.onmove(loc);
     }catch (ee) {}
 }
 
 ////// 手指离开触摸屏时 //////
-main.dom.data.ontouchend = function () {
+main.dom.data.ontouchend = function (e) {
     try {
+        e.preventDefault();
         main.core.onup();
     } catch (e) {
     }
@@ -378,20 +396,47 @@ main.statusBar.image.book.onclick = function () {
         return;
     }
 
+    if (main.core.isPlaying() && (core.status.event||{}).id=='paint') {
+        core.actions.setPaintMode('paint');
+        return;
+    }
+
     if (main.core.isPlaying())
         main.core.openBook(true);
 }
 
-////// 点击状态栏中的楼层传送器时 //////
+////// 点击状态栏中的楼层传送器/装备栏时 //////
 main.statusBar.image.fly.onclick = function () {
 
+    // 播放录像时
     if (core.isset(core.status.replay) && core.status.replay.replaying) {
         core.stopReplay();
         return;
     }
 
-    if (main.core.isPlaying())
-        main.core.useFly(true);
+    // 绘图模式
+    if (main.core.isPlaying() && (core.status.event||{}).id=='paint') {
+        core.actions.setPaintMode('erase');
+        return;
+    }
+
+    // 浏览地图时
+    if (main.core.isPlaying() && (core.status.event||{}).id=='viewMaps') {
+        if (core.isset(core.status.event.data)) {
+            core.status.event.data.paint = !core.status.event.data.paint;
+            core.ui.drawMaps(core.status.event.data);
+        }
+        return;
+    }
+
+    if (main.core.isPlaying()) {
+        if (!main.core.flags.equipboxButton) {
+            main.core.useFly(true);
+        }
+        else {
+            main.core.openEquipbox(true)
+        }
+    }
 }
 
 ////// 点击状态栏中的工具箱时 //////
@@ -402,8 +447,27 @@ main.statusBar.image.toolbox.onclick = function () {
         return;
     }
 
+    if (main.core.isPlaying() && (core.status.event||{}).id=='paint') {
+        core.actions.clearPaint();
+        return;
+    }
+
+    if (main.core.isPlaying()) {
+        main.core.openToolbox(core.status.event.id != 'equipbox');
+    }
+}
+
+////// 双击状态栏中的工具箱时 //////
+main.statusBar.image.toolbox.ondblclick = function () {
+
+    if (core.isset(core.status.replay) && core.status.replay.replaying) {
+        core.rewindReplay();
+        return;
+    }
+
     if (main.core.isPlaying())
-        main.core.openToolbox(true);
+        main.core.openEquipbox(true);
+
 }
 
 ////// 点击状态栏中的快捷商店时 //////
@@ -426,6 +490,11 @@ main.statusBar.image.save.onclick = function () {
         return;
     }
 
+    if (main.core.isPlaying() && (core.status.event||{}).id=='paint') {
+        core.actions.savePaint();
+        return;
+    }
+
     if (main.core.isPlaying())
         main.core.save(true);
 }
@@ -438,6 +507,11 @@ main.statusBar.image.load.onclick = function () {
         return;
     }
 
+    if (main.core.isPlaying() && (core.status.event||{}).id=='paint') {
+        core.actions.loadPaint();
+        return;
+    }
+
     if (main.core.isPlaying())
         main.core.load(true);
 }
@@ -447,6 +521,11 @@ main.statusBar.image.settings.onclick = function () {
 
     if (core.isset(core.status.replay) && core.status.replay.replaying) {
         core.saveReplay();
+        return;
+    }
+
+    if (main.core.isPlaying() && (core.status.event||{}).id=='paint') {
+        core.actions.exitPaint();
         return;
     }
 
@@ -502,32 +581,7 @@ main.dom.replayGame.onclick = function () {
         }
     }
 
-    core.readFile(function (obj) {
-        if (obj.name!=core.firstData.name) {
-            alert("存档和游戏不一致！");
-            return;
-        }
-        if (core.isset(obj.version) && obj.version!=core.firstData.version) {
-            // alert("游戏版本不一致！");
-            if (!confirm("游戏版本不一致！\n你仍然想播放录像吗？"))
-                return;
-        }
-        if (!core.isset(obj.route) || !core.isset(obj.hard)) {
-            alert("无效的录像！");
-            return;
-        }
-
-        core.dom.startPanel.style.display = 'none';
-        core.resetStatus(core.firstData.hero, obj.hard, core.firstData.floorId, null, core.initStatus.maps);
-        core.setFlag('seed', obj.seed);
-        core.setFlag('rand', obj.seed);
-        core.events.setInitData(obj.hard);
-        core.changeFloor(core.status.floorId, null, core.firstData.hero.loc, null, function() {
-            core.startReplay(core.decodeRoute(obj.route));
-        }, true);
-    }, function () {
-
-    })
+    core.chooseReplayFile();
 }
 
 

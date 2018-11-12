@@ -3,9 +3,9 @@ maps_90f36752_8815_4be8_b32b_d7fad1d0542e =
     ////////////////////////// 地形部分 //////////////////////////
 
     // 0-20 地形
-    '1':{'cls': 'terrains', 'id': 'yellowWall'}, // 黄墙
-    '2':{'cls': 'terrains', 'id': 'whiteWall'}, // 白墙
-    '3':{'cls': 'terrains', 'id': 'blueWall'}, // 蓝墙
+    '1':{'cls': 'terrains', 'id': 'yellowWall', 'canBreak': true}, // 黄墙
+    '2':{'cls': 'terrains', 'id': 'whiteWall', 'canBreak': true}, // 白墙
+    '3':{'cls': 'terrains', 'id': 'blueWall', 'canBreak': true}, // 蓝墙
     '4':{'cls': 'animates', 'id': 'star', 'noPass': true}, // 星空
     '5':{'cls': 'animates', 'id': 'lava', 'noPass': true}, // 岩浆
     '6':{'cls': 'terrains', 'id': 'ice'}, // 冰面
@@ -77,10 +77,9 @@ maps_90f36752_8815_4be8_b32b_d7fad1d0542e =
     '63':{'cls': 'items', 'id': 'moneyPocket'}, // 金钱袋
     '64':{'cls': 'items', 'id': 'shoes'}, // 绿鞋
     '65':{'cls': 'items', 'id': 'hammer'}, // 圣锤
-    '66':{'cls': 'items', 'id': 'sword0'}, // 空剑
-    '67':{'cls': 'items', 'id': 'shield0'}, // 空盾
     '68':{'cls': 'items', 'id': 'lifeWand'}, // 生命魔杖
     '69':{'cls': 'items', 'id': 'jumpShoes'}, // 生命魔杖
+    '70':{'cls': 'items', 'id': 'skill1'}, // 技能：二倍斩
 
 
     ////////////////////////// 门、楼梯、传送点部分 //////////////////////////
@@ -101,6 +100,11 @@ maps_90f36752_8815_4be8_b32b_d7fad1d0542e =
     '93':{'cls': 'animates', 'id': 'downPortal', 'noPass': false}, // 下箭头
     '94':{'cls': 'animates', 'id': 'rightPortal', 'noPass': false}, // 右箭头
 
+    // 101~120 其他的animates
+    '101':{'cls': 'animates', 'id': 'crystalUp'},
+    '102':{'cls': 'animates', 'id': 'crystalBottom'},
+    '103':{'cls': 'animates', 'id': 'fire'},
+    '104':{'cls': 'animates', 'id': 'switch'},
 
     ////////////////////////// NPC部分 //////////////////////////
 
@@ -143,10 +147,10 @@ maps_90f36752_8815_4be8_b32b_d7fad1d0542e =
     ////////////////////////// 其他部分 //////////////////////////
 
     // 171-200 其他（单向箭头、灯、箱子等等）
-    '161':{'cls': 'terrains', 'id': 'arrowUp', 'noPass': false}, // 单向上箭头
-    '162':{'cls': 'terrains', 'id': 'arrowDown', 'noPass': false}, // 单向下箭头
-    '163':{'cls': 'terrains', 'id': 'arrowLeft', 'noPass': false}, // 单向左箭头
-    '164':{'cls': 'terrains', 'id': 'arrowRight', 'noPass': false}, // 单向右箭头
+    '161':{'cls': 'terrains', 'id': 'arrowUp', 'noPass': false, "cannotOut": ["left","right","down"], "cannotIn": ["down"]}, // 单向上箭头
+    '162':{'cls': 'terrains', 'id': 'arrowDown', 'noPass': false, "cannotOut": ["left","right","up"], "cannotIn": ["up"]}, // 单向下箭头
+    '163':{'cls': 'terrains', 'id': 'arrowLeft', 'noPass': false, "cannotOut": ["up","down","right"], "cannotIn": ["right"]}, // 单向左箭头
+    '164':{'cls': 'terrains', 'id': 'arrowRight', 'noPass': false, "cannotOut": ["up","down","left"], "cannotIn": ["left"]}, // 单向右箭头
     '165':{'cls': 'terrains', 'id': 'light', 'trigger': 'changeLight', 'noPass': false}, // 灯
     '166':{'cls': 'terrains', 'id': 'darkLight', 'noPass': true}, // 暗灯
     '167':{'cls': 'terrains', 'id': 'ski', 'trigger': 'ski', 'noPass': false}, // 滑冰

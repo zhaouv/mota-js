@@ -20,6 +20,7 @@ utils.prototype.replaceText = function (text) {
 
 ////// 计算表达式的值 //////
 utils.prototype.calValue = function (value) {
+    if (!core.isset(value)) return value;
     if (typeof value == 'number') {
         return value;
     }
@@ -124,6 +125,79 @@ utils.prototype.removeLocalStorage = function (key) {
     localStorage.removeItem(core.firstData.name+"_"+key);
 }
 
+utils.prototype.setLocalForage = function (key, value, successCallback, errorCallback) {
+
+    if (!core.platform.useLocalForage) {
+        if (this.setLocalStorage(key, value)) {
+            if (core.isset(successCallback)) successCallback();
+        }
+        else {
+            if (core.isset(errorCallback)) errorCallback();
+        }
+        return;
+    }
+
+    // Save to localforage
+    var compressed = LZString.compress(JSON.stringify(value));
+    localforage.setItem(core.firstData.name+"_"+key, compressed, function (err) {
+        if (core.isset(err)) {
+            if (core.isset(errorCallback)) errorCallback(err);
+        }
+        else if (core.isset(successCallback)) successCallback();
+    });
+}
+
+utils.prototype.getLocalForage = function (key, defaultValue, successCallback, errorCallback) {
+
+    if (!core.platform.useLocalForage) {
+        var value=this.getLocalStorage(key, defaultValue);
+        if (core.isset(successCallback)) {
+            successCallback(value);
+        }
+        return;
+    }
+
+    localforage.getItem(core.firstData.name+"_"+key, function (err, value) {
+        if (core.isset(err)) {
+            if (core.isset(errorCallback)) errorCallback(err);
+        }
+        else {
+            if (core.isset(value)) {
+                var output = LZString.decompress(value);
+                if (core.isset(output) && output.length>0) {
+                    try {
+                        if (core.isset(successCallback))
+                            successCallback(JSON.parse(output));
+                        return;
+                    }
+                    catch (ee) {console.log(ee);}
+                }
+                if (core.isset(successCallback))
+                    successCallback(JSON.parse(value));
+                return;
+            }
+            if (core.isset(successCallback))
+                successCallback(defaultValue);
+        }
+    })
+}
+
+utils.prototype.removeLocalForage = function (key, successCallback, errorCallback) {
+
+    if (!core.platform.useLocalForage) {
+        this.removeLocalStorage(key);
+        if (core.isset(successCallback)) successCallback();
+        return;
+    }
+
+    localforage.removeItem(core.firstData.name+"_"+key, function (err) {
+        if (core.isset(err)) {
+            if (core.isset(errorCallback)) errorCallback(err);
+        }
+        else if (core.isset(successCallback)) successCallback();
+    })
+}
+
 ////// 深拷贝一个对象 //////
 utils.prototype.clone = function (data) {
     if (!core.isset(data)) return data;
@@ -180,14 +254,14 @@ utils.prototype.cropImage = function (image, size) {
 ////// 格式化时间为字符串 //////
 utils.prototype.formatDate = function(date) {
     if (!core.isset(date)) return "";
-    return date.getFullYear()+"-"+core.setTwoDigits(date.getMonth()+1)+"-"+core.setTwoDigits(date.getDate())+" "
+    return ""+date.getFullYear()+"-"+core.setTwoDigits(date.getMonth()+1)+"-"+core.setTwoDigits(date.getDate())+" "
         +core.setTwoDigits(date.getHours())+":"+core.setTwoDigits(date.getMinutes())+":"+core.setTwoDigits(date.getSeconds());
 }
 
 ////// 格式化时间为最简字符串 //////
 utils.prototype.formatDate2 = function (date) {
     if (!core.isset(date)) return "";
-    return date.getFullYear()+core.setTwoDigits(date.getMonth()+1)+core.setTwoDigits(date.getDate())
+    return ""+date.getFullYear()+core.setTwoDigits(date.getMonth()+1)+core.setTwoDigits(date.getDate())
         +core.setTwoDigits(date.getHours())+core.setTwoDigits(date.getMinutes())+core.setTwoDigits(date.getSeconds());
 }
 
@@ -255,6 +329,10 @@ utils.prototype.encodeRoute = function (route) {
             }
             if (t.indexOf('item:')==0)
                 ans+="I"+t.substring(5)+":";
+            else if (t.indexOf('unEquip:')==0)
+                ans+="u"+t.substring(8);
+            else if (t.indexOf('equip:')==0)
+                ans+="e"+t.substring(6)+":";
             else if (t.indexOf('fly:')==0)
                 ans+="F"+t.substring(4)+":";
             else if (t.indexOf('choices:')==0)
@@ -263,10 +341,14 @@ utils.prototype.encodeRoute = function (route) {
                 ans+="S"+t.substring(5);
             else if (t=='turn')
                 ans+='T';
+            else if (t.indexOf('turn:')==0)
+                ans+="t"+t.substring(5).substring(0,1).toUpperCase()+":";
             else if (t=='getNext')
                 ans+='G';
             else if (t.indexOf('input:')==0)
                 ans+="P"+t.substring(6);
+            else if (t.indexOf('input2:')==0)
+                ans+="Q"+t.substring(7)+":";
             else if (t=='no')
                 ans+='N';
             else if (t.indexOf('move:')==0)
@@ -301,7 +383,7 @@ utils.prototype.decodeRoute = function (route) {
     }
     var getString = function () {
         var str="";
-        while (index<route.length && /\w/.test(route.charAt(index))) {
+        while (index<route.length && route.charAt(index)!=':') {
             str+=route.charAt(index++);
         }
         index++;
@@ -310,20 +392,28 @@ utils.prototype.decodeRoute = function (route) {
 
     while (index<route.length) {
         var c=route.charAt(index++);
-        var nxt=(c=='I'||c=='F'||c=='S')?getString():getNumber();
+        var nxt=(c=='I'|| c=='e' ||c=='F'||c=='S'||c=='Q'||c=='t')?getString():getNumber();
+
+        var mp = {
+            "U": "up",
+            "D": "down",
+            "L": "left",
+            "R": "right"
+        }
 
         switch (c) {
-            case "U": for (var i=0;i<nxt;i++) ans.push("up"); break;
-            case "D": for (var i=0;i<nxt;i++) ans.push("down"); break;
-            case "L": for (var i=0;i<nxt;i++) ans.push("left"); break;
-            case "R": for (var i=0;i<nxt;i++) ans.push("right"); break;
+            case "U": case "D": case "L": case "R": for (var i=0;i<nxt;i++) ans.push(mp[c]); break;
             case "I": ans.push("item:"+nxt); break;
+            case "u": ans.push("unEquip:"+nxt); break;
+            case "e": ans.push("equip:"+nxt); break;
             case "F": ans.push("fly:"+nxt); break;
             case "C": ans.push("choices:"+nxt); break;
             case "S": ans.push("shop:"+nxt+":"+getNumber(true)); break;
             case "T": ans.push("turn"); break;
+            case "t": ans.push("turn:"+mp[nxt]); break;
             case "G": ans.push("getNext"); break;
             case "P": ans.push("input:"+nxt); break;
+            case "Q": ans.push("input2:"+nxt); break;
             case "N": ans.push("no"); break;
             case "M": ++index; ans.push("move:"+nxt+":"+getNumber()); break;
             case "K": ans.push("key:"+nxt); break;
@@ -352,6 +442,11 @@ utils.prototype.subarray = function (a, b) {
     return na;
 }
 
+utils.prototype.clamp = function (x, a, b) {
+    var min=Math.min(a, b), max=Math.max(a, b);
+    return Math.min(Math.max(x||0, min), max);
+}
+
 ////// Base64加密 //////
 utils.prototype.encodeBase64 = function (str) {
     return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, function (match, p1) {
@@ -364,6 +459,26 @@ utils.prototype.decodeBase64 = function (str) {
     return decodeURIComponent(atob(str).split('').map(function(c) {
         return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
     }).join(''));
+}
+
+////// 任意进制转换 //////
+utils.prototype.convertBase = function (str, fromBase, toBase) {
+    var map = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ~`!@#$%^&*()_-+={}[]\\|:;<>,.?/";
+    if (fromBase==toBase) return str;
+    var len = str.length, ans="";
+    var t = [];
+    for (var i=0;i<len;i++) t[i]=map.indexOf(str.charAt(i));
+    t[len]=0;
+    while (len>0) {
+        for (var i=len; i>=1; i--) {
+            t[i-1]+=t[i]%toBase*fromBase;
+            t[i]=parseInt(t[i]/toBase);
+        }
+        ans+=map.charAt(t[0]%toBase);
+        t[0]=parseInt(t[0]/toBase);
+        while (len>0 && t[len-1]==0) len--;
+    }
+    return ans;
 }
 
 utils.prototype.__init_seed = function () {
@@ -568,7 +683,8 @@ utils.prototype.copy = function (data) {
     textArea.style.background = 'transparent';
     textArea.value = data;
     document.body.appendChild(textArea);
-    textArea.select();
+    textArea.focus();
+    textArea.setSelectionRange(0, textArea.value.length);
     var successful = false;
     try {
         successful = document.execCommand('copy');
@@ -631,6 +747,81 @@ utils.prototype.hide = function (obj, speed, callback) {
     }, speed);
 }
 
+utils.prototype.encodeCanvas = function (ctx) {
+    var list = [];
+    var width = ctx.canvas.width, height = ctx.canvas.height;
+    ctx.mozImageSmoothingEnabled = false;
+    ctx.webkitImageSmoothingEnabled = false;
+    ctx.msImageSmoothingEnabled = false;
+    ctx.imageSmoothingEnabled = false;
+
+    var imgData = ctx.getImageData(0, 0, width, height);
+    for (var i=0;i<imgData.data.length;i+=4) {
+        list.push(Math.sign(imgData.data[i+3]));
+    }
+    // compress 01 to array
+    var prev = 0, cnt = 0, arr = [];
+    for (var i=0;i<list.length;i++) {
+        if (list[i]!=prev) {
+            arr.push(cnt);
+            prev=list[i];
+            cnt=0;
+        }
+        cnt++;
+    }
+    arr.push(cnt);
+    return arr;
+}
+
+////// 解析arr数组，并绘制到tempCanvas上 //////
+utils.prototype.decodeCanvas = function (arr, width, height) {
+    if (!core.isset(arr)) return null;
+    // to byte array
+    var curr = 0, list = [];
+    arr.forEach(function (x) {
+        for (var i=0;i<x;i++) list.push(curr);
+        curr = 1-curr;
+    })
+    // 使用tempCanvas
+    var tempCanvas = core.bigmap.tempCanvas;
+    tempCanvas.canvas.width=width;
+    tempCanvas.canvas.height=height;
+    tempCanvas.clearRect(0, 0, width, height);
+
+    var imgData = tempCanvas.getImageData(0, 0, width, height);
+    for (var i=0;i<imgData.data.length;i+=4) {
+        var index = i/4;
+        if (list[index]) {
+            imgData.data[i]=255;
+            imgData.data[i+3]=255;
+        }
+    }
+    tempCanvas.putImageData(imgData, 0, 0);
+}
+
+utils.prototype.consoleOpened = function () {
+    var threshold = 160;
+    var widthThreshold = window.outerWidth - window.innerWidth > threshold;
+    var heightThreshold = window.outerHeight - window.innerHeight > threshold;
+    return !(heightThreshold && widthThreshold) &&
+        ((window.Firebug && window.Firebug.chrome && window.Firebug.chrome.isInitialized)
+            || widthThreshold || heightThreshold);
+}
+
+utils.prototype.hashCode = function (obj) {
+    if (typeof obj == 'string') {
+        var hash = 0, i, chr;
+        if (obj.length === 0) return hash;
+        for (i = 0; i < obj.length; i++) {
+            chr   = obj.charCodeAt(i);
+            hash  = ((hash << 5) - hash) + chr;
+            hash |= 0;
+        }
+        return hash;
+    }
+    return this.hashCode(JSON.stringify(obj).split("").sort().join(""));
+}
+
 utils.prototype._export = function (floorIds) {
     if (!core.isset(floorIds)) floorIds = [core.status.floorId];
     else if (floorIds=='all') floorIds = core.clone(core.floorIds);
@@ -641,7 +832,7 @@ utils.prototype._export = function (floorIds) {
     // map
     var content = floorIds.length+"\n13 13\n\n";
     floorIds.forEach(function (floorId) {
-        var arr = core.maps.getMapArray(core.status.maps[floorId].blocks);
+        var arr = core.maps.getMapArray(core.status.maps[floorId].blocks, 13, 13);
         content += arr.map(function (x) {
             // check monster
             x.forEach(function (t) {

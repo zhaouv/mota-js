@@ -10,17 +10,25 @@ maps.prototype.init = function() {
 ////// 加载某个楼层（从剧本或存档中） //////
 maps.prototype.loadFloor = function (floorId, map) {
     var floor = core.floors[floorId];
+
+    if (!core.isset(map)) map = floor.map;
+    if (map instanceof Array) {
+        map = {"map": map};
+    }
     var content = {};
-    content['floorId'] = floor.floorId;
-    content['name'] = floor.name;
-    content['title'] = floor.title;
-    content['canFlyTo'] = floor.canFlyTo;
-    if (!core.isset(map)) map=floor.map;
-    var mapIntoBlocks = function(map,maps,floor){
+    ["floorId", "title", "name", "canFlyTo", "canUseQuickShop", "cannotViewMap", "color", "weather",
+        "defaultGround", "images", "item_ratio", "upFloor", "bgm", "downFloor", "underGround"].forEach(function (e) {
+        if (core.isset(map[e])) content[e] = core.clone(map[e]);
+        else content[e] = core.clone(floor[e]);
+    });
+    map=map.map;
+    var mapIntoBlocks = function(map,maps,floor,floorId){
         var blocks = [];
-        for (var i = 0; i < 13; i++) {
-            for (var j = 0; j < 13; j++) {
-                var block = maps.initBlock(j, i, map[i][j]);
+        var mw = core.floors[floorId].width || 13;
+        var mh = core.floors[floorId].height || 13;
+        for (var i = 0; i < mh; i++) {
+            for (var j = 0; j < mw; j++) {
+                var block = maps.initBlock(j, i, (map[i]||[])[j]||0);
                 maps.addInfo(block);
                 maps.addEvent(block,j,i,floor.events[j+","+i])
                 maps.addChangeFloor(block,j,i,floor.changeFloor[j+","+i]);
@@ -30,34 +38,43 @@ maps.prototype.loadFloor = function (floorId, map) {
         return blocks;
     }
     if (main.mode=='editor'){
-        main.editor.mapIntoBlocks = function(map,floor){
-            return mapIntoBlocks(map,core.maps,floor);
+        main.editor.mapIntoBlocks = function(map,floor,floorId){
+            return mapIntoBlocks(map,core.maps,floor,floorId);
         }
     }
     // 事件处理
-    content['blocks'] = mapIntoBlocks(map,this,floor);
+    content['blocks'] = mapIntoBlocks(map,this,floor,floorId);
     return content;
 }
 
 ////// 数字和ID的对应关系 //////
 maps.prototype.initBlock = function (x, y, id) {
-    var enable=null;
+    var disable=null;
     id = ""+id;
     if (id.length>2) {
         if (id.indexOf(":f")==id.length-2) {
             id = id.substring(0, id.length - 2);
-            enable = false;
+            disable = true;
         }
         else if (id.indexOf(":t")==id.length-2) {
             id = id.substring(0, id.length - 2);
-            enable = true;
+            disable = false;
         }
     }
     id=parseInt(id);
     var tmp = {'x': x, 'y': y, 'id': id};
-    if (enable!=null) tmp.enable = enable;
+    if (disable!=null) tmp.disable = disable;
 
-    if (id in this.blocksInfo) tmp.event = JSON.parse(JSON.stringify(this.blocksInfo[id]));
+    if (id==17) {
+        tmp.event = {"cls": "terrains", "id": "airwall", "noPass": true};
+    }
+    else if (id in this.blocksInfo) tmp.event = JSON.parse(JSON.stringify(this.blocksInfo[id]));
+    else {
+        var tilesetOffset = core.icons.getTilesetOffset(id);
+        if (tilesetOffset != null) {
+            tmp.event = {"cls": "tileset", "id": "X"+id, "noPass": true};
+        }
+    }
 
     return tmp;
 }
@@ -72,7 +89,7 @@ maps.prototype.addInfo = function (block) {
             block.event.trigger = 'getItem';
         }
         if (!core.isset(block.event.noPass)) {
-            if (block.event.cls.indexOf("enemy")==0 || block.event.cls.indexOf("npc")==0 || block.event.cls=='terrains') {
+            if (block.event.cls.indexOf("enemy")==0 || block.event.cls.indexOf("npc")==0 || block.event.cls=='terrains' || block.event.cls=='autotile') {
                 block.event.noPass = true;
             }
         }
@@ -111,8 +128,8 @@ maps.prototype.addEvent = function (block, x, y, event) {
         block.event.noPass = event.noPass;
 
     // 覆盖enable
-    if (!core.isset(block.enable) && core.isset(event.enable)) {
-        block.enable=event.enable;
+    if (!core.isset(block.disable) && core.isset(event.enable)) {
+        block.disable=!event.enable;
     }
     // 覆盖trigger
     if (!core.isset(block.event.trigger)) {
@@ -124,7 +141,7 @@ maps.prototype.addEvent = function (block, x, y, event) {
     }
     // 覆盖其他属性
     for (var key in event) {
-        if (key!="enable" && key!="trigger" && key!="noPass" && core.isset(event[key])) {
+        if (key!="disable" && key!="trigger" && key!="noPass" && core.isset(event[key])) {
             block.event[key]=core.clone(event[key]);
         }
     }
@@ -157,23 +174,46 @@ maps.prototype.save = function(maps, floorId) {
         return map;
     }
 
-    var thisFloor = maps[floorId];
+    var thisFloor = core.clone(maps[floorId]);
+    var mw = core.floors[floorId].width || 13;
+    var mh = core.floors[floorId].height || 13;
 
     var blocks = [];
-    for (var x=0;x<13;x++) {
+    for (var x=0;x<mh;x++) {
         blocks[x]=[];
-        for (var y=0;y<13;y++) {
+        for (var y=0;y<mw;y++) {
             blocks[x].push(0);
         }
     }
     thisFloor.blocks.forEach(function (block) {
-        if (core.isset(block.enable)) {
-            if (block.enable) blocks[block.y][block.x] = block.id+":t";
+        if (core.isset(block.disable)) {
+            if (!block.disable) blocks[block.y][block.x] = block.id+":t";
             else blocks[block.y][block.x] = block.id+":f";
         }
         else blocks[block.y][block.x] = block.id;
     });
-    return blocks;
+    delete thisFloor.blocks;
+    thisFloor.map = blocks;
+    return main.mode == 'editor' ? blocks : thisFloor;
+}
+
+////// 更改地图画布的尺寸
+maps.prototype.resizeMap = function(floorId) {
+    floorId = floorId || core.status.floorId;
+    core.bigmap.width = core.floors[floorId].width || 13;
+    core.bigmap.height = core.floors[floorId].height || 13;
+    var cwidth = core.bigmap.width * 32;
+    var cheight = core.bigmap.height * 32;
+    core.bigmap.canvas.forEach(function(cn){
+        core.canvas[cn].canvas.setAttribute("width",cwidth);
+        core.canvas[cn].canvas.setAttribute("height",cheight);
+        core.canvas[cn].canvas.style.width = cwidth*core.domStyle.scale + "px";
+        core.canvas[cn].canvas.style.height = cheight*core.domStyle.scale + "px";
+        if(main.mode==='editor' && editor.isMobile){
+            core.canvas[cn].canvas.style.width = core.bigmap.width*32/416*96 + "vw";
+            core.canvas[cn].canvas.style.height = core.bigmap.height*32/416*96 + "vw";
+        }
+    });
 }
 
 ////// 将存档中的地图信息重新读取出来 //////
@@ -189,17 +229,20 @@ maps.prototype.load = function (data, floorId) {
 }
 
 ////// 将当前地图重新变成二维数组形式 //////
-maps.prototype.getMapArray = function (blockArray){
+maps.prototype.getMapArray = function (blockArray,width,height){
+
+    width=width||13;
+    height=height||13;
 
     var blocks = [];
-    for (var x=0;x<13;x++) {
+    for (var x=0;x<height;x++) {
         blocks[x]=[];
-        for (var y=0;y<13;y++) {
+        for (var y=0;y<width;y++) {
             blocks[x].push(0);
         }
     }
     blockArray.forEach(function (block) {
-        if (!(core.isset(block.enable) && !block.enable))
+        if (!block.disable && block.x<width && block.y<height)
             blocks[block.y][block.x] = block.id;
     });
     return blocks;
@@ -221,42 +264,44 @@ maps.prototype.canMoveHero = function(x,y,direction,floorId) {
             return false;
     }
 
-    var nowBlock = core.getBlock(x,y,floorId);
-    if (nowBlock!=null){
-        nowId = nowBlock.block.event.id;
-        var nowIsArrow = nowId.slice(0, 5).toLowerCase() == 'arrow';
-        if(nowIsArrow){
-            var nowArrow = nowId.slice(5).toLowerCase();
-            if (direction != nowArrow) {
-                return false;
-            }
-        }
+    var check = function (block, name) {
+        if (!core.isset(block)) return true;
+        if (block instanceof Array) return check((block[y]||[])[x], name);
+        if (typeof block == 'number') return check(core.maps.initBlock(0,0,block), name);
+        if (core.isset(block.block)) return check(block.block, name);
+        return ((block.event||{})[name]||[]).indexOf(direction)<0;
     }
+    var getNumber = function (floorId, name, x, y) {
+        return (core.maps.getBgFgMapArray(floorId, name)[y]||[])[x];
+    }
+
+    // 检查该点的cannotOut
+    if (!check(core.getBlock(x,y,floorId),"cannotOut") || !check(getNumber(floorId,"bg",x,y),"cannotOut") || !check(getNumber(floorId,"fg",x,y),"cannotOut"))
+        return false;
+
     var scan = {
         'up': {'x': 0, 'y': -1},
         'left': {'x': -1, 'y': 0},
         'down': {'x': 0, 'y': 1},
         'right': {'x': 1, 'y': 0}
     };
-    var nextBlock = core.getBlock(x+scan[direction].x,y+scan[direction].y,floorId);
-    if (nextBlock!=null){
-        nextId = nextBlock.block.event.id;
-        // 遇到单向箭头处理
-        var isArrow = nextId.slice(0, 5).toLowerCase() == 'arrow';
-        if(isArrow){
-            var nextArrow = nextId.slice(5).toLowerCase();
-            if ( (scan[direction].x + scan[nextArrow].x) == 0 && (scan[direction].y + scan[nextArrow].y) == 0 ) {
-                return false;
-            }
-        }
-    }
+    var nx = x+scan[direction].x, ny = y+scan[direction].y;
+    // 检查目标点的cannotIn
+    if (!check(core.getBlock(nx,ny,floorId),"cannotIn") || !check(getNumber(floorId,"bg",nx,ny),"cannotIn") || !check(getNumber(floorId,"fg",nx,ny),"cannotIn"))
+        return false;
+
+    // 检查将死的领域
+    if (floorId==core.status.floorId && core.status.hero.hp <= core.status.checkBlock.damage[nx+core.bigmap.width*ny]
+        && !core.flags.canGoDeadZone && core.getBlock(nx, ny)==null)
+        return false;
+
     return true;
 }
 
 ////// 能否瞬间移动 //////
 maps.prototype.canMoveDirectly = function (destX,destY) {
 
-    // 不可瞬间移动请返回0
+    // 不可瞬间移动请返回-1
     if (!core.flags.enableMoveDirectly) return -1;
 
     // 中毒状态：不能
@@ -265,73 +310,166 @@ maps.prototype.canMoveDirectly = function (destX,destY) {
     var fromX = core.getHeroLoc('x'), fromY = core.getHeroLoc('y');
     if (fromX==destX&&fromY==destY) return 0;
 
-    // 可以无视起点事件
+    // 无视起点事件
     var nowBlockId = core.getBlockId(fromX, fromY);
-    if ((nowBlockId!=null&&nowBlockId!='upFloor'&&nowBlockId!='downFloor')
-        ||core.status.checkBlock.damage[13*fromX+fromY]>0)
+    if ((nowBlockId!=null&&nowBlockId!='upFloor'&&nowBlockId!='downFloor'&&nowBlockId!='portal'
+        &&nowBlockId!='upPortal'&&nowBlockId!='leftPortal'&&nowBlockId!='downPortal'&&nowBlockId!='rightPortal')
+        ||core.status.checkBlock.damage[fromX+core.bigmap.width*fromY]>0)
         return -1;
 
     // BFS
     var visited=[], queue=[];
-    visited[13*fromX+fromY]=0;
-    queue.push(13*fromX+fromY);
+    visited[fromX+core.bigmap.width*fromY]=0;
+    queue.push(fromX+core.bigmap.width*fromY);
 
-    var directions = [[-1,0],[1,0],[0,1],[0,-1]];
+    var directions = {
+        "left": [-1,0],
+        "up": [0,-1],
+        "right": [1,0],
+        "down": [0,1]
+    }
     while (queue.length>0) {
-        var now=queue.shift(), nowX=parseInt(now/13), nowY=now%13;
+        var now=queue.shift(), nowX=parseInt(now%core.bigmap.width), nowY=parseInt(now/core.bigmap.width);
 
         for (var dir in directions) {
+            if (!core.canMoveHero(nowX, nowY, dir)) continue;
             var nx=nowX+directions[dir][0], ny=nowY+directions[dir][1];
-            if (nx<0||nx>=13||ny<0||ny>=13||visited[13*nx+ny]||core.getBlock(nx,ny)!=null||core.status.checkBlock.damage[13*nx+ny]>0) continue;
-            visited[13*nx+ny]=visited[13*nowX+nowY]+1;
-            if (nx==destX&&ny==destY) return visited[13*nx+ny];
-            queue.push(13*nx+ny);
+            if (nx<0||nx>=core.bigmap.width||ny<0||ny>=core.bigmap.height||visited[nx+core.bigmap.width*ny]||core.getBlock(nx,ny)!=null||core.status.checkBlock.damage[nx+core.bigmap.width*ny]>0) continue;
+            visited[nx+core.bigmap.width*ny]=visited[nowX+core.bigmap.width*nowY]+1;
+            if (nx==destX&&ny==destY) return visited[nx+core.bigmap.width*ny];
+            queue.push(nx+core.bigmap.width*ny);
         }
     }
     return -1;
 }
 
 maps.prototype.drawBlock = function (block, animate, dx, dy) {
+    // none：空地
+    if (block.event.id=='none') return;
+
     var cls = block.event.cls, height = block.event.height || 32;
-    var blockIcon = core.material.icons[cls][block.event.id];
-    var blockImage = core.material.images[cls];
-    animate=(animate||0)%(block.event.animate||1);
+
+    var image, x, y;
+
+    if (cls == 'tileset') {
+        var offset = core.icons.getTilesetOffset(block.event.id);
+        if (offset == null) return;
+        image = core.material.images.tilesets[offset.image];
+        x = offset.x;
+        y = offset.y;
+    }
+    else if (cls == 'autotile') return;
+    // 空气墙的单独处理
+    else if (block.id==17) {
+        if (!core.isset(core.material.images.airwall)) return;
+        image = core.material.images.airwall;
+        x = y = 0;
+    }
+    else {
+        image = core.material.images[cls];
+        x = (animate||0)%(block.event.animate||1);
+        y = core.material.icons[cls][block.event.id];
+    }
     dx = dx || 0;
     dy = dy || 0;
+
     core.canvas.event.clearRect(block.x * 32 + dx, block.y * 32 + dy, 32, 32);
-    core.canvas.event.drawImage(blockImage, animate * 32, blockIcon * height + height-32, 32, 32, block.x * 32 + dx, block.y * 32 + dy, 32, 32);
+    core.canvas.event.drawImage(image, x * 32, y * height + height-32, 32, 32, block.x * 32 + dx, block.y * 32 + dy, 32, 32);
     if (height>32) {
         core.canvas.event2.clearRect(block.x * 32 + dx, block.y * 32 + 32 - height + dy, 32, height-32)
-        core.canvas.event2.drawImage(blockImage, animate * 32, blockIcon * height, 32, height-32, block.x * 32 + dx, block.y*32 + 32 - height + dy, 32, height-32);
+        core.canvas.event2.drawImage(image, x * 32, y * height, 32, height-32, block.x * 32 + dx, block.y*32 + 32 - height + dy, 32, height-32);
     }
+}
+
+maps.prototype.getBgFgMapArray = function (floorId, name) {
+    floorId = floorId||core.status.floorId;
+    var width = core.floors[floorId].width || 13;
+    var height = core.floors[floorId].height || 13;
+
+    if (core.isset(core.status[name+"maps"][floorId]))
+        return core.status[name+"maps"][floorId];
+
+    var arr = core.clone(core.floors[floorId][name+"map"] || []);
+    if(main.mode=='editor')arr = core.clone(editor[name+"map"])||arr;
+    for (var x = 0; x < width; x++) {
+        for (var y = 0; y < height; y++) {
+            arr[y] = arr[y] || [];
+            if (core.hasFlag(name + "_" + floorId + "_" + x + "_" + y)) arr[y][x] = 0;
+            else arr[y][x] = core.getFlag(name + "v_" + floorId + "_" + x + "_" + y, arr[y][x] || 0);
+            if(main.mode=='editor')arr[y][x]= arr[y][x].idnum || arr[y][x] || 0;
+        }
+    }
+    core.status[name+"maps"][floorId] = core.clone(arr);
+    return arr;
+}
+
+////// 背景/前景图块的绘制 //////
+maps.prototype.drawBgFgMap = function (floorId, canvas, name) {
+    floorId = floorId || core.status.floorId;
+    var width = core.floors[floorId].width || 13;
+    var height = core.floors[floorId].height || 13;
+
+    var groundId = (core.status.maps||core.floors)[floorId].defaultGround || "ground";
+    var blockIcon = core.material.icons.terrains[groundId];
+    var blockImage = core.material.images.terrains;
+
+    if (!core.isset(core.status[name+"maps"]))
+        core.status[name+"maps"] = {};
+
+    var arr = this.getBgFgMapArray(floorId, name);
+    for (var x = 0; x < width; x++) {
+        for (var y = 0; y < height; y++) {
+            if (name=='bg')
+                canvas.drawImage(blockImage, 0, blockIcon * 32, 32, 32, x * 32, y * 32, 32, 32);
+            if (arr[y][x]>0) {
+                var block = core.maps.initBlock(x, y, arr[y][x]);
+                if (core.isset(block.event)) {
+                    var id = block.event.id, cls = block.event.cls;
+                    if (cls == 'autotile')
+                        core.drawAutotile(canvas, arr, block, 32, 0, 0);
+                    else if (cls == 'tileset') {
+                        var offset = core.icons.getTilesetOffset(id);
+                        if (offset!=null) {
+                            canvas.drawImage(core.material.images.tilesets[offset.image], 32*offset.x, 32*offset.y, 32, 32, 32*x, 32*y, 32, 32);
+                        }
+                    }
+                    else if (arr[y][x]==17) {
+                        if (core.isset(core.material.images.airwall)) {
+                            canvas.drawImage(core.material.images.airwall, 32*x, 32*y);
+                        }
+                    }
+                    else
+                        canvas.drawImage(core.material.images[cls], 0, core.material.icons[cls][id] * 32, 32, 32, x * 32, y * 32, 32, 32);
+                }
+            }
+        }
+    }
+
 }
 
 ////// 绘制某张地图 //////
 maps.prototype.drawMap = function (mapName, callback) {
+    mapName = mapName || core.status.floorId;
     core.clearMap('all');
     core.removeGlobalAnimate(null, null, true);
+
     var drawBg = function(){
-        var groundId = core.floors[mapName].defaultGround || "ground";
-        var blockIcon = core.material.icons.terrains[groundId];
-        var blockImage = core.material.images.terrains;
-        for (var x = 0; x < 13; x++) {
-            for (var y = 0; y < 13; y++) {
-                core.canvas.bg.drawImage(blockImage, 0, blockIcon * 32, 32, 32, x * 32, y * 32, 32, 32);
-            }
-        }
+
+        core.maps.drawBgFgMap(mapName, core.canvas.bg, "bg");
+        core.maps.drawBgFgMap(mapName, core.canvas.fg, "fg");
 
         var images = [];
-        if (core.isset(core.floors[mapName].images)) {
-            images = core.floors[mapName].images;
+        if (core.isset(core.status.maps[mapName].images)) {
+            images = core.status.maps[mapName].images;
             if (typeof images == 'string') {
                 images = [[0, 0, images]];
             }
         }
         images.forEach(function (t) {
-            var size=416, ratio=1;
             var dx=parseInt(t[0]), dy=parseInt(t[1]), p=t[2];
-            if (core.isset(dx) && core.isset(dy) && core.isset(core.material.images.images[p])) {
-                dx*=32; dy*=32;
+            if (core.isset(dx) && core.isset(dy) &&
+                !core.hasFlag("floorimg_"+mapName+"_"+dx+"_"+dy) &&
+                core.isset(core.material.images.images[p])) {
                 var image = core.material.images.images[p];
                 if (!t[3]) {
                     if (/.*\.gif/i.test(p) && main.mode=='play') {
@@ -339,27 +477,37 @@ maps.prototype.drawMap = function (mapName, callback) {
                         var gif = new Image();
                         gif.src = core.material.images.images[p].src;
                         gif.style.position = 'absolute';
-                        gif.style.left = (dx*core.domStyle.scale)+"px";
-                        gif.style.top = (dy*core.domStyle.scale)+"px";
+                        gif.style.left = (32*dx*core.domStyle.scale)+"px";
+                        gif.style.top = (32*dy*core.domStyle.scale)+"px";
                         gif.style.width = core.material.images.images[p].width*core.domStyle.scale+"px";
                         gif.style.height = core.material.images.images[p].height*core.domStyle.scale+"px";
                         core.dom.gif.appendChild(gif);
                     }
                     else {
-                        core.canvas.bg.drawImage(image, dx * ratio, dy * ratio, Math.min(size - dx * ratio, ratio * image.width), Math.min(size - dy * ratio, ratio * image.height));
+                        core.canvas.bg.drawImage(image, 32*dx, 32*dy, image.width, image.height);
                     }
                 }
-                else
-                    core.canvas.event2.drawImage(image, dx*ratio, dy*ratio, Math.min(size-dx*ratio, ratio*image.width), Math.min(size-dy*ratio, ratio*image.height));
+                else if (t[3]==1)
+                    core.canvas.fg.drawImage(image, 32*dx, 32*dy, image.width, image.height);
+                else if (t[3]==2) {
+                    core.canvas.fg.drawImage(image, 0, 0, image.width, image.height-32,
+                        32*dx, 32*dy, image.width, image.height-32);
+                    core.canvas.bg.drawImage(image, 0, image.height-32, image.width, 32,
+                        32*dx, 32*dy + image.height - 32, image.width, 32);
+                }
             }
         })
 
     }
     if (main.mode=='editor'){
-        main.editor.drawMapBg = function(){
-            core.clearMap('bg', 0, 0, 416, 416);
-            drawBg();
-        }
+        // just do not run drawBg
+
+        // //---move to main.editor.updateMap
+        // main.editor.drawMapBg = function(){
+        //     core.clearMap('bg');
+        //     core.clearMap('fg');
+        //     drawBg();
+        // }
     } else {
         drawBg();
     }
@@ -367,33 +515,36 @@ maps.prototype.drawMap = function (mapName, callback) {
     core.status.floorId = mapName;
     core.status.thisMap = core.status.maps[mapName];
     var drawEvent = function(){
+        core.status.autotileAnimateObjs = {"status": 0, "blocks": [], "map": null};
+
         var mapData = core.status.maps[core.status.floorId];
         var mapBlocks = mapData.blocks;
 
-        var mapArray = core.maps.getMapArray(mapBlocks);
+        var mapArray = core.maps.getMapArray(mapBlocks,core.bigmap.width,core.bigmap.height);
         for (var b = 0; b < mapBlocks.length; b++) {
             // 事件启用
             var block = mapBlocks[b];
-            if (core.isset(block.event) && !(core.isset(block.enable) && !block.enable)) {
+            if (core.isset(block.event) && !block.disable) {
                 if (block.event.cls == 'autotile') {
                     core.drawAutotile(core.canvas.event, mapArray, block, 32, 0, 0);
+                    core.status.autotileAnimateObjs.blocks.push(core.clone(block));
                 }
                 else {
-                    if (block.event.id!='none') {
-                        core.drawBlock(block);
-                        core.addGlobalAnimate(block);
-                    }
+                    core.drawBlock(block);
+                    core.addGlobalAnimate(block);
                 }
             }
         }
+        core.status.autotileAnimateObjs.map = core.clone(mapArray);
     }
 
     if (main.mode=='editor'){
         main.editor.updateMap = function(){
             core.removeGlobalAnimate(null, null, true);
-            core.clearMap('bg', 0, 0, 416, 416);
-            core.clearMap('event', 0, 0, 416, 416);
-            core.clearMap('event2', 0, 0, 416, 416);
+            core.clearMap('bg');
+            core.clearMap('event');
+            core.clearMap('event2');
+            core.clearMap('fg');
             drawBg();
             drawEvent();
             core.setGlobalAnimate(core.values.animateSpeed);
@@ -409,7 +560,7 @@ maps.prototype.drawMap = function (mapName, callback) {
 }
 
 ////// 绘制Autotile //////
-maps.prototype.drawAutotile = function(ctx, mapArr, block, size, left, top){
+maps.prototype.drawAutotile = function(ctx, mapArr, block, size, left, top, status){
     var indexArrs = [ //16种组合的图块索引数组; // 将autotile分割成48块16*16的小块; 数组索引即对应各个小块
         //                                     +----+----+----+----+----+----+
         [10,  9,  4, 3 ],  //0   bin:0000      | 1  | 2  | 3  | 4  | 5  | 6  |
@@ -432,10 +583,12 @@ maps.prototype.drawAutotile = function(ctx, mapArr, block, size, left, top){
 
     var drawBlockByIndex = function(ctx, dx, dy, autotileImg, index, size){ //index为autotile的图块索引1-48
         var sx = 16*((index-1)%6), sy = 16*(~~((index-1)/6));
-        ctx.drawImage(autotileImg, sx, sy, 16, 16, dx, dy, size/2, size/2);
+        status = status || 0;
+        status %= parseInt(autotileImg.width/96);
+        ctx.drawImage(autotileImg, sx + 96*status, sy, 16, 16, dx, dy, size/2, size/2);
     }
-    var getAutotileAroundId = function(currId, x, y){
-        if(x<0 || y<0 || x>12 || y>12) return 1;
+    var getAutotileAroundId = function(currId, x, y) {
+        if(x<0 || y<0 || x>=mapArr[0].length || y>=mapArr.length) return 1;
         else return mapArr[y][x]==currId ? 1:0;
     }
     var checkAround = function(x, y){ // 得到周围四个32*32块（周围每块都包含当前块的1/4，不清楚的话画下图你就明白）的数组索引
@@ -499,7 +652,7 @@ maps.prototype.noPassExists = function (x, y, floorId) {
 
 ////// 某个点是否在区域内且不可通行 //////
 maps.prototype.noPass = function (x, y) {
-    return x<0 || x>12 || y<0 || y>12 || this.noPassExists(x,y);
+    return x<0 || x>=core.bigmap.width || y<0 || y>=core.bigmap.height || this.noPassExists(x,y);
 }
 
 ////// 某个点是否存在NPC //////
@@ -537,13 +690,12 @@ maps.prototype.enemyExists = function (x, y, id,floorId) {
 }
 
 ////// 获得某个点的block //////
-maps.prototype.getBlock = function (x, y, floorId, needEnable) {
+maps.prototype.getBlock = function (x, y, floorId, showDisable) {
     if (!core.isset(floorId)) floorId=core.status.floorId;
-    if (!core.isset(needEnable)) needEnable=true;
     var blocks = core.status.maps[floorId].blocks;
     for (var n=0;n<blocks.length;n++) {
         if (blocks[n].x==x && blocks[n].y==y && core.isset(blocks[n].event)) {
-            if (needEnable && core.isset(blocks[n].enable) && !blocks[n].enable) return null;
+            if (!showDisable && blocks[n].disable) return null;
             return {"index": n, "block": blocks[n]};
         }
     }
@@ -551,10 +703,18 @@ maps.prototype.getBlock = function (x, y, floorId, needEnable) {
 }
 
 ////// 获得某个点的blockId //////
-maps.prototype.getBlockId = function (x, y, floorId, needEnable) {
-    var block = core.getBlock(x, y, floorId, needEnable);
+maps.prototype.getBlockId = function (x, y, floorId, showDisable) {
+    var block = core.getBlock(x, y, floorId, showDisable);
     if (block == null) return null;
     if (core.isset(block.block.event)) return block.block.event.id;
+    return null;
+}
+
+////// 获得某个点的blockCls //////
+maps.prototype.getBlockCls = function (x, y, floorId, showDisable) {
+    var block = core.getBlock(x, y, floorId, showDisable);
+    if (block == null) return null;
+    if (core.isset(block.block.event)) return block.block.event.cls;
     return null;
 }
 
@@ -562,7 +722,7 @@ maps.prototype.getBlockId = function (x, y, floorId, needEnable) {
 maps.prototype.moveBlock = function(x,y,steps,time,keep,callback) {
     time = time || 500;
 
-    core.clearMap('animate', 0, 0, 416, 416);
+    core.clearMap('route');
 
     var block = core.getBlock(x,y);
     if (block==null) {// 不存在
@@ -576,17 +736,41 @@ maps.prototype.moveBlock = function(x,y,steps,time,keep,callback) {
     // 需要删除该块
     core.removeBlock(x,y);
 
-    core.clearMap('ui', 0, 0, 416, 416);
+    core.clearMap('ui');
     core.setAlpha('ui', 1.0);
 
     block=block.block;
-    var blockIcon = core.material.icons[block.event.cls][block.event.id];
-    var blockImage = core.material.images[block.event.cls];
-    var height = block.event.height || 32;
+
+    var image, bx, by, height = block.event.height || 32;
+    if (block.event.cls == 'tileset') {
+        var offset = core.icons.getTilesetOffset(block.event.id);
+        if (offset==null) {
+            if (core.isset(callback)) callback();
+            return;
+        }
+        bx = offset.x;
+        by = offset.y;
+        image = core.material.images.tilesets[offset.image];
+    }
+    // 不支持autotile
+    else if (block.event.cls == 'autotile') {
+        if (core.isset(callback)) callback();
+        return;
+    }
+    // 空气墙；忽略事件
+    else if (block.id==17) {
+        if (core.isset(callback)) callback();
+        return;
+    }
+    else {
+        image = core.material.images[block.event.cls];
+        bx = 0;
+        by = core.material.icons[block.event.cls][block.event.id];
+    }
 
     var opacityVal = 1;
-    core.setOpacity('animate', opacityVal);
-    core.canvas.animate.drawImage(blockImage, 0, blockIcon * height, 32, height, block.x * 32, block.y * 32 +32 - height, 32, height);
+    core.setOpacity('route', opacityVal);
+    core.canvas.route.drawImage(image, bx * 32, by * height, 32, height, block.x * 32, block.y * 32 +32 - height, 32, height);
 
     // 要运行的轨迹：将steps展开
     var moveSteps=[];
@@ -626,18 +810,21 @@ maps.prototype.moveBlock = function(x,y,steps,time,keep,callback) {
             animateTime = 0;
             if (animateCurrent>=animateValue) animateCurrent=0;
         }
+        if (block.event.cls=='tileset') {
+            animateCurrent = bx;
+        }
 
         // 已经移动完毕，消失
         if (moveSteps.length==0) {
             if (keep) opacityVal=0;
             else opacityVal -= 0.06;
-            core.setOpacity('animate', opacityVal);
-            core.clearMap('animate', nowX, nowY-height+32, 32, height);
-            core.canvas.animate.drawImage(blockImage, animateCurrent * 32, blockIcon * height, 32, height, nowX, nowY-height+32, 32, height);
+            core.setOpacity('route', opacityVal);
+            core.clearMap('route', nowX, nowY-height+32, 32, height);
+            core.canvas.route.drawImage(image, animateCurrent * 32, by * height, 32, height, nowX, nowY-height+32, 32, height);
             if (opacityVal<=0) {
                 clearInterval(animate);
-                core.clearMap('animate', 0, 0, 416, 416);
-                core.setOpacity('animate', 1);
+                core.clearMap('route');
+                core.setOpacity('route', 1);
                 // 不消失
                 if (keep) {
                     core.setBlock(id, nowX/32, nowY/32);
@@ -652,9 +839,9 @@ maps.prototype.moveBlock = function(x,y,steps,time,keep,callback) {
             step++;
             nowX+=scan[moveSteps[0]].x*2;
             nowY+=scan[moveSteps[0]].y*2;
-            core.clearMap('animate', nowX-32, nowY-32, 96, 96);
+            core.clearMap('route', nowX-32, nowY-32, 96, 96);
             // 绘制
-            core.canvas.animate.drawImage(blockImage, animateCurrent * 32, blockIcon * height, 32, height, nowX, nowY-height+32, 32, height);
+            core.canvas.route.drawImage(image, animateCurrent * 32, by * height, 32, height, nowX, nowY-height+32, 32, height);
             if (step==16) {
                 // 该移动完毕，继续
                 step=0;
@@ -667,7 +854,7 @@ maps.prototype.moveBlock = function(x,y,steps,time,keep,callback) {
 ////// 显示跳跃某块的动画，达到{"type":"jump"}的效果 //////
 maps.prototype.jumpBlock = function(sx,sy,ex,ey,time,keep,callback) {
     time = time || 500;
-    core.clearMap('animate', 0, 0, 416, 416);
+    core.clearMap('route');
     var block = core.getBlock(sx,sy);
     if (block==null) {
         if (core.isset(callback)) callback();
@@ -679,17 +866,40 @@ maps.prototype.jumpBlock = function(sx,sy,ex,ey,time,keep,callback) {
 
     // 需要删除该块
     core.removeBlock(sx,sy);
-    core.clearMap('ui', 0, 0, 416, 416);
+    core.clearMap('ui');
     core.setAlpha('ui', 1.0);
 
     block=block.block;
-    var blockIcon = core.material.icons[block.event.cls][block.event.id];
-    var blockImage = core.material.images[block.event.cls];
-    var height = block.event.height || 32;
+    var image, bx, by, height = block.event.height || 32;
+    if (block.event.cls == 'tileset') {
+        var offset = core.icons.getTilesetOffset(block.event.id);
+        if (offset==null) {
+            if (core.isset(callback)) callback();
+            return;
+        }
+        bx = offset.x;
+        by = offset.y;
+        image = core.material.images.tilesets[offset.image];
+    }
+    // 不支持autotile
+    else if (block.event.cls == 'autotile') {
+        if (core.isset(callback)) callback();
+        return;
+    }
+    // 空气墙；忽略事件
+    else if (block.id==17) {
+        if (core.isset(callback)) callback();
+        return;
+    }
+    else {
+        image = core.material.images[block.event.cls];
+        bx = 0;
+        by = core.material.icons[block.event.cls][block.event.id];
+    }
 
     var opacityVal = 1;
-    core.setOpacity('animate', opacityVal);
-    core.canvas.animate.drawImage(blockImage, 0, blockIcon * height, 32, height, block.x * 32, block.y * 32 +32 - height, 32, height);
+    core.setOpacity('route', opacityVal);
+    core.canvas.route.drawImage(image, bx*32, by * height, 32, height, block.x * 32, block.y * 32 +32 - height, 32, height);
 
     core.playSound('jump.mp3');
 
@@ -728,22 +938,25 @@ maps.prototype.jumpBlock = function(sx,sy,ex,ey,time,keep,callback) {
             animateTime = 0;
             if (animateCurrent >= animateValue) animateCurrent = 0;
         }
+        if (block.event.cls=='tileset') {
+            animateCurrent = bx;
+        }
 
         if (jump_count>0) {
-            core.clearMap('animate', drawX(), drawY()-height+32, 32, height);
+            core.clearMap('route', drawX(), drawY()-height+32, 32, height);
             updateJump();
-            core.canvas.animate.drawImage(blockImage, animateCurrent * 32, blockIcon * height, 32, height, drawX(), drawY()-height+32, 32, height);
+            core.canvas.route.drawImage(image, animateCurrent * 32, by * height, 32, height, drawX(), drawY()-height+32, 32, height);
         }
         else {
             if (keep) opacityVal=0;
             else opacityVal -= 0.06;
-            core.setOpacity('animate', opacityVal);
-            core.clearMap('animate', drawX(), drawY()-height+32, 32, height);
-            core.canvas.animate.drawImage(blockImage, animateCurrent * 32, blockIcon * height, 32, height, drawX(), drawY()-height+32, 32, height);
+            core.setOpacity('route', opacityVal);
+            core.clearMap('route', drawX(), drawY()-height+32, 32, height);
+            core.canvas.route.drawImage(image, animateCurrent * 32, by * height, 32, height, drawX(), drawY()-height+32, 32, height);
             if (opacityVal<=0) {
                 clearInterval(animate);
-                core.clearMap('animate', 0, 0, 416, 416);
-                core.setOpacity('animate', 1);
+                core.clearMap('route');
+                core.setOpacity('route', 1);
                 if (keep) {
                     core.setBlock(id, ex, ey);
                     core.showBlock(ex, ey);
@@ -760,20 +973,41 @@ maps.prototype.jumpBlock = function(sx,sy,ex,ey,time,keep,callback) {
 maps.prototype.animateBlock = function (loc,type,time,callback) {
     if (type!='hide') type='show';
 
-    core.clearMap('animate', 0, 0, 416, 416);
+    core.clearMap('route');
 
     if (typeof loc[0] == 'number' && typeof loc[1] == 'number')
         loc = [loc];
 
     var list = [];
     loc.forEach(function (t) {
-        var block = core.getBlock(t[0],t[1],core.status.floorId,false);
+        var block = core.getBlock(t[0],t[1],null,true);
         if (block==null) return;
         block=block.block;
+        var image, bx, by, height = block.event.height || 32;
+        if (block.event.cls == 'tileset') {
+            var offset = core.icons.getTilesetOffset(block.event.id);
+            if (offset==null) {
+                if (core.isset(callback)) callback();
+                return;
+            }
+            bx = offset.x;
+            by = offset.y;
+            image = core.material.images.tilesets[offset.image];
+        }
+        // 不支持autotile
+        else if (block.event.cls == 'autotile') {
+            return;
+        }
+        // 空气墙，忽略事件
+        else if (block.id==17) return;
+        else {
+            image = core.material.images[block.event.cls];
+            bx = 0;
+            by = core.material.icons[block.event.cls][block.event.id];
+        }
         list.push({
-            'x': t[0], 'y': t[1], 'height': block.event.height||32,
-            'blockIcon': core.material.icons[block.event.cls][block.event.id],
-            'blockImage': core.material.images[block.event.cls]
+            'x': t[0], 'y': t[1], 'height': height,
+            'bx': bx, 'by': by, 'image': image
         })
     })
 
@@ -785,24 +1019,24 @@ maps.prototype.animateBlock = function (loc,type,time,callback) {
     core.status.replay.animate=true;
     var draw = function () {
         list.forEach(function (t) {
-            core.canvas.animate.drawImage(t.blockImage, 0, t.blockIcon*t.height, 32, t.height, t.x*32, t.y*32+32-t.height, 32, t.height);
+            core.canvas.route.drawImage(t.image, t.bx*32, t.by*t.height, 32, t.height, t.x*32, t.y*32+32-t.height, 32, t.height);
         })
     }
 
     var opacityVal = 0;
     if (type=='hide') opacityVal=1;
 
-    core.setOpacity('animate', opacityVal);
+    core.setOpacity('route', opacityVal);
     draw();
 
     var animate = window.setInterval(function () {
         if (type=='show') opacityVal += 0.1;
         else opacityVal -= 0.1;
-        core.setOpacity('animate', opacityVal);
+        core.setOpacity('route', opacityVal);
         if (opacityVal >=1 || opacityVal<=0) {
             clearInterval(animate);
-            core.clearMap('animate', 0, 0, 416, 416);
-            core.setOpacity('animate', 1);
+            core.clearMap('route');
+            core.setOpacity('route', 1);
             core.status.replay.animate=false;
             if (core.isset(callback)) callback();
         }
@@ -812,12 +1046,12 @@ maps.prototype.animateBlock = function (loc,type,time,callback) {
 ////// 将某个块从禁用变成启用状态 //////
 maps.prototype.showBlock = function(x, y, floodId) {
     floodId = floodId || core.status.floorId;
-    var block = core.getBlock(x,y,floodId,false);
+    var block = core.getBlock(x,y,floodId,true);
     if (block==null) return; // 不存在
     block=block.block;
     // 本身是禁用事件，启用之
-    if (core.isset(block.enable) && !block.enable) {
-        block.enable = true;
+    if (block.disable) {
+        block.disable = false;
         // 在本层，添加动画
         if (floodId == core.status.floorId && core.isset(block.event)) {
             core.drawBlock(block);
@@ -828,11 +1062,32 @@ maps.prototype.showBlock = function(x, y, floodId) {
     }
 }
 
+////// 只隐藏但不删除某块 //////
+maps.prototype.hideBlock = function (x, y, floorId) {
+    floorId = floorId || core.status.floorId;
+
+    var block = core.getBlock(x,y,floorId,true);
+    if (block==null) return; // 不存在
+
+    // 删除动画，清除地图
+    if (floorId==core.status.floorId) {
+        core.removeGlobalAnimate(x, y);
+        core.canvas.event.clearRect(x * 32, y * 32, 32, 32);
+        var height = 32;
+        if (core.isset(block.block.event)) height=block.block.event.height||32;
+        if (height>32)
+            core.canvas.event2.clearRect(x * 32, y * 32 +32-height, 32, height-32);
+    }
+
+    block.disable = true;
+    core.updateStatusBar();
+}
+
 ////// 将某个块从启用变成禁用状态 //////
 maps.prototype.removeBlock = function (x, y, floorId) {
     floorId = floorId || core.status.floorId;
 
-    var block = core.getBlock(x,y,floorId,false);
+    var block = core.getBlock(x,y,floorId,true);
     if (block==null) return; // 不存在
 
     var index=block.index;
@@ -874,7 +1129,7 @@ maps.prototype.removeBlockById = function (index, floorId) {
         blocks.splice(index,1);
         return;
     }
-    block.enable = false;
+    block.disable = true;
 }
 
 ////// 一次性删除多个block //////
@@ -888,9 +1143,9 @@ maps.prototype.removeBlockByIds = function (floorId, ids) {
 maps.prototype.setBlock = function (number, x, y, floorId) {
     floorId = floorId || core.status.floorId;
     if (!core.isset(number) || !core.isset(x) || !core.isset(y)) return;
-    if (x<0 || x>12 || y<0 || y>12) return;
+    if (x<0 || x>=core.bigmap.width || y<0 || y>=core.bigmap.height) return;
 
-    var originBlock=core.getBlock(x,y,floorId,false);
+    var originBlock=core.getBlock(x,y,floorId,true);
     var block = core.maps.initBlock(x,y,number);
     core.maps.addInfo(block);
     core.maps.addEvent(block,x,y,core.floors[floorId].events[x+","+y]);
@@ -907,6 +1162,20 @@ maps.prototype.setBlock = function (number, x, y, floorId) {
             core.drawMap(floorId);
         }
     }
+}
+
+////// 改变图层块 //////
+maps.prototype.setBgFgBlock = function (name, number, x, y, floorId) {
+    floorId = floorId || core.status.floorId;
+    if (!core.isset(number) || !core.isset(x) || !core.isset(y)) return;
+    if (x<0 || x>=core.bigmap.width || y<0 || y>=core.bigmap.height) return;
+    if (name!='bg' && name!='fg') return;
+
+    core.setFlag(name+"v_"+floorId+"_"+x+"_"+y, number);
+    core.status[name+"maps"][floorId] = null;
+
+    if (floorId == core.status.floorId)
+        core.drawMap(floorId);
 }
 
 ////// 添加一个全局动画 //////
@@ -927,15 +1196,18 @@ maps.prototype.removeGlobalAnimate = function (x, y, all) {
 
     if (all) {
         core.status.globalAnimateObjs = [];
+        core.status.autotileAnimateObjs = {};
         return;
     }
 
-    for (var t = 0; t < core.status.globalAnimateObjs.length; t++) {
-        if (core.status.globalAnimateObjs[t].x == x && core.status.globalAnimateObjs[t].y == y) {
-            core.status.globalAnimateObjs.splice(t, 1);
-            return;
-        }
+    core.status.globalAnimateObjs = core.status.globalAnimateObjs.filter(function (block) {return block.x!=x || block.y!=y;});
+
+    // 检查Autotile
+    if (core.isset(core.status.autotileAnimateObjs.blocks)) {
+        core.status.autotileAnimateObjs.blocks = core.status.autotileAnimateObjs.blocks.filter(function (block) {return block.x!=x || block.y!=y;});
+        core.status.autotileAnimateObjs.map[y][x] = 0;
     }
+
 }
 
 ////// 设置全局动画的显示效果 //////
@@ -951,6 +1223,9 @@ maps.prototype.syncGlobalAnimate = function () {
     core.status.globalAnimateObjs.forEach(function (t) {
         t.status=0;
     })
+    if (core.isset(core.status.autotileAnimateObjs.status)) {
+        core.status.autotileAnimateObjs.status = 0;
+    }
 }
 
 ////// 绘制UI层的box动画 //////
@@ -963,6 +1238,35 @@ maps.prototype.drawBoxAnimate = function () {
         core.canvas.ui.drawImage(obj.image, obj.status * 32, obj.pos,
             32, obj.height, obj.x, obj.y, 32, obj.height);
     }
+}
+
+////// 绘制动画的某一帧 //////
+maps.prototype.drawAnimateFrame = function (animate, centerX, centerY, index) {
+    var frame = animate.frames[index];
+    var ratio = animate.ratio;
+    frame.forEach(function (t) {
+        var image = animate.images[t.index];
+        if (!core.isset(image)) return;
+        var realWidth = image.width * ratio * t.zoom / 100;
+        var realHeight = image.height * ratio * t.zoom / 100;
+        core.setAlpha('animate', t.opacity / 255);
+
+        var cx = centerX+t.x, cy=centerY+t.y;
+
+        if (!t.mirror && !t.angle) {
+            core.canvas.animate.drawImage(image, cx-realWidth/2 - core.bigmap.offsetX, cy-realHeight/2 - core.bigmap.offsetY, realWidth, realHeight);
+        }
+        else {
+            core.saveCanvas('animate');
+            core.canvas.animate.translate(cx,cy);
+            if (t.angle)
+                core.canvas.animate.rotate(-t.angle*Math.PI/180);
+            if (t.mirror)
+                core.canvas.animate.scale(-1,1);
+            core.canvas.animate.drawImage(image, -realWidth/2 - core.bigmap.offsetX, -realHeight/2 - core.bigmap.offsetY, realWidth, realHeight);
+            core.loadCanvas('animate');
+        }
+    })
 }
 
 ////// 绘制动画 //////
@@ -980,60 +1284,78 @@ maps.prototype.drawAnimate = function (name, x, y, callback) {
         return;
     }
 
-    // 清空animate层
     clearInterval(core.interval.animateInterval);
-    core.clearMap('animate', 0, 0, 416, 416);
 
     // 开始绘制
-    var animate = core.material.animates[name];
-    var ratio = animate.ratio;
-    var centerX = 32*x+16, centerY = 32*y+16;
-    var index=0;
-
+    var animate = core.material.animates[name], centerX = 32*x+16, centerY = 32*y+16;
     // 播放音效
     core.playSound(animate.se);
 
-    var draw = function (index) {
-        core.clearMap('animate', 0, 0, 416, 416);
-
-        var frame = animate.frames[index];
-        frame.forEach(function (t) {
-            var image = animate.images[t.index];
-            if (!core.isset(image)) return;
-            var realWidth = image.width * ratio * t.zoom / 100;
-            var realHeight = image.height * ratio * t.zoom / 100;
-            core.setAlpha('animate', t.opacity / 255);
-
-            var cx = centerX+t.x, cy=centerY+t.y;
-
-            if (!t.mirror && !t.angle) {
-                core.canvas.animate.drawImage(image, cx-realWidth/2, cy-realHeight/2, realWidth, realHeight);
-            }
-            else {
-                core.saveCanvas('animate');
-                core.canvas.animate.translate(cx,cy);
-                if (t.angle)
-                    core.canvas.animate.rotate(-t.angle*Math.PI/180);
-                if (t.mirror)
-                    core.canvas.animate.scale(-1,1);
-                core.canvas.animate.drawImage(image, -realWidth/2, -realHeight/2, realWidth, realHeight);
-                core.loadCanvas('animate');
-            }
-        })
+    // 异步绘制：使用requestAnimationFrame进行绘制
+    if (!core.isset(callback)) {
+        core.status.animateObjs.push({"animate": animate, "centerX": centerX, "centerY": centerY, "index": 0});
+        return;
     }
 
-    draw(index++);
+    var index=0;
+    core.clearMap('animate');
+    core.maps.drawAnimateFrame(animate, centerX, centerY, index++);
 
     core.interval.animateInterval = setInterval(function (t) {
         if (index == animate.frames.length) {
             clearInterval(core.interval.animateInterval);
-            core.clearMap('animate', 0, 0, 416, 416);
+            core.clearMap('animate');
             core.setAlpha('animate', 1);
             if (core.isset(callback)) callback();
             return;
         }
-        draw(index++);
+        core.clearMap('animate');
+        core.maps.drawAnimateFrame(animate, centerX, centerY, index++);
     }, 50);
+}
+
+maps.prototype.setFloorImage = function (type, loc, floorId, callback) {
+    if (type!='show') type='hide';
+    if (typeof loc[0] == 'number' && typeof loc[1] == 'number')
+        loc = [loc];
+    floorId = floorId||core.status.floorId;
+
+    if (loc.length==0) return;
+    loc.forEach(function (t) {
+        var x=t[0], y=t[1];
+        var flag = "floorimg_"+floorId+"_"+x+"_"+y;
+        core.setFlag(flag, type=='show'?false:true);
+    })
+
+    if (floorId==core.status.floorId) {
+        core.drawMap(floorId, callback);
+    }
+    else {
+        if (core.isset(callback)) callback();
+    }
+}
+
+maps.prototype.setBgFgMap = function (type, name, loc, floorId, callback) {
+    if (type!='show') type='hide';
+    if (name!='fg') name='bg';
+    if (typeof loc[0] == 'number' && typeof loc[1] == 'number')
+        loc = [loc];
+    floorId = floorId||core.status.floorId;
+
+    if (loc.length==0) return;
+    loc.forEach(function (t) {
+        var x=t[0], y=t[1];
+        var flag = name+"_"+floorId+"_"+x+"_"+y;
+        core.setFlag(flag, type=='show'?false:true);
+    })
+    core.status[name+"maps"][floorId]=null;
+
+    if (floorId==core.status.floorId) {
+        core.drawMap(floorId, callback);
+    }
+    else {
+        if (core.isset(callback)) callback();
+    }
 }
 
 maps.prototype.resetMap = function(floorId) {

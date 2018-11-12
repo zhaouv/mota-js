@@ -1,6 +1,6 @@
 # 附录: API列表
 
-?> 目前版本**v2.3.3**，上次更新时间：* {docsify-updated} *
+?> 目前版本**v2.5**，上次更新时间：* {docsify-updated} *
 
 **这里只列出所有可能会被造塔者用到的常用API，更多的有关内容请在代码内进行查询。**
 
@@ -72,8 +72,17 @@ core.setItem('pickaxe', 10)
 将破墙镐个数设置为10个。这里可以写任何道具的ID。
 
 
+core.addItem('pickaxe', 2)
+将破墙镐的个数增加2个，无任何特效。这里可以写任何道具的ID。
+
+
 core.getItem('pickaxe', 4)
-另勇士获得四个破墙镐。这里可以写任何道具的ID。
+令勇士获得4个破墙镐。这里可以写任何道具的ID。
+和addItem相比，使用getItem会播放获得道具的音效，也会在左上角绘制获得提示。
+
+
+core.removeItem('pickaxe', 3)
+删除3个破墙镐。第二项可忽略，默认值为1。
 
 
 core.itemCount('pickaxe')
@@ -82,6 +91,15 @@ core.itemCount('pickaxe')
 
 core.hasItem('pickaxe')
 返回当前是否存在某个道具。等价于 core.itemCount('pickaxe')>0 。
+
+
+core.getEquip(0)
+获得0号装备类型（武器）的当前装备的itemId。如果不存在则返回null。
+这里可以写任意装备类型，从0开始和全塔属性中的equipName一一对应。
+
+
+core.hasEquip('sword1')
+获得当前某个具体的装备是否处于正在被装备状态。
 
 
 core.setFlag('xyz', 2)
@@ -124,10 +142,6 @@ R
 录像回放的快捷键；这不是一个控制台命令，但是也把它放在这里供使用。
 录像回放在修改地图或新增数据后会很有用。
 
-
-localStorage
-获得所有的存档数据。可以用 core.getLocalStorage('save1') 来具体获得某个存档。
-
 ```
 
 !> 一些相对高级的命令，针对有一定脚本经验的人
@@ -148,11 +162,13 @@ core.nextY(n)
 
 core.openDoor(id, x, y, needKey, callback)    [异步]
 尝试开门操作。id为目标点的ID，x和y为坐标，needKey表示是否需要使用钥匙，callback为开门完毕后的回调函数。
+id可为null代表使用地图上的值。
 例如：core.openDoor('yellowDoor', 10, 3, false, function() {console.log("1")})
 
 
 core.battle(id, x, y, force, callback)    [异步]
 执行战斗事件。id为怪物的id，x和y为坐标，force为bool值表示是否是强制战斗，callback为战斗完毕后的回调函数。
+id可为null代表使用地图上的值。
 例如：core.battle('greenSlime', null, null, true)
 
 
@@ -162,7 +178,7 @@ core.trigger(x, y)    [异步]
 
 core.clearMap(mapName)
 清空某个画布图层。
-mapName可为'bg', 'event', 'fg', 'event2', 'hero', 'animate', 'weather', 'ui', 'data', 'all'之一。
+mapName可为'bg', 'event', 'hero', 'event2', 'fg', 'damage', 'animate', 'weather', 'ui', 'data', 'all'之一。
 如果mapName为'all'，则为清空所有画布；否则只清空对应的画布。
 
 
@@ -184,30 +200,42 @@ core.enemyExists(x, y, id, floorId)
 x和y为坐标；id为怪物ID，可为null表示任意怪物；floorId为楼层ID，可忽略表示当前楼层。
 
 
-core.getBlock(x, y, floorId, needEnable)
+core.getBlock(x, y, floorId, showDisable)
 获得某个点的当前图块信息。
 x和y为坐标；floorId为楼层ID，可忽略或null表示当前楼层。
-needEnable表示该点是否启用时才返回，其值不设置则默认为true。
+showDisable如果为true，则对于禁用的点和事件也会进行返回。
 如果该点不存在图块，则返回null。
 否则，返回值如下： {"index": xxx, "block": xxx}
 其中index为该点在该楼层blocks数组中的索引，block为该图块实际内容。
 
 
-core.getBlockId(x, y, floorId, needEnable)
+core.getBlockId(x, y, floorId, showDisable)
 获得某个点的图块ID。
 x和y为坐标；floorId为楼层ID，可忽略或null表示当前楼层。
-needEnable表示是否需要该点处于启用状态才返回，其值不设置则默认为true。
+showDisable如果为true，则对于禁用的点和事件也会进行返回。
 如果该点不存在图块，则返回null，否则返回该点的图块ID。
+
+
+core.getBlockCls(x, y, floorId, showDisable)
+获得某个点的图块cls。
+x和y为坐标；floorId为楼层ID，可忽略或null表示当前楼层。
+showDisable如果为true，则对于禁用的点和事件也会进行返回。
+如果该点不存在图块，则返回null，否则返回该点的图块cls。
 
 
 core.showBlock(x, y, floorId)
 将某个点从禁用变成启用状态。
 
 
+core.hideBlock(x, y, floorId)
+将某个点从启用变成禁用状态，但不会对其进行删除。
+此函数不会实际将该块从地图中进行删除，而是将该点设置为禁用，以供以后可能的启用事件。
+
+
 core.removeBlock(x, y, floorId)
-将某个点删除或从启用变成禁用状态。
-如果该点不存在自定义事件（比如普通的怪物），则将直接从地图中删除。
-否则将该点设置为禁用，以供以后可能的启用事件。
+将从启用变成禁用状态，并尽可能将其从地图上删除。
+和hideBlock相比，如果该点不存在自定义事件（比如门或普通的怪物），则将直接从地图中删除。
+如果存在自定义事件，则简单的禁用它，以供以后可能的启用事件。
 
 
 core.setBlock(number, x, y, floorId)
@@ -222,12 +250,12 @@ core.canUseItem(itemId)
 返回当前能否使用某个道具。
 
 
-core.addItem(itemId, number)
-将某个道具增加number个。
+core.loadEquip(itemId, callback)
+装备上某个装备。itemId为装备的ID，callback为成功或失败后的回调。
 
 
-core.removeItem(itemId)
-将某个道具个数-1；如果道具个数归0则从道具列表删除。
+core.unloadEquip(equipType, callback)
+卸下某个部位的装备。equipType为装备类型，从0开始；callback为成功或失败后的回调。
 
 
 core.getNextItem()
@@ -257,6 +285,11 @@ core.calValue(value)
 
 core.getLocalStorage(key, defaultValue)
 从localStorage中获得某个数据（已被parse）；如果对应的key不存在则返回defaultValue。
+
+
+core.getLocalForage(key, defaultValue, successCallback, errorCallback)
+从localForage中获得某个数据（已被parse），如果对应的key不存在则返回defaultValue。
+如果成功则通过successCallback回调，失败则通过errorCallback回调。
 
 
 core.clone(data)
@@ -292,6 +325,14 @@ actions.js主要用来进行用户交互行为的处理。
 ========== core.control.XXX 和游戏控制相关的函数 ==========
 control.js主要用来进行游戏控制，比如行走控制、自动寻路、存读档等等游戏核心内容。
 
+core.control.setGameCanvasTranslate(canvasId, x, y)
+设置大地图的偏移量
+
+core.control.updateViewport()
+更新大地图的可见区域
+
+core.control.replay()
+回放下一个操作
 
 ========== core.enemys.XXX 和怪物相关的函数 ==========
 enemys.js主要用来进行怪物相关的内容，比如怪物的特殊属性，伤害和临界计算等。
@@ -310,34 +351,36 @@ core.enemys.getSpecialHint(enemy, special)
 获得怪物某个（或全部）特殊属性的文字说明。
 
 
-core.enemys.canBattle(enemyId)
+core.enemys.canBattle(enemyId, x, y, floorId)
 返回当前能否战胜某个怪物。
+后面三个参数是怪物坐标和楼层。
 
 
-core.enemys.getDamage(enemyId)
+core.enemys.getDamage(enemyId, x, y, floorId)
 返回当前对某个怪物的战斗伤害。如果无法战斗，返回null。
+后面三个参数是怪物坐标和楼层。
 
 
 core.enemys.getExtraDamage(enemyId)
 返回某个怪物会对勇士造成的额外伤害（不可被魔防抵消），例如仇恨、固伤等等。
 
 
-core.enemys.nextCriticals(enemyId, number)
+core.enemys.nextCriticals(enemyId, number, x, y, floorId)
 返回一个列表，为接下来number（可忽略，默认为1）个该怪物的临界值和临界减伤。
 列表每一项类似 [x,y] 表示临界值为x，且临界减伤为y。
 如果无临界值，则返回空列表。
 
 
-core.enemys.getDefDamage(enemyId, k)
+core.enemys.getDefDamage(enemyId, k, x, y, floorId)
 获得k（可忽略，默认为1）防减伤值。
 
 
-core.enemys.getDamageInfo(enemy, hero_hp, hero_atk, hero_def, hero_mdef)
+core.enemys.getDamageInfo(enemy, hero_hp, hero_atk, hero_def, hero_mdef, x, y, floorId)
 获得实际战斗信息，比如伤害，回合数，每回合伤害等等。
 此函数是实际战斗过程的计算。
 
 
-core.enemys.calDamage(enemy, hero_hp, hero_atk, hero_def, hero_mdef)
+core.enemys.calDamage(enemy, hero_hp, hero_atk, hero_def, hero_mdef, x, y, floorId)
 获得在某个勇士属性下怪物伤害；实际返回的是上面getDamageInfo中伤害的数值。
 
 
@@ -382,6 +425,10 @@ core.events.setHeroIcon(name)
 
 ========== core.items.XXX 和道具相关的函数 ==========
 items.js将处理和道具相关的内容，比如道具的使用，获取和删除等等。
+
+
+core.items.compareEquipment(equipId1, equipId2)
+比较两个装备的属性变化值
 
 
 ========== core.loader.XXX 和游戏加载相关的函数 ==========
@@ -447,6 +494,10 @@ Base64解密字符串
 
 core.utils.formatBigNumber(x)
 大数据的格式化
+
+
+core.utils.clamp(x, a, b)
+将x限制在[a,b]之间的范围内
 
 
 core.utils.arrayToRGB(color)

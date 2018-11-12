@@ -1,29 +1,48 @@
 function editor() {
     this.version = "2.0";
-    this.material = {};
-    this.brushMod = "line";//["line","rectangle"]
+    this.brushMod = "line";//["line","rectangle","tileset"]
+    this.layerMod = "map";//["fgmap","map","bgmap"]
+    this.isMobile = false;
 }
+
+/* 
+editor.loc
+editor.pos
+editor.info
+始终是最后一次点击的结果
+注意editor.info可能因为点击其他地方而被清空
+*/
+
+/////////// 数据相关 ///////////
 
 editor.prototype.init = function (callback) {
     var afterCoreReset = function () {
 
         main.editor.disableGlobalAnimate = false;//允许GlobalAnimate
-        /* core.setHeroMoveTriggerInterval(); */
+        // core.setHeroMoveTriggerInterval(); 
 
-        editor.reset(function () {
-            editor.drawMapBg();
-            var mapArray = core.maps.save(core.status.maps, core.status.floorId);
-            editor.map = mapArray.map(function (v) {
-                return v.map(function (v) {
-                    return editor.ids[[editor.indexs[parseInt(v)][0]]]
-                })
-            });
-            editor.updateMap();
-            editor.currentFloorId = core.status.floorId;
-            editor.currentFloorData = core.floors[core.status.floorId];
-            editor.drawEventBlock();
-            if (Boolean(callback)) callback();
-        });
+        editor.idsInit(core.maps, core.icons.icons); // 初始化图片素材信息
+        editor.drawInitData(core.icons.icons); // 初始化绘图
+
+        editor.drawMapBg();
+        editor.fetchMapFromCore();
+        editor.updateMap();
+        editor.buildMark();
+        editor.drawEventBlock();
+        
+        editor.pos = {x: 0, y: 0};
+        editor.mode.loc();
+        editor.info = editor.ids[editor.indexs[201]];
+        editor.mode.enemyitem();
+        editor.mode.floor();
+        editor.mode.tower();
+        editor.mode.functions();
+        editor.mode.showMode('floor');
+        
+        editor_multi = editor_multi();
+        editor_blockly = editor_blockly();
+        if (Boolean(callback)) callback();
+
     }
 
     var afterMainInit = function () {
@@ -49,8 +68,6 @@ editor.prototype.init = function (callback) {
             editor.file = editor_file;
             editor_mode = editor_mode(editor);
             editor.mode = editor_mode;
-            editor.material.images = core.material.images;
-            editor.listen(); // 开始监听事件
             core.resetStatus(core.firstData.hero, null, core.firstData.floorId, null, core.initStatus.maps);
             core.changeFloor(core.status.floorId, null, core.firstData.hero.loc, null, function () {
                 afterCoreReset();
@@ -61,16 +78,16 @@ editor.prototype.init = function (callback) {
     afterMainInit();
 }
 
-editor.prototype.reset = function (callback) {
-    editor.idsInit(core.maps, core.icons.icons); // 初始化图片素材信息
-    editor.drawInitData(core.icons.icons); // 初始化绘图
-    if (Boolean(callback)) callback();
-}
-
 editor.prototype.idsInit = function (maps, icons) {
     editor.ids = [0];
     editor.indexs = [];
-    var MAX_NUM = 1000;
+    var MAX_NUM = 0;
+    var keys=Object.keys(maps_90f36752_8815_4be8_b32b_d7fad1d0542e);
+    for(var ii=0;ii<keys.length;ii++){
+        var v=~~keys[ii];
+        if(v>MAX_NUM && v<core.icons.tilesetStartOffset)MAX_NUM=v;
+    }
+    editor.MAX_NUM=MAX_NUM;
     var getInfoById = function (id) {
         var block = maps.initBlock(0, 0, id);
         if (hasOwnProp(block, 'event')) {
@@ -78,13 +95,19 @@ editor.prototype.idsInit = function (maps, icons) {
         }
     }
     var point = 0;
-    for (var i = 0; i < MAX_NUM; i++) {
+    for (var i = 0; i <= MAX_NUM; i++) {
         var indexBlock = getInfoById(i);
         editor.indexs[i] = [];
         if (indexBlock) {
             var id = indexBlock.event.id;
             var indexId = indexBlock.id;
             var allCls = Object.keys(icons);
+            if(i==17){
+                editor.ids.push({'idnum': 17, 'id': id, 'images': 'terrains'});
+                point++;
+                editor.indexs[i].push(point);
+                continue;
+            }
             for (var j = 0; j < allCls.length; j++) {
                 if (id in icons[allCls[j]]) {
                     editor.ids.push({'idnum': indexId, 'id': id, 'images': allCls[j], 'y': icons[allCls[j]][id]});
@@ -95,10 +118,212 @@ editor.prototype.idsInit = function (maps, icons) {
         }
     }
     editor.indexs[0] = [0];
+
+    var startOffset = core.icons.tilesetStartOffset;
+    for (var i in core.tilesets) {
+        var imgName = core.tilesets[i];
+        var img = core.material.images.tilesets[imgName];
+        var width = Math.floor(img.width/32), height = Math.floor(img.height/32);
+        if(img.width%32 || img.height%32){
+            alert(imgName+'的长或宽不是32的整数倍, 请修改后刷新页面');
+        }
+        if(img.width*img.height > 32*32*1000){
+            alert(imgName+'上的图块数量超过了1000，请修改后刷新页面');
+        }
+        for (var id=startOffset; id<startOffset+width*height;id++) {
+            var x = (id-startOffset)%width, y = parseInt((id-startOffset)/width);
+            var indexBlock = getInfoById(id);
+            editor.ids.push({'idnum': id, 'id': indexBlock.event.id, 'images': imgName, "x": x, "y": y, isTile: true});
+            point++;
+            editor.indexs[id]=[point];
+        }
+        startOffset += core.icons.tilesetStartOffset;
+    }
 }
+
+editor.prototype.mapInit = function () {
+    var ec = document.getElementById('event').getContext('2d');
+    ec.clearRect(0, 0, core.bigmap.width*32, core.bigmap.height*32);
+    document.getElementById('event2').getContext('2d').clearRect(0, 0, core.bigmap.width*32, core.bigmap.height*32);
+    editor.map = [];
+    var sy=editor.currentFloorData.map.length,sx=editor.currentFloorData.map[0].length;
+    for (var y = 0; y < sy; y++) {
+        editor.map[y] = [];
+        for (var x = 0; x < sx; x++) {
+            editor.map[y][x] = 0;
+        }
+    }
+    editor.fgmap=JSON.parse(JSON.stringify(editor.map));
+    editor.bgmap=JSON.parse(JSON.stringify(editor.map));
+    editor.currentFloorData.map = editor.map;
+    editor.currentFloorData.fgmap = editor.fgmap;
+    editor.currentFloorData.bgmap = editor.bgmap;
+    editor.currentFloorData.firstArrive = [];
+    editor.currentFloorData.events = {};
+    editor.currentFloorData.changeFloor = {};
+    editor.currentFloorData.afterBattle = {};
+    editor.currentFloorData.afterGetItem = {};
+    editor.currentFloorData.afterOpenDoor = {};
+    editor.currentFloorData.cannotMove = {};
+}
+
+editor.prototype.fetchMapFromCore = function(){
+    var mapArray = core.maps.save(core.status.maps, core.status.floorId);
+    editor.map = mapArray.map(function (v) {
+        return v.map(function (v) {
+            return editor.ids[[editor.indexs[parseInt(v)][0]]]
+        })
+    });
+    editor.currentFloorId = core.status.floorId;
+    editor.currentFloorData = core.floors[core.status.floorId];
+    for(var ii=0,name;name=['bgmap','fgmap'][ii];ii++){
+        var mapArray = editor.currentFloorData[name];
+        if(!mapArray || JSON.stringify(mapArray)==JSON.stringify([])){//未设置或空数组
+            //与editor.map同形的全0
+            mapArray=eval('['+Array(editor.map.length+1).join('['+Array(editor.map[0].length+1).join('0,')+'],')+']');
+        }
+        editor[name]=mapArray.map(function (v) {
+            return v.map(function (v) {
+                return editor.ids[[editor.indexs[parseInt(v)][0]]]
+            })
+        });
+    }
+}
+
+editor.prototype.changeFloor = function (floorId, callback) {
+    for(var ii=0,name;name=['map','bgmap','fgmap'][ii];ii++){
+        var mapArray=editor[name].map(function (v) {
+            return v.map(function (v) {
+                return v.idnum || v || 0
+            })
+        });
+        editor.currentFloorData[name]=mapArray;
+    }
+    core.changeFloor(floorId, null, {"x": 0, "y": 0, "direction": "up"}, null, function () {
+        core.bigmap.offsetX=0;
+        core.bigmap.offsetY=0;
+        editor.moveViewport(0,0);
+
+        editor.drawMapBg();
+        editor.fetchMapFromCore();
+        editor.updateMap();
+        editor_mode.floor();
+        editor.drawEventBlock();
+        if (core.isset(callback)) callback();
+    });
+}
+
+/////////// 游戏绘图相关 ///////////
+
+editor.prototype.drawMapBg = function (img) {
+    return;
+    //legacy
+    editor.main.editor.drawMapBg();
+}
+
+editor.prototype.drawEventBlock = function () {
+    var fg=document.getElementById('efg').getContext('2d');
+
+    fg.clearRect(0, 0, 416, 416);
+    for (var i=0;i<13;i++) {
+        for (var j=0;j<13;j++) {
+            var color=[];
+            var loc=(i+core.bigmap.offsetX/32)+","+(j+core.bigmap.offsetY/32);
+            if (core.isset(editor.currentFloorData.events[loc]))
+                color.push('#FF0000');
+            if (core.isset(editor.currentFloorData.changeFloor[loc]))
+                color.push('#00FF00');
+            if (core.isset(editor.currentFloorData.afterBattle[loc]))
+                color.push('#FFFF00');
+            if (core.isset(editor.currentFloorData.afterGetItem[loc]))
+                color.push('#00FFFF');
+            if (core.isset(editor.currentFloorData.afterOpenDoor[loc]))
+                color.push('#FF00FF');
+            if (core.isset(editor.currentFloorData.cannotMove[loc]))
+                color.push('#0000FF');
+            for(var kk=0,cc;cc=color[kk];kk++){
+                fg.fillStyle = cc;
+                fg.fillRect(32*i+8*kk, 32*j+32-8, 8, 8);
+            }
+        }
+    }
+}
+
+editor.prototype.updateMap = function () {
+    var blocks = main.editor.mapIntoBlocks(editor.map.map(function (v) {
+        return v.map(function (v) {
+            return v.idnum || v || 0
+        })
+    }), {'events': {}, 'changeFloor': {}}, editor.currentFloorId);
+    core.status.thisMap.blocks = blocks;
+    main.editor.updateMap();
+
+    var drawTile = function (ctx, x, y, tileInfo) { // 绘制一个普通块
+
+        //ctx.clearRect(x*32, y*32, 32, 32);
+        if (tileInfo == 0) return;
+
+        if (typeof(tileInfo) == typeof([][0]) || !hasOwnProp(tileInfo, 'idnum')) {//未定义块画红块
+            if (typeof(tileInfo) != typeof([][0]) && hasOwnProp(tileInfo, 'images')) {
+                ctx.drawImage(core.material.images[tileInfo.images], 0, tileInfo.y * 32, 32, 32, x * 32, y * 32, 32, 32);
+            }
+            ctx.strokeStyle = 'red';
+            var OFFSET = 2;
+            ctx.lineWidth = OFFSET;
+            ctx.strokeRect(x * 32 + OFFSET, y * 32 + OFFSET, 32 - OFFSET * 2, 32 - OFFSET * 2);
+            ctx.font = "30px Verdana";
+            ctx.textAlign = 'center'
+            ctx.fillStyle = 'red';
+            ctx.fillText("?", x * 32 + 16, y * 32 + 27);
+            return;
+        }
+        //ctx.drawImage(core.material.images[tileInfo.images], 0, tileInfo.y*32, 32, 32, x*32, y*32, 32, 32);
+    }
+    // 绘制地图 start
+    var eventCtx = document.getElementById('event').getContext("2d");
+    var fgCtx = document.getElementById('fg').getContext("2d");
+    var bgCtx = document.getElementById('bg').getContext("2d");
+    for (var y = 0; y < editor.map.length; y++)
+        for (var x = 0; x < editor.map[0].length; x++) {
+            var tileInfo = editor.map[y][x];
+            drawTile(eventCtx, x, y, tileInfo);
+            tileInfo = editor.fgmap[y][x];
+            drawTile(fgCtx, x, y, tileInfo);
+            tileInfo = editor.bgmap[y][x];
+            drawTile(bgCtx, x, y, tileInfo);
+        }
+    // 绘制地图 end
+    
+}
+
+editor.prototype.moveViewport=function(x,y){
+    core.bigmap.offsetX = core.clamp(core.bigmap.offsetX+32*x, 0, 32*core.bigmap.width-416);
+    core.bigmap.offsetY = core.clamp(core.bigmap.offsetY+32*y, 0, 32*core.bigmap.height-416);
+    core.control.updateViewport();
+    editor.buildMark();
+    editor.drawEventBlock();
+}
+
+/////////// 通用 ///////////
+
+editor.prototype.guid = function () {
+    return 'id_' + 'xxxxxxxx_xxxx_4xxx_yxxx_xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+        var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+    });
+}
+
+editor.prototype.HTMLescape = function (str_) {
+    return String(str_).split('').map(function (v) {
+        return '&#' + v.charCodeAt(0) + ';'
+    }).join('');
+}
+
+/////////// 界面交互相关 ///////////
+
 editor.prototype.drawInitData = function (icons) {
     var ratio = 1;
-    var images = editor.material.images;
+    var images = core.material.images;
     var maxHeight = 700;
     var sumWidth = 0;
     editor.widthsX = {};
@@ -118,15 +343,23 @@ editor.prototype.drawInitData = function (icons) {
             continue;
         }
         if (img == 'terrains') {
-            editor.widthsX[img] = [img, sumWidth / 32, (sumWidth + images[img].width) / 32, images[img].height + 32]
+            editor.widthsX[img] = [img, sumWidth / 32, (sumWidth + images[img].width) / 32, images[img].height + 32*2]
             sumWidth += images[img].width;
-            maxHeight = Math.max(maxHeight, images[img].height + 32);
+            maxHeight = Math.max(maxHeight, images[img].height + 32*2);
             continue;
         }
         editor.widthsX[img] = [img, sumWidth / 32, (sumWidth + images[img].width) / 32, images[img].height];
         sumWidth += images[img].width;
         maxHeight = Math.max(maxHeight, images[img].height);
     }
+    var tilesets = images.tilesets;
+    for (var ii in core.tilesets) {
+        var img = core.tilesets[ii];
+        editor.widthsX[img] = [img, sumWidth / 32, (sumWidth + tilesets[img].width) / 32, tilesets[img].height];
+        sumWidth += tilesets[img].width;
+        maxHeight = Math.max(maxHeight, tilesets[img].height);
+    }
+
     var fullWidth = ~~(sumWidth * ratio);
     var fullHeight = ~~(maxHeight * ratio);
 
@@ -138,263 +371,197 @@ editor.prototype.drawInitData = function (icons) {
     for (var ii = 0; ii < imgNames.length; ii++) {
         var img = imgNames[ii];
         if (img == 'terrains') {
-            dc.drawImage(images[img], nowx, 32);
+            (function(image,dc,nowx){
+                if (image.complete) {
+                    dc.drawImage(image, nowx, 32);
+                    core.material.images.airwall = image;
+                    delete(editor.airwallImg);
+                } else image.onload = function () {
+                    dc.drawImage(image, nowx, 32);
+                    core.material.images.airwall = image;
+                    delete(editor.airwallImg);
+                    editor.updateMap();
+                }
+            })(editor.airwallImg,dc,nowx);
+            dc.drawImage(images[img], nowx, 32*2);
             nowx += images[img].width;
             continue;
         }
         if (img == 'autotile') {
             var autotiles = images[img];
             for (var im in autotiles) {
-                dc.drawImage(autotiles[im], nowx, nowy);
+                dc.drawImage(autotiles[im], 0, 0, 96, 128, nowx, nowy, 96, 128);
                 nowy += autotiles[im].height;
             }
+            nowx += 3 * 32;
             continue;
         }
         dc.drawImage(images[img], nowx, 0)
         nowx += images[img].width;
     }
-    bgSelect.bgs = Object.keys(icons.terrains);
+    for (var ii in core.tilesets) {
+        var img = core.tilesets[ii];
+        dc.drawImage(tilesets[img], nowx, 0)
+        nowx += tilesets[img].width;
+    }
     //editor.drawMapBg();
     //editor.mapInit();
 }
-editor.prototype.mapInit = function () {
-    var ec = document.getElementById('event').getContext('2d');
-    ec.clearRect(0, 0, 416, 416);
-    document.getElementById('event2').getContext('2d').clearRect(0, 0, 416, 416);
-    editor.map = [];
-    for (var y = 0; y < 13; y++) {
-        editor.map[y] = [];
-        for (var x = 0; x < 13; x++) {
-            editor.map[y][x] = 0;
-        }
-    }
-    editor.currentFloorData.map = editor.map;
-    editor.currentFloorData.firstArrive = [];
-    editor.currentFloorData.events = {};
-    editor.currentFloorData.changeFloor = {};
-    editor.currentFloorData.afterBattle = {};
-    editor.currentFloorData.afterGetItem = {};
-    editor.currentFloorData.afterOpenDoor = {};
-    editor.currentFloorData.cannotMove = {};
-}
-editor.prototype.drawMapBg = function (img) {
-    var bgc = bg.getContext('2d');
-    if (!core.isset(editor.bgY) || editor.bgY == 0) {
-        editor.main.editor.drawMapBg();
-        return;
-    }
 
-    for (var ii = 0; ii < 13; ii++)
-        for (var jj = 0; jj < 13; jj++) {
-            bgc.clearRect(ii * 32, jj * 32, 32, 32);
-            bgc.drawImage(editor.material.images['terrains'], 0, 32 * (editor.bgY || 0), 32, 32, ii * 32, jj * 32, 32, 32);
+editor.prototype.buildMark = function(){
+    // 生成定位编号
+    var arrColMark=document.getElementById('arrColMark');
+    var arrRowMark=document.getElementById('arrRowMark');
+    var mapColMark=document.getElementById('mapColMark');
+    var mapRowMark=document.getElementById('mapRowMark');
+    var buildMark = function (offsetX,offsetY) {
+        var colNum = ' ';
+        for (var i = 0; i < 13; i++) {
+            var tpl = '<td>' + (i+offsetX) + '<div class="colBlock" style="left:' + (i * 32 + 1) + 'px;"></div></td>';
+            colNum += tpl;
         }
-    if (img) {
-        bgc.drawImage(img, 0, 0, 416, 416);
+        arrColMark.innerHTML = '<tr>' + colNum + '</tr>';
+        mapColMark.innerHTML = '<tr>' + colNum + '</tr>';
+        var rowNum = ' ';
+        for (var i = 0; i < 13; i++) {
+            var tpl = '<tr><td>' + (i+offsetY) + '<div class="rowBlock" style="top:' + (i * 32 + 1) + 'px;"></div></td></tr>';
+            rowNum += tpl;
+        }
+        arrRowMark.innerHTML = rowNum;
+        mapRowMark.innerHTML = rowNum;
     }
-}
-
-editor.prototype.drawEventBlock = function () {
-    var fg=document.getElementById('efg').getContext('2d');
-
-    fg.clearRect(0, 0, 416, 416);
-    for (var i=0;i<13;i++) {
-        for (var j=0;j<13;j++) {
-            var color=null;
-            var loc=i+","+j;
-            if (core.isset(editor.currentFloorData.events[loc]))
-                color = '#FF0000';
-            else if (core.isset(editor.currentFloorData.changeFloor[loc]))
-                color = '#00FF00';
-            else if (core.isset(editor.currentFloorData.afterBattle[loc]))
-                color = '#FFFF00';
-            else if (core.isset(editor.currentFloorData.afterGetItem[loc]))
-                color = '#00FFFF';
-            else if (core.isset(editor.currentFloorData.afterOpenDoor[loc]))
-                color = '#FF00FF';
-            else if (core.isset(editor.currentFloorData.cannotMove[loc]))
-                color = '#0000FF';
-            if (color!=null) {
-                fg.fillStyle = color;
-                fg.fillRect(32*i, 32*j+32-8, 8, 8);
-            }
+    var buildMark_mobile = function (offsetX,offsetY) {
+        var colNum = ' ';
+        for (var i = 0; i < 13; i++) {
+            var tpl = '<td>' + (' '+i).slice(-2).replace(' ','&nbsp;') + '<div class="colBlock" style="left:' + (i * 96/13 ) + 'vw;"></div></td>';
+            colNum += tpl;
         }
+        arrColMark.innerHTML = '<tr>' + colNum + '</tr>';
+        //mapColMark.innerHTML = '<tr>' + colNum + '</tr>';
+        var rowNum = ' ';
+        for (var i = 0; i < 13; i++) {
+            var tpl = '<tr><td>' + (' '+i).slice(-2).replace(' ','&nbsp;') + '<div class="rowBlock" style="top:' + (i * 96/13 ) + 'vw;"></div></td></tr>';
+            rowNum += tpl;
+        }
+        arrRowMark.innerHTML = rowNum;
+        //mapRowMark.innerHTML = rowNum;
+        //=====
+        var colNum = ' ';
+        for (var i = 0; i < 13; i++) {
+            var tpl = '<div class="coltd" style="left:' + (i * 96/13 ) + 'vw;"><div class="coltext">' + (' '+(i+offsetX)).slice(-2).replace(' ','&nbsp;') + '</div><div class="colBlock"></div></div>';
+            colNum += tpl;
+        }
+        mapColMark.innerHTML = '<div class="coltr">' + colNum + '</div>';
+        var rowNum = ' ';
+        for (var i = 0; i < 13; i++) {
+            var tpl = '<div class="rowtr"><div class="rowtd"  style="top:' + (i * 96/13 ) + 'vw;"><div class="rowtext">' + (' '+(i+offsetY)).slice(-2).replace(' ','&nbsp;') + '</div><div class="rowBlock"></div></div></div>';
+            rowNum += tpl;
+        }
+        mapRowMark.innerHTML = rowNum;
+    }
+    if(editor.isMobile){
+        buildMark_mobile(core.bigmap.offsetX/32,core.bigmap.offsetY/32);
+    } else {
+        buildMark(core.bigmap.offsetX/32,core.bigmap.offsetY/32);
     }
 }
 
-editor.prototype.updateMap = function () {
-    var blocks = main.editor.mapIntoBlocks(editor.map.map(function (v) {
-        return v.map(function (v) {
-            return v.idnum || v || 0
-        })
-    }), {'events': {}, 'changeFloor': {}});
-    core.status.thisMap.blocks = blocks;
-    main.editor.updateMap();
-
-    var drawTile = function (ctx, x, y, tileInfo) { // 绘制一个普通块
-
-        //ctx.clearRect(x*32, y*32, 32, 32);
-        if (tileInfo == 0) return;
-
-        if (typeof(tileInfo) == typeof([][0]) || !hasOwnProp(tileInfo, 'idnum')) {//未定义块画红块
-            if (typeof(tileInfo) != typeof([][0]) && hasOwnProp(tileInfo, 'images')) {
-                ctx.drawImage(editor.material.images[tileInfo.images], 0, tileInfo.y * 32, 32, 32, x * 32, y * 32, 32, 32);
-            }
-            ctx.strokeStyle = 'red';
-            var OFFSET = 2;
-            ctx.lineWidth = OFFSET;
-            ctx.strokeRect(x * 32 + OFFSET, y * 32 + OFFSET, 32 - OFFSET * 2, 32 - OFFSET * 2);
-            ctx.font = "30px Verdana";
-            ctx.textAlign = 'center'
-            ctx.fillStyle = 'red';
-            ctx.fillText("?", x * 32 + 16, y * 32 + 27);
-            return;
-        }
-        //ctx.drawImage(editor.material.images[tileInfo.images], 0, tileInfo.y*32, 32, 32, x*32, y*32, 32, 32);
+editor.prototype.setSelectBoxFromInfo=function(thisevent){
+    var pos={x: 0, y: 0, images: "terrains"};
+    var ysize = 32;
+    if(thisevent==0){
+    } else if (thisevent.idnum==17){
+        pos.y=1;
+    } else {
+        pos.x=editor.widthsX[thisevent.images][1];
+        pos.y=thisevent.y;
+        if(thisevent.x)pos.x+=thisevent.x;
+        if(thisevent.images=='terrains')pos.y+=2;
+        ysize = thisevent.images.indexOf('48') === -1 ? 32 : 48;
     }
-    /*
-    // autotile的相关处理
-    var indexArrs = [ //16种组合的图块索引数组; // 将autotile分割成48块16*16的小块; 数组索引即对应各个小块
-    //                                       +----+----+----+----+----+----+
-      [10,  9,  4, 3 ],  //0   bin:0000      | 1  | 2  | 3  | 4  | 5  | 6  |
-      [10,  9,  4, 13],  //1   bin:0001      +----+----+----+----+----+----+
-      [10,  9, 18, 3 ],  //2   bin:0010      | 7  | 8  | 9  | 10 | 11 | 12 |
-      [10,  9, 16, 15],  //3   bin:0011      +----+----+----+----+----+----+
-      [10, 43,  4, 3 ],  //4   bin:0100      | 13 | 14 | 15 | 16 | 17 | 18 |
-      [10, 31,  4, 25],  //5   bin:0101      +----+----+----+----+----+----+
-      [10,  7,  2, 3 ],  //6   bin:0110      | 19 | 20 | 21 | 22 | 23 | 24 |
-      [10, 31, 16, 5 ],  //7   bin:0111      +----+----+----+----+----+----+
-      [48,  9,  4, 3 ],  //8   bin:1000      | 25 | 26 | 27 | 28 | 29 | 30 |
-      [ 8,  9,  4, 1 ],  //9   bin:1001      +----+----+----+----+----+----+
-      [36,  9, 30, 3 ],  //10  bin:1010      | 31 | 32 | 33 | 34 | 35 | 36 |
-      [36,  9,  6, 15],  //11  bin:1011      +----+----+----+----+----+----+
-      [46, 45,  4, 3 ],  //12  bin:1100      | 37 | 38 | 39 | 40 | 41 | 42 |
-      [46, 11,  4, 25],  //13  bin:1101      +----+----+----+----+----+----+
-      [12, 45, 30, 3 ],  //14  bin:1110      | 43 | 44 | 45 | 46 | 47 | 48 |
-      [34, 33, 28, 27]   //15  bin:1111      +----+----+----+----+----+----+
-    ];
-    var drawBlockByIndex = function(ctx, dx, dy, autotileImg, index){ //index为autotile的图块索引1-48
-      var sx = 16*((index-1)%6), sy = 16*(~~((index-1)/6));
-      ctx.drawImage(autotileImg, sx, sy, 16, 16, dx, dy, 16, 16);
-    }
-    var isAutotile = function(info){
-      if(typeof(info)=='object' && hasOwnProp(info, 'images') && info.images=='autotile') return true;
-      return false;
-    }
-    var getAutotileAroundId = function(currId, x, y){ //与autotile当前idnum一致返回1，否则返回0
-      if(x>=0 && y >=0 && x<13 && y<13 && isAutotile(editor.map[y][x]) && editor.map[y][x].idnum == currId)
-        return 1;
-      else if(x<0 || y<0 || x>12 || y>12) return 1; //边界外视为通用autotile，这样好看些
-      else
-        return 0;
-    }
-    var checkAround = function(x, y){ // 得到周围四个32*32块（周围每块都包含当前块的1/4，不清楚的话画下图你就明白）的数组索引
-      var currId = editor.map[y][x].idnum;
-      var pointBlock = [];
-      for(var i=0; i<4; i++){
-        var bsum = 0;
-        var offsetx = i%2, offsety = ~~(i/2);
-        for(var j=0; j<4; j++){
-          var mx = j%2, my = ~~(j/2);
-          var b = getAutotileAroundId(currId, x+offsetx+mx-1, y+offsety+my-1);
-          bsum += b*(Math.pow(2, 3-j));
-        }
-        pointBlock.push(bsum);
-      }
-      return pointBlock;
-    }
-    var addIndexToAutotileInfo = function(x, y){
-      var indexArr = [];
-      var pointBlocks = checkAround(x, y);
-      for(var i=0; i<4; i++){
-        var arr = indexArrs[pointBlocks[i]]
-        indexArr.push(arr[3-i]);
-      }
-      editor.map[y][x].blockIndex = indexArr;
-    }
-    var drawAutotile = function(ctx, x, y, info){ // 绘制一个autotile
-      ctx.clearRect(x*32, y*32, 32, 32);
-      //修正四个边角的固定搭配
-      if(info.blockIndex[0] == 13){
-        if(info.blockIndex[1] == 16) info.blockIndex[1] = 14;
-        if(info.blockIndex[2] == 31) info.blockIndex[2] = 19;
-      }
-      if(info.blockIndex[1] == 18){
-        if(info.blockIndex[0] == 15) info.blockIndex[0] = 17;
-        if(info.blockIndex[3] == 36) info.blockIndex[3] = 24;
-      }
-      if(info.blockIndex[2] == 43){
-        if(info.blockIndex[0] == 25) info.blockIndex[0] = 37;
-        if(info.blockIndex[3] == 46) info.blockIndex[3] = 44;
-      }
-      if(info.blockIndex[3] == 48){
-        if(info.blockIndex[1] == 30) info.blockIndex[1] = 42;
-        if(info.blockIndex[2] == 45) info.blockIndex[2] = 47;
-      }
-      for(var i=0; i<4; i++){
-        var index = info.blockIndex[i];
-        var dx = x*32 + 16*(i%2), dy = y*32 + 16*(~~(i/2));
-        drawBlockByIndex(ctx, dx, dy, editor.material.images[info.images][info.id], index);
-      }
-    }
-    */
-    // 绘制地图 start
-    var eventCtx = document.getElementById('event').getContext("2d");
-    for (var y = 0; y < 13; y++)
-        for (var x = 0; x < 13; x++) {
-            var tileInfo = editor.map[y][x];
-            if (false && isAutotile(tileInfo)) {
-                addIndexToAutotileInfo(x, y);
-                drawAutotile(eventCtx, x, y, tileInfo);
-            } else drawTile(eventCtx, x, y, tileInfo);
-        }
-    // 绘制地图 end
-    
-}
-
-editor.prototype.changeFloor = function (floorId, callback) {
-    editor.currentFloorData.map = editor.map.map(function (v) {
-        return v.map(function (v) {
-            return v.idnum || v || 0
-        })
-    });
-    core.changeFloor(floorId, null, core.firstData.hero.loc, null, function () {
-        editor.drawMapBg();
-        var mapArray = core.maps.save(core.status.maps, core.status.floorId);
-        editor.map = mapArray.map(function (v) {
-            return v.map(function (v) {
-                return editor.ids[[editor.indexs[parseInt(v)][0]]]
-            })
-        });
-        editor.updateMap();
-        editor.currentFloorId = core.status.floorId;
-        editor.currentFloorData = core.floors[core.status.floorId];
-        editor_mode.floor();
-        editor.drawEventBlock();
-        if (core.isset(callback)) callback();
-    });
-}
-
-editor.prototype.guid = function () {
-    return 'id_' + 'xxxxxxxx_xxxx_4xxx_yxxx_xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-        var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
-        return v.toString(16);
-    });
-}
-
-editor.prototype.HTMLescape = function (str_) {
-    return String(str_).split('').map(function (v) {
-        return '&#' + v.charCodeAt(0) + ';'
-    }).join('');
+    var dataSelection = document.getElementById('dataSelection');
+    dataSelection.style.left = pos.x * 32 + 'px';
+    dataSelection.style.top = pos.y * ysize + 'px';
+    dataSelection.style.height = ysize - 6 + 'px';
+    setTimeout(function(){selectBox.isSelected = true;});
+    editor.info = JSON.parse(JSON.stringify(thisevent));
+    tip.infos = JSON.parse(JSON.stringify(thisevent));
+    editor.pos=pos;
+    editor_mode.onmode('nextChange');
+    editor_mode.onmode('enemyitem');
 }
 
 editor.prototype.listen = function () {
+
+    document.body.onmousedown = function (e) {
+        //console.log(e);
+        var clickpath = [];
+        var getpath=function(e) {
+            var path = [];
+            var currentElem = e.target;
+            while (currentElem) {
+                path.push(currentElem);
+                currentElem = currentElem.parentElement;
+            }
+            if (path.indexOf(window) === -1 && path.indexOf(document) === -1)
+                path.push(document);
+            if (path.indexOf(window) === -1)
+                path.push(window);
+            return path;
+        }
+        getpath(e).forEach(function (node) {
+            if (!node.getAttribute) return;
+            var id_ = node.getAttribute('id');
+            if (id_) {
+                if (['left', 'left1', 'left2', 'left3', 'left4', 'left5', 'left8', 'mobileview'].indexOf(id_) !== -1) clickpath.push('edit');
+                clickpath.push(id_);
+            }
+        });
+    
+        var unselect=true;
+        for(var ii=0,thisId;thisId=['edit','tip','brushMod','brushMod2','brushMod3','layerMod','layerMod2','layerMod3','viewportButtons'][ii];ii++){
+            if (clickpath.indexOf(thisId) !== -1){
+                unselect=false;
+                break;
+            }
+        }
+        if (unselect) {
+            if (clickpath.indexOf('eui') === -1) {
+                if (selectBox.isSelected) {
+                    editor_mode.onmode('');
+                    editor.file.saveFloorFile(function (err) {
+                        if (err) {
+                            printe(err);
+                            throw(err)
+                        }
+                        ;printf('地图保存成功');
+                    });
+                }
+                selectBox.isSelected = false;
+                editor.info = {};
+            }
+        }
+        //editor.mode.onmode('');
+        if (e.button!=2 && !editor.isMobile){
+            editor.hideMidMenu();
+        }
+        if (clickpath.indexOf('down') !== -1 && editor.isMobile && clickpath.indexOf('midMenu') === -1){
+            editor.hideMidMenu();
+        }
+        if(clickpath.length>=2 && clickpath[0].indexOf('id_')===0){editor.lastClickId=clickpath[0]}
+    }
+
+    var iconLib=document.getElementById('iconLib');
+    iconLib.onmousedown = function (e) {
+        e.stopPropagation();
+    }
+
     var eui=document.getElementById('eui');
     var uc = eui.getContext('2d');
 
     function fillPos(pos) {
         uc.fillStyle = '#' + ~~(Math.random() * 8) + ~~(Math.random() * 8) + ~~(Math.random() * 8);
-        uc.fillRect(pos.x * 32 + 12, pos.y * 32 + 12, 8, 8);
+        uc.fillRect(pos.x * 32 + 12 - core.bigmap.offsetX, pos.y * 32 + 12 - core.bigmap.offsetY, 8, 8);
     }//在格子内画一个随机色块
 
     function eToLoc(e) {
@@ -410,8 +577,13 @@ editor.prototype.listen = function () {
         return editor.loc;
     }//返回可用的组件内坐标
 
-    function locToPos(loc) {
-        editor.pos = {'x': ~~(loc.x / loc.size), 'y': ~~(loc.y / loc.size)}
+    function locToPos(loc, addViewportOffset) {
+        var offsetX=0, offsetY=0;
+        if (addViewportOffset){
+            offsetX=core.bigmap.offsetX/32;
+            offsetY=core.bigmap.offsetY/32;
+        }
+        editor.pos = {'x': ~~(loc.x / loc.size)+offsetX, 'y': ~~(loc.y / loc.size)+offsetY}
         return editor.pos;
     }
 
@@ -436,13 +608,13 @@ editor.prototype.listen = function () {
     eui.onmousedown = function (e) {
         if (e.button==2){
             var loc = eToLoc(e);
-            var pos = locToPos(loc);
+            var pos = locToPos(loc,true);
             editor.showMidMenu(e.clientX,e.clientY);
             return;
         }
         if (!selectBox.isSelected) {
             var loc = eToLoc(e);
-            var pos = locToPos(loc);
+            var pos = locToPos(loc,true);
             editor_mode.onmode('nextChange');
             editor_mode.onmode('loc');
             //editor_mode.loc();
@@ -458,7 +630,7 @@ editor.prototype.listen = function () {
         e.stopPropagation();
         uc.clearRect(0, 0, 416, 416);
         var loc = eToLoc(e);
-        var pos = locToPos(loc);
+        var pos = locToPos(loc,true);
         stepPostfix = [];
         stepPostfix.push(pos);
         fillPos(pos);
@@ -476,7 +648,7 @@ editor.prototype.listen = function () {
         mouseOutCheck = 2;
         e.stopPropagation();
         var loc = eToLoc(e);
-        var pos = locToPos(loc);
+        var pos = locToPos(loc,true);
         var pos0 = stepPostfix[stepPostfix.length - 1]
         var directionDistance = [pos.y - pos0.y, pos0.x - pos.x, pos0.y - pos.y, pos.x - pos0.x]
         var max = 0, index = 4;
@@ -503,8 +675,8 @@ editor.prototype.listen = function () {
         holdingPath = 0;
         e.stopPropagation();
         if (stepPostfix && stepPostfix.length) {
-            preMapData = JSON.parse(JSON.stringify(editor.map));
-            if(editor.brushMod==='rectangle'){
+            preMapData = JSON.parse(JSON.stringify({map:editor.map,fgmap:editor.fgmap,bgmap:editor.bgmap}));
+            if(editor.brushMod!=='line'){
                 var x0=stepPostfix[0].x;
                 var y0=stepPostfix[0].y;
                 var x1=stepPostfix[stepPostfix.length-1].x;
@@ -512,8 +684,8 @@ editor.prototype.listen = function () {
                 if(x0>x1){x0^=x1;x1^=x0;x0^=x1;}//swap
                 if(y0>y1){y0^=y1;y1^=y0;y0^=y1;}//swap
                 stepPostfix=[];
-                for(var ii=x0;ii<=x1;ii++){
-                    for(var jj=y0;jj<=y1;jj++){
+                for(var jj=y0;jj<=y1;jj++){
+                    for(var ii=x0;ii<=x1;ii++){
                         stepPostfix.push({x:ii,y:jj})
                     }
                 }
@@ -522,8 +694,26 @@ editor.prototype.listen = function () {
             currDrawData.info = JSON.parse(JSON.stringify(editor.info));
             reDo = null;
             // console.log(stepPostfix);
-            for (var ii = 0; ii < stepPostfix.length; ii++)
-                editor.map[stepPostfix[ii].y][stepPostfix[ii].x] = editor.info;
+            if (editor.layerMod!='map'  && editor.info.images && editor.info.images.indexOf('48')!==-1){
+                printe('前景/背景不支持48的图块');
+            } else {
+                if(editor.brushMod==='tileset' && core.tilesets.indexOf(editor.info.images)!==-1){
+                    var imgWidth=~~(core.material.images.tilesets[editor.info.images].width/32);
+                    var x0=stepPostfix[0].x;
+                    var y0=stepPostfix[0].y;
+                    var idnum=editor.info.idnum;
+                    for (var ii = 0; ii < stepPostfix.length; ii++){
+                        if(stepPostfix[ii].y!=y0){
+                            y0++;
+                            idnum+=imgWidth;
+                        }
+                        editor[editor.layerMod][stepPostfix[ii].y][stepPostfix[ii].x] = editor.ids[editor.indexs[idnum+stepPostfix[ii].x-x0]];
+                    }
+                } else {
+                    for (var ii = 0; ii < stepPostfix.length; ii++)
+                    editor[editor.layerMod][stepPostfix[ii].y][stepPostfix[ii].x] = editor.info;
+                }
+            }
             // console.log(editor.map);
             editor.updateMap();
             holdingPath = 0;
@@ -531,6 +721,24 @@ editor.prototype.listen = function () {
             uc.clearRect(0, 0, 416, 416);
         }
     }
+
+    /*
+    document.getElementById('mid').onkeydown = function (e) {
+        console.log(e);
+        if (e.keyCode==37) {
+            editor.moveViewport(-1, 0);
+        }
+        if (e.keyCode==38) {
+            editor.moveViewport(0, -1);
+        }
+        if (e.keyCode==39) {
+            editor.moveViewport(1, 0);
+        }
+        if (e.keyCode==40) {
+            editor.moveViewport(0, 1);
+        }
+    }
+    */
 
     document.getElementById('mid').onmousewheel = function (e) {
         e.preventDefault();
@@ -567,13 +775,18 @@ editor.prototype.listen = function () {
         info: {}
     };
     var reDo = null;
+    var shortcut = core.getLocalStorage('shortcut',{48: 0, 49: 0, 50: 0, 51: 0, 52: 0, 53: 0, 54: 0, 55: 0, 56: 0, 57: 0});
     document.body.onkeydown = function (e) {
         // 禁止快捷键的默认行为
-        if (e.ctrlKey && ( e.keyCode == 90 || e.keyCode == 89 ))
+        if (e.ctrlKey && [89, 90, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57].indexOf(e.keyCode) !== -1)
+            e.preventDefault();
+        if (e.altKey && [48, 49, 50, 51, 52, 53, 54, 55, 56, 57].indexOf(e.keyCode) !== -1)
             e.preventDefault();
         //Ctrl+z 撤销上一步undo
         if (e.keyCode == 90 && e.ctrlKey && preMapData && currDrawData.pos.length && selectBox.isSelected) {
-            editor.map = JSON.parse(JSON.stringify(preMapData));
+            editor.map = JSON.parse(JSON.stringify(preMapData.map));
+            editor.fgmap = JSON.parse(JSON.stringify(preMapData.fgmap));
+            editor.bgmap = JSON.parse(JSON.stringify(preMapData.bgmap));
             editor.updateMap();
             reDo = JSON.parse(JSON.stringify(currDrawData));
             currDrawData = {pos: [], info: {}};
@@ -581,7 +794,7 @@ editor.prototype.listen = function () {
         }
         //Ctrl+y 重做一步redo
         if (e.keyCode == 89 && e.ctrlKey && reDo && reDo.pos.length && selectBox.isSelected) {
-            preMapData = JSON.parse(JSON.stringify(editor.map));
+            preMapData = JSON.parse(JSON.stringify({map:editor.map,fgmap:editor.fgmap,bgmap:editor.bgmap}));
             for (var j = 0; j < reDo.pos.length; j++)
                 editor.map[reDo.pos[j].y][reDo.pos[j].x] = JSON.parse(JSON.stringify(reDo.info));
 
@@ -612,6 +825,18 @@ editor.prototype.listen = function () {
                 editor.changeFloor(toId);
             }
         }
+        //ctrl + 0~9 切换到快捷图块
+        if (e.ctrlKey && [48, 49, 50, 51, 52, 53, 54, 55, 56, 57].indexOf(e.keyCode) !== -1){
+            editor.setSelectBoxFromInfo(JSON.parse(JSON.stringify(shortcut[e.keyCode]||0)));
+        }
+        //alt + 0~9 改变快捷图块
+        if (e.altKey && [48, 49, 50, 51, 52, 53, 54, 55, 56, 57].indexOf(e.keyCode) !== -1){
+            var infoToSave = JSON.stringify(editor.info||0);
+            if(infoToSave==JSON.stringify({}))return;
+            shortcut[e.keyCode]=JSON.parse(infoToSave);
+            printf('已保存该快捷图块, ctrl + '+(e.keyCode-48)+' 使用.')
+            core.setLocalStorage('shortcut',shortcut);
+        }
     }
 
     var dataSelection = document.getElementById('dataSelection');
@@ -630,10 +855,10 @@ editor.prototype.listen = function () {
             if (pos.x >= editor.widthsX[spriter][1] && pos.x < editor.widthsX[spriter][2]) {
                 var ysize = spriter.indexOf('48') === -1 ? 32 : 48;
                 loc.ysize = ysize;
-                pos.y = ~~(loc.y / loc.ysize);
-                pos.x = editor.widthsX[spriter][1];
                 pos.images = editor.widthsX[spriter][0];
-                var autotiles = editor.material.images['autotile'];
+                pos.y = ~~(loc.y / loc.ysize);
+                if(core.tilesets.indexOf(pos.images)==-1)pos.x = editor.widthsX[spriter][1];
+                var autotiles = core.material.images['autotile'];
                 if (pos.images == 'autotile') {
                     var imNames = Object.keys(autotiles);
                     if ((pos.y + 1) * ysize > editor.widthsX[spriter][3])
@@ -650,7 +875,7 @@ editor.prototype.listen = function () {
                     pos.y = ~~(editor.widthsX[spriter][3] / ysize) - 1;
 
                 selectBox.isSelected = true;
-                // console.log(pos,editor.material.images[pos.images].height)
+                // console.log(pos,core.material.images[pos.images].height)
                 dataSelection.style.left = pos.x * 32 + 'px';
                 dataSelection.style.top = pos.y * ysize + 'px';
                 dataSelection.style.height = ysize - 6 + 'px';
@@ -658,16 +883,22 @@ editor.prototype.listen = function () {
                 if (pos.x == 0 && pos.y == 0) {
                     // editor.info={idnum:0, id:'empty','images':'清除块', 'y':0};
                     editor.info = 0;
+                } else if(pos.x == 0 && pos.y == 1){
+                    editor.info = editor.ids[editor.indexs[17]];
                 } else {
                     if (hasOwnProp(autotiles, pos.images)) editor.info = {'images': pos.images, 'y': 0};
-                    else if (pos.images == 'terrains') editor.info = {'images': pos.images, 'y': pos.y - 1};
+                    else if (pos.images == 'terrains') editor.info = {'images': pos.images, 'y': pos.y - 2};
+                    else if (core.tilesets.indexOf(pos.images)!=-1) editor.info = {'images': pos.images, 'y': pos.y, 'x': pos.x-editor.widthsX[spriter][1]};
                     else editor.info = {'images': pos.images, 'y': pos.y};
 
                     for (var ii = 0; ii < editor.ids.length; ii++) {
-                        if (( editor.info.images == editor.ids[ii].images
-                                && editor.info.y == editor.ids[ii].y )
+                        if ((core.tilesets.indexOf(pos.images)!=-1 && editor.info.images == editor.ids[ii].images
+                                && editor.info.y == editor.ids[ii].y && editor.info.x == editor.ids[ii].x)
                             || (hasOwnProp(autotiles, pos.images) && editor.info.images == editor.ids[ii].id
-                                && editor.info.y == editor.ids[ii].y)) {
+                            && editor.info.y == editor.ids[ii].y)
+                            || (core.tilesets.indexOf(pos.images)==-1 && editor.info.images == editor.ids[ii].images
+                                && editor.info.y == editor.ids[ii].y )
+                            ) {
 
                             editor.info = editor.ids[ii];
                             break;
@@ -676,8 +907,8 @@ editor.prototype.listen = function () {
                 }
                 tip.infos = JSON.parse(JSON.stringify(editor.info));
                 editor_mode.onmode('nextChange');
-                editor_mode.onmode('emenyitem');
-                //editor_mode.emenyitem();
+                editor_mode.onmode('enemyitem');
+                //editor_mode.enemyitem();
             }
         }
     }
@@ -725,28 +956,7 @@ editor.prototype.listen = function () {
         editor.hideMidMenu();
         e.stopPropagation();
         var thisevent = editor.map[editor.pos.y][editor.pos.x];
-        var pos={x: 0, y: 0, images: "terrains"};
-        var ysize = 32;
-        if(thisevent==0){
-            //选中清除块
-            editor.info = 0;
-            editor.pos=pos;
-        } else {
-            var ids=editor.indexs[thisevent.idnum];
-            ids=ids[0]?ids[0]:ids;
-            editor.info=editor.ids[ids];
-            pos.x=editor.widthsX[thisevent.images][1];
-            pos.y=editor.info.y;
-            if(thisevent.images=='terrains')pos.y++;
-            ysize = thisevent.images.indexOf('48') === -1 ? 32 : 48;
-        }
-        setTimeout(function(){selectBox.isSelected = true;});
-        dataSelection.style.left = pos.x * 32 + 'px';
-        dataSelection.style.top = pos.y * ysize + 'px';
-        dataSelection.style.height = ysize - 6 + 'px';
-        tip.infos = JSON.parse(JSON.stringify(editor.info));
-        editor_mode.onmode('nextChange');
-        editor_mode.onmode('emenyitem');
+        editor.setSelectBoxFromInfo(thisevent);
     }
 
     var fields = Object.keys(editor.file.comment._data.floors._data.loc._data);
@@ -864,14 +1074,126 @@ editor.prototype.listen = function () {
         editor.brushMod=brushMod2.value;
     }
 
+    var brushMod3=document.getElementById('brushMod3');
+    if(brushMod3)brushMod3.onchange=function(){
+        editor.brushMod=brushMod3.value;
+    }
+
+    var layerMod=document.getElementById('layerMod');
+    layerMod.onchange=function(){
+        editor.layerMod=layerMod.value;
+    }
+
+    var layerMod2=document.getElementById('layerMod2');
+    if(layerMod2)layerMod2.onchange=function(){
+        editor.layerMod=layerMod2.value;
+    }
+
+    var layerMod3=document.getElementById('layerMod3');
+    if(layerMod3)layerMod3.onchange=function(){
+        editor.layerMod=layerMod3.value;
+    }
+
+    var viewportButtons=document.getElementById('viewportButtons');
+    for(var ii=0,node;node=viewportButtons.children[ii];ii++){
+        (function(x,y){
+            node.onclick=function(){
+                editor.moveViewport(x,y);
+            }
+        })([-1,0,0,1][ii],[0,-1,1,0][ii]);
+    }
+
 }//绑定事件
 
-/* 
-editor.loc
-editor.pos
-editor.info
-始终是最后一次点击的结果
-注意editor.info可能因为点击其他地方而被清空
-*/
+editor.prototype.mobile_listen=function(){
+    if(!editor.isMobile)return;
+
+    var mobileview=document.getElementById('mobileview');
+    var editModeSelect=document.getElementById('editModeSelect');
+    var mid=document.getElementById('mid');
+    var right=document.getElementById('right');
+    var mobileeditdata=document.getElementById('mobileeditdata');
+
+    
+    editor.showdataarea=function(callShowMode){
+        mid.style='z-index:-1;opacity: 0;';
+        right.style='z-index:-1;opacity: 0;';
+        mobileeditdata.style='';
+        if(callShowMode)editor.mode.showMode(editModeSelect.value);
+        editor.hideMidMenu();
+    }
+    mobileview.children[0].onclick=function(){
+        editor.showdataarea(true)
+    }
+    mobileview.children[1].onclick=function(){
+        mid.style='';
+        right.style='z-index:-1;opacity: 0;';
+        mobileeditdata.style='z-index:-1;opacity: 0;';
+        editor.lastClickId='';
+    }
+    mobileview.children[3].onclick=function(){
+        mid.style='z-index:-1;opacity: 0;';
+        right.style='';
+        mobileeditdata.style='z-index:-1;opacity: 0;';
+        editor.lastClickId='';
+    }
+
+
+    var gettrbyid=function(){
+        if(!editor.lastClickId)return false;
+        thisTr = document.getElementById(editor.lastClickId);
+        input = thisTr.children[2].children[0].children[0];
+        field = thisTr.children[0].getAttribute('title');
+        cobj = JSON.parse(thisTr.children[1].getAttribute('cobj'));
+        return [thisTr,input,field,cobj];
+    }
+    mobileeditdata.children[0].onclick=function(){
+        var info = gettrbyid()
+        if(!info)return;
+        info[1].ondblclick()
+    }
+    mobileeditdata.children[1].onclick=function(){
+        var info = gettrbyid()
+        if(!info)return;
+        printf(info[2])
+    }
+    mobileeditdata.children[2].onclick=function(){
+        var info = gettrbyid()
+        if(!info)return;
+        printf(info[0].children[1].getAttribute('title'))
+    }
+
+    //=====
+
+    document.body.ontouchstart=document.body.onmousedown;
+    document.body.onmousedown=null;
+
+
+    var eui=document.getElementById('eui');
+    eui.ontouchstart=eui.onmousedown
+    eui.onmousedown=null
+    eui.ontouchmove=eui.onmousemove
+    eui.onmousemove=null
+    eui.ontouchend=eui.onmouseup
+    eui.onmouseup=null
+
+
+    var chooseThis = document.getElementById('chooseThis');
+    chooseThis.ontouchstart=chooseThis.onmousedown
+    chooseThis.onmousedown=null
+    var chooseInRight = document.getElementById('chooseInRight');
+    chooseInRight.ontouchstart=chooseInRight.onmousedown
+    chooseInRight.onmousedown=null
+    var copyLoc = document.getElementById('copyLoc');
+    copyLoc.ontouchstart=copyLoc.onmousedown
+    copyLoc.onmousedown=null
+    var moveLoc = document.getElementById('moveLoc');
+    moveLoc.ontouchstart=moveLoc.onmousedown
+    moveLoc.onmousedown=null
+    var clearLoc = document.getElementById('clearLoc');
+    clearLoc.ontouchstart=clearLoc.onmousedown
+    clearLoc.onmousedown=null
+    
+}
 
 editor = new editor();

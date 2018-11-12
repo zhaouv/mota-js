@@ -1,57 +1,5 @@
 // vue 相关处理
-document.body.onmousedown = function (e) {
-    //console.log(e);
-    var clickpath = [];
-    var getpath=function(e) {
-        var path = [];
-        var currentElem = e.target;
-        while (currentElem) {
-            path.push(currentElem);
-            currentElem = currentElem.parentElement;
-        }
-        if (path.indexOf(window) === -1 && path.indexOf(document) === -1)
-            path.push(document);
-        if (path.indexOf(window) === -1)
-            path.push(window);
-        return path;
-    }
-    getpath(e).forEach(function (node) {
-        if (!node.getAttribute) return;
-        var id_ = node.getAttribute('id');
-        if (id_) {
-            if (['left', 'left1', 'left2', 'left3', 'left4', 'left5', 'left8', 'mobileview'].indexOf(id_) !== -1) clickpath.push('edit');
-            clickpath.push(id_);
-        }
-    });
 
-    if (clickpath.indexOf('edit') === -1 && clickpath.indexOf('tip') === -1 && clickpath.indexOf('brushMod') === -1 && clickpath.indexOf('brushMod2') === -1) {
-        if (clickpath.indexOf('eui') === -1) {
-            if (selectBox.isSelected) {
-                editor_mode.onmode('');
-                editor.file.saveFloorFile(function (err) {
-                    if (err) {
-                        printe(err);
-                        throw(err)
-                    }
-                    ;printf('地图保存成功');
-                });
-            }
-            selectBox.isSelected = false;
-            editor.info = {};
-        }
-    }
-    //editor.mode.onmode('');
-    if (e.button!=2 && !editor.isMobile){
-        editor.hideMidMenu();
-    }
-    if (clickpath.indexOf('down') !== -1 && editor.isMobile && clickpath.indexOf('midMenu') === -1){
-        editor.hideMidMenu();
-    }
-    if(clickpath.length>=2 && clickpath[0].indexOf('id_')===0){editor.lastClickId=clickpath[0]}
-}
-iconLib.onmousedown = function (e) {
-    e.stopPropagation();
-}
 var exportMap = new Vue({
     el: '#exportMap',
     data: {
@@ -60,11 +8,12 @@ var exportMap = new Vue({
     methods: {
         exportMap: function () {
             editor.updateMap();
+            var sx=editor.map.length-1,sy=editor.map[0].length-1;
 
             var filestr = '';
-            for (var yy = 0; yy < 13; yy++) {
+            for (var yy = 0; yy <= sy; yy++) {
                 filestr += '['
-                for (var xx = 0; xx < 13; xx++) {
+                for (var xx = 0; xx <= sx; xx++) {
                     var mapxy = editor.map[yy][xx];
                     if (typeof(mapxy) == typeof({})) {
                         if ('idnum' in mapxy) mapxy = mapxy.idnum;
@@ -79,10 +28,10 @@ var exportMap = new Vue({
                     }
                     mapxy = String(mapxy);
                     mapxy = Array(Math.max(4 - mapxy.length, 0)).join(' ') + mapxy;
-                    filestr += mapxy + (xx == 12 ? '' : ',')
+                    filestr += mapxy + (xx == sx ? '' : ',')
                 }
 
-                filestr += ']' + (yy == 12 ? '' : ',\n');
+                filestr += ']' + (yy == sy ? '' : ',\n');
             }
             pout.value = filestr;
             editArea.mapArr = filestr;
@@ -97,7 +46,7 @@ var editArea = new Vue({
     data: {
         mapArr: '',
         errors: [ // 编号1,2,3,4
-            "格式错误！请使用正确格式(13*13数组，如不清楚，可先点击生成地图查看正确格式)",
+            "格式错误！请使用正确格式(请使用地图生成器进行生成，且需要和本地图宽高完全一致)",
             "当前有未定义ID（在地图区域显示红块），请修改ID或者到icons.js和maps.js中进行定义！",
             "ID越界（在地图区域显示红块），当前编辑器暂时支持编号小于400，请修改编号！",
             // "发生错误！",
@@ -130,6 +79,8 @@ var editArea = new Vue({
         },
         error: function () {
             // console.log(editArea.mapArr);
+            if (this.error>0)
+                printe(this.errors[this.error-1])
         }
     },
     methods: {
@@ -138,15 +89,13 @@ var editArea = new Vue({
 
             // var mapArray = that.mapArr.split(/\D+/).join(' ').trim().split(' ');
             var mapArray = JSON.parse('[' + that.mapArr + ']');
-            for (var y = 0; y < 13; y++)
-                for (var x = 0; x < 13; x++) {
+            var sy=editor.map.length,sx=editor.map[0].length;
+            for (var y = 0; y < sy; y++)
+                for (var x = 0; x < sx; x++) {
                     var num = mapArray[y][x];
                     if (num == 0)
                         editor.map[y][x] = 0;
-                    else if (num >= 1000) {
-                        that.error = 3;
-                        editor.map[y][x] = undefined;
-                    } else if (typeof(editor.indexs[num][0]) == 'undefined') {
+                    else if (typeof(editor.indexs[num][0]) == 'undefined') {
                         that.error = 2;
                         editor.map[y][x] = undefined;
                     } else editor.map[y][x] = editor.ids[[editor.indexs[num][0]]];
@@ -159,25 +108,26 @@ var editArea = new Vue({
             var formatArrStr = '';
             var that = this;
             clearTimeout(that.formatTimer);
-            if (this.mapArr.split(/\D+/).join(' ').trim().split(' ').length != 169) return false;
+            var si=editor.map.length,sk=editor.map[0].length;
+            if (this.mapArr.split(/\D+/).join(' ').trim().split(' ').length != si*sk) return false;
             var arr = this.mapArr.replace(/\s+/g, '').split('],[');
 
-            if (arr.length != 13) return;
-            for (var i = 0; i < 13; i++) {
+            if (arr.length != si) return;
+            for (var i = 0; i < si; i++) {
                 var a = [];
                 formatArrStr += '[';
-                if (i == 0 || i == 12) a = arr[i].split(/\D+/).join(' ').trim().split(' ');
+                if (i == 0 || i == si-1) a = arr[i].split(/\D+/).join(' ').trim().split(' ');
                 else a = arr[i].split(/\D+/);
-                if (a.length != 13) {
+                if (a.length != sk) {
                     formatArrStr = '';
                     return;
                 }
 
-                for (var k = 0; k < 13; k++) {
+                for (var k = 0; k < sk; k++) {
                     var num = parseInt(a[k]);
-                    formatArrStr += Array(Math.max(4 - String(num).length, 0)).join(' ') + num + (k == 12 ? '' : ',');
+                    formatArrStr += Array(Math.max(4 - String(num).length, 0)).join(' ') + num + (k == sk-1 ? '' : ',');
                 }
-                formatArrStr += ']' + (i == 12 ? '' : ',\n');
+                formatArrStr += ']' + (i == si-1 ? '' : ',\n');
             }
             return formatArrStr;
         }
@@ -199,7 +149,8 @@ var copyMap = new Vue({
                     return;
                 }
                 try {
-                    pout.select();
+                    pout.focus();
+                    pout.setSelectionRange(0, pout.value.length);
                     document.execCommand("Copy");
                     tip.whichShow = 6;
                 } catch (e) {
@@ -244,7 +195,7 @@ var deleteMap = new Vue({
             var index = core.floorIds.indexOf(editor.currentFloorId);
             if (index>=0) {
                 core.floorIds.splice(index,1);
-                editor.file.editTower([['change', "['main']['floorIds']", core.floorIds]], function (objs_) {/*console.log(objs_);*/
+                editor.file.editTower([['change', "['main']['floorIds']", core.floorIds]], function (objs_) {//console.log(objs_);
                     if (objs_.slice(-1)[0] != null) {
                         printe(objs_.slice(-1)[0]);
                         throw(objs_.slice(-1)[0])
@@ -290,6 +241,7 @@ var tip = new Vue({
         isAutotile: false,
         isSelectedBlock: false,
         isClearBlock: false,
+        isAirwall: false,
         geneMapSuccess: false,
         timer: null,
         msgs: [ //分别编号1,2,3,4,5,6,7,8,9,10；奇数警告，偶数成功
@@ -313,12 +265,17 @@ var tip = new Vue({
         infos: {
             handler: function (val, oldval) {
                 this.isClearBlock = false;
+                this.isAirwall = false;
                 if (typeof(val) != 'undefined') {
                     if (val == 0) {
                         this.isClearBlock = true;
                         return;
                     }
                     if ('id' in val) {
+                        if (val.idnum == 17) {
+                            this.isAirwall = true;
+                            return;
+                        }
                         this.hasId = true;
                     } else {
                         this.hasId = false;
@@ -360,35 +317,3 @@ var selectBox = new Vue({
     }
 })
 
-var bgSelect = new Vue({
-    el: '#bgSelect',
-    data: {
-        bgs: {},
-        selectedBg: 'ground',
-        imgname: ''
-    },
-    watch: {
-        selectedBg: function () {
-            editor.bgY = this.bgs.indexOf(this.selectedBg);
-            editor.drawMapBg();
-        }
-    },
-    methods: {
-        updatebg: function () {
-            tip.whichShow = 0;
-            var regx = /\S+\.(png|bmp|jpg|jpeg|gif)$/i;
-            if (regx.test(this.imgname)) {
-                var url = 'images/' + this.imgname;
-                editor.loadImg(url).then(function (img) {
-                    editor.drawMapBg(img);
-                    tip.whichShow = 10;
-                }).catch(function (err) {
-                    console.log(err);
-                    tip.whichShow = 9;
-                });
-            } else {
-                tip.whichShow = 9;
-            }
-        }
-    }
-})
