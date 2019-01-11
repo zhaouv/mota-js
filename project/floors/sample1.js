@@ -594,7 +594,7 @@ main.floors.sample1=
                     ]
                 },
                 {
-                    "case": "'default'",
+                    "case": "default",
                     "action": [
                         {
                             "type": "comment",
@@ -769,15 +769,9 @@ main.floors.sample1=
     ],
     "10,12": null
 },
-"afterGetItem": {
-    "10,12": null
-},
-"afterOpenDoor": {
-    "10,12": null
-},
-"cannotMove": {
-    "10,12": null
-},
+"afterGetItem": {},
+"afterOpenDoor": {},
+"cannotMove": {},
 "bgmap": [
 
 ],

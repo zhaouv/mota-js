@@ -18,6 +18,28 @@ body {
     margin: 0 auto;
 }
 
+.cp-app {
+	z-index: 250;
+}
+
+#colorPanel {
+    position: fixed;
+    width: max-content;
+    height: 205px;
+    z-index: 240;
+    padding: 4px 6px;
+    margin-top: 6px;
+    background-color: #F5F5F5;
+    box-sizing: border-box;
+    box-shadow: 0 2px 2px 0 rgba(0, 0, 0, .14), 0 3px 1px -2px rgba(0, 0, 0, .2), 0 1px 5px 0 rgba(0, 0, 0, .12);
+}
+
+#colorPicker {
+    margin: 2px 0; 
+    border-radius: 3px;
+    width: 104px;
+}
+
 #left, #mid, #right {
     border-radius: 2px;
     box-sizing: border-box;
@@ -35,7 +57,7 @@ body {
 #editArea {
     position: absolute;
     width: 100%;
-    height: 70%;
+    height: 400px;
     left: 0;
     top: 0;
     /* padding: 10px 5px; */
@@ -45,7 +67,7 @@ body {
 #pout {
     display: block;
     width: 410px;
-    height: 100%;
+    height: 380px;
     box-sizing: border-box;
     margin-left: 22px;
     margin-top: 23px;
@@ -61,9 +83,28 @@ body {
 #editTip {
     position: absolute;
     width: 100%;
-    margin-bottom: 120px;
-    bottom: 0;
     left: 10px;
+    top: 430px;
+}
+
+#editBtns {
+    position: absolute;
+    width: 100%;
+    left: 10px;
+    top: 465px;
+}
+
+#newMaps {
+    position: absolute;
+    left: 10px;
+    top: 505px;
+}
+
+#newFloors {
+    position: absolute;
+    width: 100%;
+    left: 10px;
+    top: 530px;
 }
 
 #editArea p {
@@ -391,4 +432,22 @@ table.row td {
 /* for vue dom */
 [v-cloak] {
     display: none !important;
+}
+
+#searchBlock {
+    width: 100px;
+    background-color: #E9EBF2;
+    border-radius: 10px;
+    outline: none;
+    padding-left: 20px;
+    height: 14px;
+}
+
+.searchLogo {
+    width: 15px;
+    height: 15px;
+    position: absolute;
+    left: 6px;
+    top: 6px;
+    background-image:url('data:image/svg+xml;base64,PHN2ZyB2ZXJzaW9uPSIxLjEiIGJhc2VQcm9maWxlPSJmdWxsIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB4bWxuczpldj0iaHR0cDovL3d3dy53My5vcmcvMjAwMS94bWwtZXZlbnRzIj4KPGc%2BCgk8cG9seWdvbiBmaWxsPSIjNjY2IiBwb2ludHM9IjkuMjA3LDYuMTI2IDcuNzkzLDcuNTQxIDExLjc5MywxMS41NDEgMTMuMjA3LDEwLjEyNiIgLz4KCTxwYXRoIGZpbGw9IiM2NjYiIGQ9Ik01LjkxNywyYzEuNjA4LDAsMi45MTcsMS4zMDgsMi45MTcsMi45MTdTNy41MjUsNy44MzMsNS45MTcsNy44MzNTMyw2LjUyNSwzLDQuOTE3UzQuMzA4LDIsNS45MTcsMgoJCSBNNS45MTcsMEMzLjIwMSwwLDEsMi4yMDEsMSw0LjkxN3MyLjIwMSw0LjkxNyw0LjkxNyw0LjkxN3M0LjkxNy0yLjIwMSw0LjkxNy00LjkxN0MxMC44MzMsMi4yMDEsOC42MzIsMCw1LjkxNywwTDUuOTE3LDB6IiAvPgo8L2c%2BCjwvc3ZnPgo%3D');
 }

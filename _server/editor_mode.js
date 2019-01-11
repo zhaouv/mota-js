@@ -35,16 +35,46 @@ editor_mode = function (editor) {
     }
 
 /////////////////////////////////////////////////////////////////////////////
+    /**
+     * 把来自数据文件的obj和来自*comment.js的commentObj组装成表格
+     * commentObj在无视['_data']的意义下与obj同形
+     * 即: commentObj['_data']['a']['_data']['b'] 与 obj['a']['b'] 是对应的
+     *     在此意义下, 两者的结构是一致的
+     *     在commentObj没有被定义的obj的分支, 会取defaultcobj作为默认值
+     * 因此在深度优先遍历时,维护 
+     *     field="['a']['b']"
+     *     cfield="['_data']['a']['_data']['b']"
+     *     vobj=obj['a']['b']
+     *     cobj=commentObj['_data']['a']['_data']['b']
+     * cobj
+     *     cobj = Object.assign({}, defaultcobj, pcobj['_data'][ii])
+     *     每一项若未定义,就从defaultcobj中取
+     *     当其是函数不是具体值时,把args = {field: field, cfield: cfield, vobj: vobj, cobj: cobj}代入算出该值
+     * 得到的叶节点的<tr>结构如下
+     *     tr>td[title=field]
+     *       >td[title=comment,cobj=cobj:json]
+     *       >td>div>input[value=thiseval]
+     * 返回结果
+     *     返回一个对象, 假设被命名为tableinfo
+     *     在把一个 table 的 innerHTML 赋值为 tableinfo.HTML 后
+     *     再调 tableinfo.listen(tableinfo.guids) 进行绑定事件
+     * @param {Object} obj 
+     * @param {Object} commentObj 
+     * @returns {{"HTML":String,"guids":String[],"listen":Function}}
+     */
     editor_mode.prototype.objToTable_ = function (obj, commentObj) {
+        // 表格抬头
         var outstr = ["\n<tr><td>条目</td><td>注释</td><td>值</td></tr>\n"];
         var guids = [];
         var defaultcobj = {
+            // 默认是文本域
             _type: 'textarea',
             _data: '',
             _string: function (args) {//object~[field,cfield,vobj,cobj]
                 var thiseval = args.vobj;
                 return (typeof(thiseval) === typeof('')) && thiseval[0] === '"';
             },
+            // 默认情况下 非对象和数组的视为叶节点
             _leaf: function (args) {//object~[field,cfield,vobj,cobj]
                 var thiseval = args.vobj;
                 if (thiseval == null || thiseval == undefined) return true;//null,undefined
@@ -53,35 +83,58 @@ editor_mode = function (editor) {
                 return false;
             },
         }
+        /**
+         * 深度优先遍历, p*即为父节点的四个属性
+         * @param {String} pfield 
+         * @param {String} pcfield 
+         * @param {Object} pvobj 
+         * @param {Object} pcobj 
+         */
         var recursionParse = function (pfield, pcfield, pvobj, pcobj) {
-            for (var ii in pvobj) {
+            var keysForTableOrder={};
+            var voidMark={};
+            if (pcobj && pcobj['_data']){
+                for (var ii in pcobj['_data']) keysForTableOrder[ii]=voidMark;
+            }
+            keysForTableOrder=Object.assign(keysForTableOrder,pvobj)
+            for (var ii in keysForTableOrder) {
+                if(keysForTableOrder[ii]===voidMark){
+                    alert('comment和data不匹配,请把工程打包发至 HTML5造塔技术交流群 959329661')
+                    throw Error('comment和data不匹配,请把工程打包发至 HTML5造塔技术交流群 959329661')
+                }
                 var field = pfield + "['" + ii + "']";
                 var cfield = pcfield + "['_data']['" + ii + "']";
                 var vobj = pvobj[ii];
                 var cobj = null;
                 if (pcobj && pcobj['_data'] && pcobj['_data'][ii]) {
+                    // cobj存在时直接取
                     cobj = Object.assign({}, defaultcobj, pcobj['_data'][ii]);
                 } else {
+                    // 当其函数时代入参数算出cobj, 不存在时只取defaultcobj
                     if (pcobj && (pcobj['_data'] instanceof Function)) cobj = Object.assign({}, defaultcobj, pcobj['_data'](ii));
                     else cobj = Object.assign({}, defaultcobj);
                 }
                 var args = {field: field, cfield: cfield, vobj: vobj, cobj: cobj}
-                if (cobj._leaf instanceof Function) cobj._leaf = cobj._leaf(args);
+                // 当cobj的参数为函数时,代入args算出值
                 for (var key in cobj) {
                     if (key === '_data') continue;
                     if (cobj[key] instanceof Function) cobj[key] = cobj[key](args);
                 }
+                // 标记为_hide的属性不展示
                 if (cobj._hide)continue;
-                if (cobj._leaf) {
+                if (!cobj._leaf) {
+                    // 不是叶节点时, 插入展开的标记并继续遍历, 此处可以改成按钮用来添加新项或折叠等
+                    outstr.push(["<tr><td>----</td><td>----</td><td>", field, "</td></tr>\n"].join(''));
+                    recursionParse(field, cfield, vobj, cobj);
+                } else {
+                    // 是叶节点时, 调objToTr_渲染<tr>
                     var leafnode = editor_mode.objToTr_(obj, commentObj, field, cfield, vobj, cobj);
                     outstr.push(leafnode[0]);
                     guids.push(leafnode[1]);
-                } else {
-                    outstr.push(["<tr><td>----</td><td>----</td><td>", field, "</td></tr>\n"].join(''));
-                    recursionParse(field, cfield, vobj, cobj);
                 }
             }
         }
+        // 开始遍历
         recursionParse("", "", obj, commentObj);
         var checkRange = function (evalstr, thiseval) {
             if (evalstr) {
@@ -90,6 +143,7 @@ editor_mode = function (editor) {
             return true;
         }
         var listen = function (guids) {
+            // 每个叶节点的事件绑定
             guids.forEach(function (guid) {
                 // tr>td[title=field]
                 //   >td[title=comment,cobj=cobj:json]
@@ -138,21 +192,38 @@ editor_mode = function (editor) {
         return {"HTML": outstr.join(''), "guids": guids, "listen": listen};
     }
 
+    /**
+     * 返回叶节点<tr>形如
+     * tr>td[title=field]
+     *   >td[title=comment,cobj=cobj:json]
+     *   >td>div>input[value=thiseval]
+     * 参数意义在 objToTable_ 中已解释
+     * @param {Object} obj 
+     * @param {Object} commentObj 
+     * @param {String} field 
+     * @param {String} cfield 
+     * @param {Object} vobj 
+     * @param {Object} cobj 
+     */
     editor_mode.prototype.objToTr_ = function (obj, commentObj, field, cfield, vobj, cobj) {
         var guid = editor.guid();
         var thiseval = vobj;
         var comment = cobj._data;
 
         var charlength = 10;
-
+        // "['a']['b']" => "b"
         var shortField = field.split("']").slice(-2)[0].split("['").slice(-1)[0];
+        // 把长度超过 charlength 的字符改成 固定长度+...的形式
         shortField = (shortField.length < charlength ? shortField : shortField.slice(0, charlength) + '...');
 
+        // 完整的内容转义后供悬停查看
         var commentHTMLescape = editor.HTMLescape(comment);
+        // 把长度超过 charlength 的字符改成 固定长度+...的形式
         var shortCommentHTMLescape = (comment.length < charlength ? commentHTMLescape : editor.HTMLescape(comment.slice(0, charlength)) + '...');
-
+        
         var cobjstr = Object.assign({}, cobj);
         delete cobjstr._data;
+        // 把cobj塞到第二个td的[cobj]中, 方便绑定事件时取
         cobjstr = editor.HTMLescape(JSON.stringify(cobjstr));
 
         var outstr = ['<tr id="', guid, '"><td title="', field, '">', shortField, '</td>',
@@ -206,7 +277,7 @@ editor_mode = function (editor) {
                         throw(objs_.slice(-1)[0])
                     }
                     ;printf('修改成功');
-                    editor.drawEventBlock();
+                    editor.drawPosSelection();
                 });
                 break;
             case 'enemyitem':
@@ -286,6 +357,8 @@ editor_mode = function (editor) {
             editor_mode.dom[name].style = 'z-index:-1;opacity: 0;';
         }
         editor_mode.dom[mode].style = '';
+        // clear
+        editor.drawEventBlock();
         if (editor_mode[mode]) editor_mode[mode]();
         document.getElementById('editModeSelect').value = mode;
         var tips = tip_in_showMode;
@@ -307,7 +380,7 @@ editor_mode = function (editor) {
         var tableinfo = editor_mode.objToTable_(objs[0], objs[1]);
         document.getElementById('table_3d846fc4_7644_44d1_aa04_433d266a73df').innerHTML = tableinfo.HTML;
         tableinfo.listen(tableinfo.guids);
-
+        editor.drawPosSelection();
         if (Boolean(callback)) callback();
     }
 
@@ -495,6 +568,71 @@ editor_mode = function (editor) {
             });
         }
 
+        var newMaps = document.getElementById('newMaps');
+        var newFloors = document.getElementById('newFloors');
+        newMaps.onclick = function () {
+            if (newFloors.style.display == 'none') newFloors.style.display = 'block';
+            else newFloors.style.display = 'none';
+        }
+
+        var createNewMaps = document.getElementById('createNewMaps');
+        createNewMaps.onclick = function () {
+            var floorIds = document.getElementById('newFloorIds').value;
+            if (!floorIds) return;
+            var from = parseInt(document.getElementById('newMapsFrom').value),
+                to = parseInt(document.getElementById('newMapsTo').value);
+            if (!core.isset(from) || !core.isset(to) || from>to || from<0 || to<0) {
+                printe("请输入有效的起始和终止楼层");
+                return;
+            }
+            if (to-from >= 100) {
+                printe("一次最多创建99个楼层");
+                return;
+            }
+            var floorIdList = [];
+            for (var i = from; i<=to; i++) {
+                var floorId = floorIds.replace(/\${(.*?)}/g, function (word, value) {
+                    return eval(value);
+                });
+                if (core.floorIds.indexOf(floorId)>=0) {
+                    printe("要创建的楼层 "+floorId+" 已存在！");
+                    return;
+                }
+                if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(floorId)) {
+                    printe("楼层名 "+floorId+" 不合法！请使用字母、数字、下划线，且不能以数字开头！");
+                    return;
+                }
+                if (floorIdList.indexOf(floorId)>=0) {
+                    printe("尝试重复创建楼层 "+floorId+" ！");
+                    return;
+                }
+                floorIdList.push(floorId);
+            }
+
+            var width = parseInt(document.getElementById('newMapsWidth').value);
+            var height = parseInt(document.getElementById('newMapsHeight').value);
+            if (!core.isset(width) || !core.isset(height) || width<13 || height<13 || width*height>1000) {
+                printe("新建地图的宽高都不得小于13，且宽高之积不能超过1000");
+                return;
+            }
+            editor_mode.onmode('');
+            
+            editor.file.saveNewFiles(floorIdList, from, to, function (err) {
+                if (err) {
+                    printe(err);
+                    throw(err)
+                }
+                core.floorIds = core.floorIds.concat(floorIdList);
+                editor.file.editTower([['change', "['main']['floorIds']", core.floorIds]], function (objs_) {//console.log(objs_);
+                    if (objs_.slice(-1)[0] != null) {
+                        printe(objs_.slice(-1)[0]);
+                        throw(objs_.slice(-1)[0])
+                    }
+                    ;printe('批量创建 '+floorIdList[0]+'~'+floorIdList[floorIdList.length-1]+' 成功,请F5刷新编辑器生效');
+                });
+            });
+        }
+
         var ratio = 1;
         var appendPicCanvas = document.getElementById('appendPicCanvas');
         var bg = appendPicCanvas.children[0];
@@ -556,6 +694,104 @@ editor_mode = function (editor) {
         }
         selectAppend.onchange();
 
+        var getPixel=function(imgData, x, y) {
+            var offset = (x + y * imgData.width) * 4;
+            var r = imgData.data[offset+0];
+            var g = imgData.data[offset+1];
+            var b = imgData.data[offset+2];
+            var a = imgData.data[offset+3];
+            return [r,g,b,a];
+        }
+        var setPixel=function(imgData, x, y, rgba) {
+            var offset = (x + y * imgData.width) * 4;
+            imgData.data[offset+0]=rgba[0];
+            imgData.data[offset+1]=rgba[1];
+            imgData.data[offset+2]=rgba[2];
+            imgData.data[offset+3]=rgba[3];
+        }
+
+        var autoAdjust = function (image, callback) {
+            var changed = false;
+
+            // Step 1: 检测白底
+            var tempCanvas = document.createElement('canvas').getContext('2d');
+            tempCanvas.canvas.width = image.width;
+            tempCanvas.canvas.height = image.height;
+            tempCanvas.mozImageSmoothingEnabled = false;
+            tempCanvas.webkitImageSmoothingEnabled = false;
+            tempCanvas.msImageSmoothingEnabled = false;
+            tempCanvas.imageSmoothingEnabled = false;
+            tempCanvas.drawImage(image, 0, 0);
+            var imgData = tempCanvas.getImageData(0, 0, image.width, image.height);
+            var trans = 0, white = 0, black=0;
+            for (var i=0;i<image.width;i++) {
+                for (var j=0;j<image.height;j++) {
+                    var pixel = getPixel(imgData, i, j);
+                    if (pixel[3]==0) trans++;
+                    if (pixel[0]==255 && pixel[1]==255 && pixel[2]==255 && pixel[3]==255) white++;
+                    if (pixel[0]==0 && pixel[1]==0 && pixel[2]==0 && pixel[3]==255) black++;
+                }
+            }
+            if (white>black && white>trans*10 && confirm("看起来这张图片是以纯白为底色，是否自动调整为透明底色？")) {
+                for (var i=0;i<image.width;i++) {
+                    for (var j=0;j<image.height;j++) {
+                        var pixel = getPixel(imgData, i, j);
+                        if (pixel[0]==255 && pixel[1]==255 && pixel[2]==255 && pixel[3]==255) {
+                            setPixel(imgData, i, j, [0,0,0,0]);
+                        }
+                    }
+                }
+                tempCanvas.clearRect(0, 0, image.width, image.height);
+                tempCanvas.putImageData(imgData, 0, 0);
+                changed = true;
+            }
+            if (black>white && black>trans*10 && confirm("看起来这张图片是以纯黑为底色，是否自动调整为透明底色？")) {
+                for (var i=0;i<image.width;i++) {
+                    for (var j=0;j<image.height;j++) {
+                        var pixel = getPixel(imgData, i, j);
+                        if (pixel[0]==0 && pixel[1]==0 && pixel[2]==0 && pixel[3]==255) {
+                            setPixel(imgData, i, j, [0,0,0,0]);
+                        }
+                    }
+                }
+                tempCanvas.clearRect(0, 0, image.width, image.height);
+                tempCanvas.putImageData(imgData, 0, 0);
+                changed = true;
+            }
+
+            // Step 2: 检测长宽比
+            var ysize = selectAppend.value.indexOf('48') === -1 ? 32 : 48;
+            if ((image.width%32!=0 || image.height%ysize!=0) && (image.width<=128 && image.height<=ysize*4)
+                && confirm("目标长宽不符合条件，是否自动进行调整？")) {
+                var ncanvas = document.createElement('canvas').getContext('2d');
+                ncanvas.canvas.width = 128;
+                ncanvas.canvas.height = 4*ysize;
+                ncanvas.mozImageSmoothingEnabled = false;
+                ncanvas.webkitImageSmoothingEnabled = false;
+                ncanvas.msImageSmoothingEnabled = false;
+                ncanvas.imageSmoothingEnabled = false;
+                var w = image.width / 4, h = image.height / 4;
+                for (var i=0;i<4;i++) {
+                    for (var j=0;j<4;j++) {
+                        ncanvas.drawImage(tempCanvas.canvas, i*w, j*h, w, h, i*32 + (32-w)/2, j*ysize + (ysize-h)/2, w, h);
+                    }
+                }
+                tempCanvas = ncanvas;
+                changed = true;
+            }
+
+            if (!changed) {
+                callback(image);
+            }
+            else {
+                var nimg = new Image();
+                nimg.onload = function () {
+                    callback(nimg);
+                };
+                nimg.src = tempCanvas.canvas.toDataURL();
+            }
+        }
+
         var selectFileBtn = document.getElementById('selectFileBtn');
         selectFileBtn.onclick = function () {
             var loadImage = function (content, callback) {
@@ -565,10 +801,6 @@ editor_mode = function (editor) {
                         callback(image);
                     }
                     image.src = content;
-                    if (image.complete) {
-                        callback(image);
-                        return;
-                    }
                 }
                 catch (e) {
                     printe(e);
@@ -576,48 +808,50 @@ editor_mode = function (editor) {
             }
             core.readFile(function (content) {
                 loadImage(content, function (image) {
-                    editor_mode.appendPic.img = image;
-                    editor_mode.appendPic.width = image.width;
-                    editor_mode.appendPic.height = image.height;
+                    autoAdjust(image, function (image) {
+                        editor_mode.appendPic.img = image;
+                        editor_mode.appendPic.width = image.width;
+                        editor_mode.appendPic.height = image.height;
 
-                    if (selectAppend.value == 'autotile') {
-                        for (var ii = 0; ii < 3; ii++) {
-                            var newsprite = appendPicCanvas.children[ii];
-                            newsprite.style.width = (newsprite.width = image.width) / ratio + 'px';
-                            newsprite.style.height = (newsprite.height = image.height) / ratio + 'px';
+                        if (selectAppend.value == 'autotile') {
+                            for (var ii = 0; ii < 3; ii++) {
+                                var newsprite = appendPicCanvas.children[ii];
+                                newsprite.style.width = (newsprite.width = image.width) / ratio + 'px';
+                                newsprite.style.height = (newsprite.height = image.height) / ratio + 'px';
+                            }
+                            sprite_ctx.clearRect(0, 0, sprite.width, sprite.height);
+                            sprite_ctx.drawImage(image, 0, 0);
                         }
-                        sprite_ctx.clearRect(0, 0, sprite.width, sprite.height);
-                        sprite_ctx.drawImage(image, 0, 0);
-                    }
-                    else {
-                        var ysize = selectAppend.value.indexOf('48') === -1 ? 32 : 48;
-                        for (var ii = 0; ii < 3; ii++) {
-                            var newsprite = appendPicCanvas.children[ii];
-                            newsprite.style.width = (newsprite.width = Math.floor(image.width / 32) * 32) / ratio + 'px';
-                            newsprite.style.height = (newsprite.height = Math.floor(image.height / ysize) * ysize) / ratio + 'px';
+                        else {
+                            var ysize = selectAppend.value.indexOf('48') === -1 ? 32 : 48;
+                            for (var ii = 0; ii < 3; ii++) {
+                                var newsprite = appendPicCanvas.children[ii];
+                                newsprite.style.width = (newsprite.width = Math.floor(image.width / 32) * 32) / ratio + 'px';
+                                newsprite.style.height = (newsprite.height = Math.floor(image.height / ysize) * ysize) / ratio + 'px';
+                            }
                         }
-                    }
 
-                    //画灰白相间的格子
-                    var bgc = bg.getContext('2d');
-                    var colorA = ["#f8f8f8", "#cccccc"];
-                    var colorIndex;
-                    var sratio = 4;
-                    for (var ii = 0; ii < image.width / 32 * sratio; ii++) {
-                        colorIndex = 1 - ii % 2;
-                        for (var jj = 0; jj < image.height / 32 * sratio; jj++) {
-                            bgc.fillStyle = colorA[colorIndex];
-                            colorIndex = 1 - colorIndex;
-                            bgc.fillRect(ii * 32 / sratio, jj * 32 / sratio, 32 / sratio, 32 / sratio);
+                        //画灰白相间的格子
+                        var bgc = bg.getContext('2d');
+                        var colorA = ["#f8f8f8", "#cccccc"];
+                        var colorIndex;
+                        var sratio = 4;
+                        for (var ii = 0; ii < image.width / 32 * sratio; ii++) {
+                            colorIndex = 1 - ii % 2;
+                            for (var jj = 0; jj < image.height / 32 * sratio; jj++) {
+                                bgc.fillStyle = colorA[colorIndex];
+                                colorIndex = 1 - colorIndex;
+                                bgc.fillRect(ii * 32 / sratio, jj * 32 / sratio, 32 / sratio, 32 / sratio);
+                            }
                         }
-                    }
 
-                    //把导入的图片画出
-                    source_ctx.drawImage(image, 0, 0);
-                    editor_mode.appendPic.sourceImageData=source_ctx.getImageData(0,0,image.width,image.height);
+                        //把导入的图片画出
+                        source_ctx.drawImage(image, 0, 0);
+                        editor_mode.appendPic.sourceImageData=source_ctx.getImageData(0,0,image.width,image.height);
 
-                    //重置临时变量
-                    selectAppend.onchange();
+                        //重置临时变量
+                        selectAppend.onchange();
+                    });
                 });
             }, null, 'img');
 
@@ -630,21 +864,6 @@ editor_mode = function (editor) {
             var imgData=editor_mode.appendPic.sourceImageData;
             var nimgData=new ImageData(imgData.width,imgData.height);
             // ImageData .data 形如一维数组,依次排着每个点的 R(0~255) G(0~255) B(0~255) A(0~255)
-            var getPixel=function(imgData, x, y) {
-                var offset = (x + y * imgData.width) * 4;
-                var r = imgData.data[offset+0];
-                var g = imgData.data[offset+1];
-                var b = imgData.data[offset+2];
-                var a = imgData.data[offset+3];
-                return [r,g,b,a];
-            }
-            var setPixel=function(imgData, x, y, rgba) {
-                var offset = (x + y * imgData.width) * 4;
-                imgData.data[offset+0]=rgba[0];
-                imgData.data[offset+1]=rgba[1];
-                imgData.data[offset+2]=rgba[2];
-                imgData.data[offset+3]=rgba[3];
-            }
             var convert=function(rgba,delta){
                 var round=Math.round;
                 // rgbToHsl hue2rgb hslToRgb from https://github.com/carloscabo/colz.git
@@ -857,19 +1076,23 @@ editor_mode = function (editor) {
             }
 
             var ysize = selectAppend.value.indexOf('48') === -1 ? 32 : 48;
-            var height = editor_mode.appendPic.toImg.height;
             for (var ii = 0, v; v = editor_mode.appendPic.selectPos[ii]; ii++) {
-                var imgData = source_ctx.getImageData(v.x * 32, v.y * ysize, 32, ysize);
-                sprite_ctx.putImageData(imgData, ii * 32, height);
+                // var imgData = source_ctx.getImageData(v.x * 32, v.y * ysize, 32, ysize);
+                // sprite_ctx.putImageData(imgData, ii * 32, sprite.height - ysize);
                 // sprite_ctx.drawImage(editor_mode.appendPic.img, v.x * 32, v.y * ysize, 32, ysize,  ii * 32, height,  32, ysize)
+
+                sprite_ctx.drawImage(source_ctx.canvas, v.x*32, v.y*ysize, 32, ysize, 32*ii, sprite.height - ysize, 32, ysize);
             }
+            var dt = sprite_ctx.getImageData(0, 0, sprite.width, sprite.height);
             var imgbase64 = sprite.toDataURL().split(',')[1];
             fs.writeFile('./project/images/' + editor_mode.appendPic.imageName + '.png', imgbase64, 'base64', function (err, data) {
                 if (err) {
                     printe(err);
                     throw(err)
                 }
-                printe('追加素材成功,请F5刷新编辑器');
+                printe('追加素材成功，请F5刷新编辑器，或继续追加当前素材');
+                sprite.style.height = (sprite.height = (sprite.height+ysize)) + "px";
+                sprite_ctx.putImageData(dt, 0, 0);
             });
         }
 

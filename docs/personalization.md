@@ -1,6 +1,6 @@
 # 个性化
 
-?> 目前版本**v2.5**，上次更新时间：* {docsify-updated} *
+?> 目前版本**v2.5.3**，上次更新时间：* {docsify-updated} *
 
 有时候只靠样板本身可能是不够的。我们需要一些个性化、自定义的素材，道具效果，怪物属性，等等。
 
@@ -8,21 +8,46 @@
 
 HTML5魔塔是使用画布（canvas）来绘制，存在若干个图层，它们之间有一个覆盖关系，后面的图层将覆盖前面的图层。
 
-所有图层从低往高依次如下：
+所有图层从低往高依次如下：（加[B]的代表该层是大地图，[D]代表由系统按需动态创建，z-index代表该层的纵向高度）
 
-- bg：背景层；绘制背景图层素材bgmap，和背景贴图
-- event：事件层；所有事件（道具、墙壁、NPC、怪物等）都绘制在这一层进行处理
-- hero：勇士层；主要用来绘制勇士
-- event2：事件2层；本层主要用来绘制48x32的图片素材的上半部分（避免和勇士错位）
-- fg：前景层；绘制前景图层素材fgmap，和前景贴图
-- damage：显伤层；主要用来绘制怪物显伤和领域显伤
-- animate：动画层；主要用来绘制动画。showImage事件绘制的图片也是在这一层。
-- image：图片层；主要用来绘制显示图片
-- weather：天气层；主要用来绘制天气（雨/雪）
-- route：路线层；主要用来绘制勇士的行走路线图，也用来绘制图块的淡入/淡出效果，图块的移动等。
-- curtain：色调层；用来控制当前楼层的画面色调
-- ui：UI层；用来绘制一切UI窗口，如剧情文本、怪物手册、楼传器、系统菜单等等
-- data：数据层；用来绘制一些顶层的或更新比较快的数据，如左上角的提示，战斗界面中数据的变化等等。
+- bg**[B]**：背景层；绘制背景图层素材bgmap，和背景贴图 (z-index: 10)
+- event**[B]**：事件层；所有事件（道具、墙壁、NPC、怪物等）都绘制在这一层进行处理 (z-index: 30)
+- hero：勇士层；主要用来绘制勇士 (z-index: 40)
+- event2**[B]**：事件2层；本层主要用来绘制48x32的图片素材的上半部分（避免和勇士错位） (z-index: 50)
+- fg**[B]**：前景层；绘制前景图层素材fgmap，和前景贴图 (z-index: 60)
+- damage**[B]**：显伤层；主要用来绘制怪物显伤和领域显伤 (z-index: 65)
+- animate：动画层；主要用来绘制动画。 (z-index: 70)
+- weather**[D]**：天气层；主要用来绘制天气（雨/雪/雾） (z-index: 80)
+- route**[D]**：路线层；主要用来绘制勇士的行走路线图。 (z-index: 95)
+- paint**[D]**：绘图层；主要用来进行绘图模式。（z-index: 95)
+- curtain：色调层；用来控制当前楼层的画面色调 (z-index: 125)
+- image\***[D]**：图片层；用来绘制图片等操作。（z-index: 100+code, 101~150；也就是图片编号在1~25的在色调层之下，26~50的在色调层之上）
+- ui：UI层；用来绘制一切UI窗口，如剧情文本、怪物手册、楼传器、系统菜单等等 (z-index: 160)
+- data：数据层；用来绘制一些顶层的或更新比较快的数据，如左上角的提示，战斗界面中数据的变化等等。 (z-index: 170)
+
+### 动态创建canvas
+
+从V2.5.3开始，可以在H5样板中任意动态创建canvas并进行使用。
+
+使用`core.createCanvas(name, x, y, w, h, z)`来动态创建一个画布。
+
+其中name为动态canvas名称，x,y,w,h为创建的画布相对窗口左上角的像素坐标和长宽，z为画布的纵向高度。
+
+例如：`core.createCanvas('test', 10, 20, 100, 200, 74)` 创建了一个名为test的画布，其左上角相对窗口的像素坐标为(10,20)，宽100高200，纵向高度74（在动画层和天气层之间）。
+
+该函数会返回画布的context，也可以通过 `core.dymCanvas[name]` 来获得；例如 `core.dymCanvas.test` 就是我们上面创建的画布的context，然后进行操作。
+
+也可以简单的使用`core.fillText()`, `core.fillRect()`, `core.strokeRect()`等等对画布进行任意绘制。
+
+``` js
+core.fillText('test', '这是一段文字', 10, 30, '#FF0000', '16px Verdana'); // 绘制一段文本
+```
+
+使用 `core.deleteCanvas(name)` 删除一个动态创建的画布，例如 `core.deleteCanvas('test')`。
+
+`core.deleteAllCanvas()`可以删除所有动态创建的画布，`core.relocateCanvas(name, x, y)`和`core.resizeCanvas(name, x, y)`可以对画布的位置和大小进行改变。
+
+更多详细API请参见[API列表](api)。
 
 ## 自定义素材
 
@@ -51,7 +76,7 @@ HTML5魔塔是使用画布（canvas）来绘制，存在若干个图层，它们
 
 在地图编辑器中绘图时，下拉框选中“背景层”或“前景层”即可在对应的图层上绘图。
 
-其中背景层和前景层仅为静态绘图（不支持动画），但可以使用自动元件（autotile）。
+其中背景层和前景层可以使用任何素材，以及使用自动元件（autotile）。
 
 可以使用`showBgFgMap`, `hideBgFgMap`, `setBgFgBlock`等事件对背景和前景图层进行操作。
 
@@ -335,6 +360,7 @@ function (enemy, hero_hp, hero_atk, hero_def, hero_mdef, x, y, floorId) {
         var vampireDamage = hero_hp * enemy.value;
 
         // 如果有神圣盾免疫吸血等可以在这里写
+        // 也可以用hasItem或hasEquip来判断装备
         if (core.hasFlag("shield5")) vampireDamage = 0; // 存在神圣盾，吸血伤害为0
 
         vampireDamage = Math.floor(vampireDamage) || 0;
@@ -348,11 +374,14 @@ function (enemy, hero_hp, hero_atk, hero_def, hero_mdef, x, y, floorId) {
 ```
 3. 免疫领域、夹击、阻击效果：在2.4.1之后，可以直接将flag:no_zone设为true来免疫领域效果，其他几个同理。
 ``` js
-// 同样写在道具的itemEffect中
-core.setFlag("no_zone", true); // 免疫领域
-core.setFlag("no_snipe", true); // 免疫阻击
-core.setFlag("no_laser", true);  // 免疫激光
-core.setFlag("no_betweenAttack", true); // 免疫夹击
+// 写在获得道具后事件
+[
+    // 设置不同的flag可以分别无视对应的阻激夹域效果
+    {"type": "setValue", "name": "flag:no_zone", "value": "true"}, // 免疫领域
+    {"type": "setValue", "name": "flag:no_snipe", "value": "true"}, // 免疫阻击
+    {"type": "setValue", "name": "flag:no_laser", "value": "true"}, // 免疫激光
+    {"type": "setValue", "name": "flag:no_betweenAttack", "value": "true"}, // 免疫夹击
+]
 ```
 4. 如果有更高的需求，例如想让吸血效果变成一半，则还是在上面这些地方进行对应的修改即可。
 
@@ -521,6 +550,15 @@ case 89: // 使用该按键的keyCode，比如Y键就是89
 
 ## 公共事件
 
+从2.5.1开始，H5提供了`{"type":"insert"}`事件，完美支持了公共事件的写法。
+
+我们只需要将需要的公共事件放在某个角落的墙上（或者甚至单独弄一层专门摆放公共事件），并使用“插入事件”，即可进行调用。
+
+具体详见[插入另一个地点的事件](event#insert：插入另一个地点的事件)。
+
+当然，继续使用**插件**的写法也是可以的。具体参见“脚本编辑 - 插件编写”。
+
+<!--
 在RM中，存在公共事件的说法；也就是通过某个指令来调用一系列事件的触发。
 
 在H5中，我们可以使用“插件”的形式来达成这个效果。具体参见“脚本编辑 - 插件编写”。
@@ -547,50 +585,80 @@ this.myfunc = function(x) {
 然后比如我们在某个道具的使用效果 `useItemEffect` 中写 `core.plugin.myfunc(2)` 即可调用此公共事件（插件）。也可以在战后事件或自定义脚本等位置来写。
 
 通过这种，将脚本和自定义事件混用的方式，可以达到和RM中公共事件类似的效果，即一个调用触发一系列事件。
+-->
 
-<!--
+## 标题界面事件化
+
+从V2.5.3开始，我们可以将标题界面的绘制和游戏开始用事件来完成。可以通过绘制画布、
+
+全塔属性，flags中的startUsingCanvas可以决定是否开启标题界面事件化。
+
+然后就可以使用“事件流”的形式来绘制标题界面、提供选项等等。
+
+在这里可以调用任意事件。例如，可以贴若干个图，可以事件切换楼层到某个剧情层再执行若干事件，等等。
+
+关于选项，样板默认给出的是最简单的choices事件；你也可以使用贴按钮图，循环处理+等待操作来定制自己的按钮点击效果。
+
+!> 开始游戏、读取存档、录像回放的效果已经默认给出，请不要修改或删减这些内容，以免出现问题。
+
+标题界面事件全部处理完后，将再继续执行startText事件。
+
+## 手机端按键模式
+
+从V2.5.3以后，我们可以给手机端增加按键了，这样将非常有利于技能的释放。
+
+当用户在竖屏模式下点击工具栏，就会在工具栏按钮和快捷键模式之间进行切换。
+
+切换到快捷键模式后，可以点1-7，分别等价于在电脑端按键1-7。
+
+可以在脚本编辑的onKeyUp中定义每个快捷键的使用效果，比如使用道具或释放技能等。
+
+默认值下，1使用破，2使用炸，3使用飞，4使用其他存在的道具，5-7未定义。可以相应修改成自己的效果。
+
+也可以替换icons.png中的对应图标，以及修改main.js中`main.statusBar.image.btn1~7`中的onclick事件来自定义按钮和对应按键。
+
+非竖屏模式下、回放录像中、隐藏状态栏中，将不允许进行切换。
 
 ## 自定义状态栏（新增显示项）
 
 在V2.2以后，我们可以自定义状态栏背景图（全塔属性 - statusLeftBackground）等等。
 
-但是，如果我们还想新增其他项目的显示，比如技能塔所需要的魔力值（气息），该怎么办？
+但是，如果我们还想新增其他项目的显示，比如攻速或者暴击，该怎么办？
 
 需要进行如下几个操作：
 
-1. 定义图标ID；比如魔力我就定义mana，气息可以简单的定义qixi；你也可以定义其他的ID，但是不能和已有的重复。这里以mana为例。
+1. 定义ID；比如攻速我就定义speed，暴击可以简单的定义baoji；你也可以定义其他的ID，但是不能和已有的重复。这里以speed为例。
 2. 在index.html的statusBar中（44行起），进行该状态栏项的定义。仿照其他几项，插在其应当显示的位置，注意替换掉相应的ID。
 ``` html
-<div class="status" id="manaCol">
-    <img id="img-mana">
-    <p class='statusLabel' id='mana'></p>
+<div class="status" id="speedCol">
+    <img id="img-speed">
+    <p class='statusLabel' id='speed'></p>
 </div>
 ```
-3. 在editor.html中的statusBar（317行起），仿照第二点同样添加；这一项如果不进行则会地图编辑器报错。editor-mobile.html同理。
-4. 使用便捷PS工具，打开icons.png，新增一行并将魔力的图标P上去；记下其索引比如24（从0开始数）。
+3. 在editor.html中的statusBar（323行起），仿照第二点同样添加；这一项如果不进行则会地图编辑器报错。editor-mobile.html同理。
+4. 使用便捷PS工具，打开icons.png，新增一行并将魔力的图标P上去；记下其索引比如37（从0开始数）。
 5. 在main.js的this.statusBar中增加图片、图标和内容的定义。
 ``` js
 this.statusBar = {
     'images': {
         // ...其他略
-        'mana': document.getElementById("img-mana"), // 图片的定义
+        'speed': document.getElementById("img-speed"), // 图片的定义
     },
     'icons': {
         // ...其他略
-        'mana': 24, // 图标的定义，这里对应的是icons.png中的索引
+        'speed': 37, // 图标的定义，这里对应的是icons.png中的索引
     },
     // ...其他略
-    'mana': document.getElementById('mana'), // 显示内容（数据）的定义
+    'speed': document.getElementById('speed'), // 显示内容（数据）的定义
 }
 ```
 6. 显示内容的设置。在脚本编辑的updateStatusBar函数，可以对该状态栏显示内容进行设置，下面是几个例子。
 ``` js
-core.statusBar.mana.innerHTML = core.getFlag('mana', 0); // 设置其显示内容为flag:mana值。
-core.statusBar.mana.innerHTML = core.getFlag('mana', 0) + '/' + core.getFlag('manaMax', 0); // 显示内容将类似 "32/60" 这样。
-core.statusBar.mana.style.fontStyle = 'normal'; // 这一行会取消斜体。如果是汉字（比如技能名）的话，斜体起来会非常难看，可以通过这一句取消。
+// 设置其显示内容为status:speed值；需要在project/data.js中firstData的hero那里新增初始值`"speed": 0`。
+core.statusBar.speed.innerHTML = core.getStatus('speed');
+// 设置其显示内容为flag:speed值，无需额外进行定义。
+core.statusBar.speed.innerHTML = core.getFlag('speed', 0);
 ```
-
--->
 
 ## 技能塔的支持
 
@@ -736,6 +804,65 @@ if (core.flags.enableSkill) {
 
 通过上述这几种方式，我们就能成功的让H5支持技能啦！
 
+## 成就系统
+
+我们还可以给HTML5魔塔增加成就系统。注意到成就是和游戏相关，因此需要使用getLocalStorage而不是getFlag判定。
+
+可将下面的代码粘贴到脚本编辑 - 插件编写中。
+
+``` js
+// 所有成就项的定义
+this.achievements = [
+    // 每行一个，分别定义flag、名称、描述、是否存在提示、成就点数
+    {"flag": "a1", "name": "成就1", "text": "成就1的达成描述", "hint": false, "point": 1},
+    // 可以继续往后新增其他的。
+];
+
+// 达成成就；如 core.plugin.achieve("a1") 即达成a1对应的成就
+this.achieve = function (flag) {
+    // 获得已达成的成就；如果跟存档而不是跟游戏则改成getFlag
+    var achieved = core.getLocalStorage("achievements", []);
+    var point = core.getLocalStorage("achievePoint", 0);
+    // 已经获得该成就
+    if (achieved.indexOf(flag)>=0) return;
+    // 尝试达成成就；找到对应的成就项
+    this.achievements.forEach(function (one) {
+        if (one.flag == flag) {
+            // 执行达成成就的操作；也可以自行在上面加上达成成就后的事件
+            core.insertAction("\t[达成成就："+one.name+"]"+one.text);
+            point += one.point || 0;
+        }
+    });
+    achieved.push(flag);
+    // 存入localStorage中；如果跟存档走则使用setFlag
+    core.setLocalStorage("achievements", achieved);
+    core.setLocalStorage("achievePoint", point);
+}
+
+// 获得所有成就说明；这里简单使用两个insertAction，你也可以修改成自己的实现
+// 简单一点的可以使用insertAction+剧情文本；稍微复杂一点的可以使用图片化文本等；更复杂的可以自绘UI。
+this.getAchievements = function () {
+    var achieved = core.getLocalStorage("achievements", []);
+    var yes = [], no = [];
+    // 对所有成就进行遍历
+    this.achievements.forEach(function (one) {
+        // 检测是否达成
+        if (achieved.indexOf(one.flag)>=0) {
+            yes.push(one.name+"："+one.text);
+        }
+        else {
+            no.push(one.name+"："+(one.hint?one.text:"达成条件请自行探索"));
+        }
+    });
+    core.insertAction([
+        "\t[已达成的成就]"+(yes.length==0?"暂无":yes.join("\n")),
+        "\t[尚未达成的成就]"+(no.length==0?"暂无":no.join("\n"))
+    ]);
+}
+```
+
+
+
 ## 多角色的支持
 
 其实，我们的样板还能支持多角色的制作。比如《黑·白·间》之类的塔也是完全可以刻的。
@@ -744,7 +871,7 @@ if (core.flags.enableSkill) {
 
 1. 每个角色弄一张行走图。相关信息参见[自定义事件：setHeroIcon](event#setHeroIcon：更改角色行走图)。
 2. [覆盖楼传事件](#覆盖楼传事件)，这样可以通过点工具栏的楼层传送按钮来切换角色。当然你也完全可以自己写一个道具，或[自定义快捷键](#自定义快捷键)来进行绑定。
-3. 将下述代码直接贴入脚本编辑 - 插件编写中。（写在`var _useEquipment = ...`之前。）
+3. 将下述代码直接贴入脚本编辑 - 插件编写中。
     ``` js
     // 所有需要保存的内容；这些保存的内容不会多角色共用，在切换时会进行恢复。
     // 你也可以自行新增或删除，比如不共用金币则可以加上"money"的初始化，不共用道具则可以加上"items"的初始化，
@@ -812,40 +939,31 @@ if (core.flags.enableSkill) {
 3. 在脚本编辑 - setInitData中加上`core.plugin.initHeros()`来初始化新勇士。（写在`core.events.afterLoadData()`后，反大括号之前。）
 4. 如果需要切换角色（包括事件、道具或者快捷键等），可以直接调用自定义JS脚本：`core.plugin.changeHero();`进行切换。也可以指定参数调用`core.plugin.changeHero(1)`来切换到某个具体的勇士上。
 
-!> 如果道具不共用，需要在初始定义那里写 `'items': {"keys": {"yellowKey": 0, "blueKey": 0, "redKey": 0}, "tools": {}, "constants": {}}`
+## 系统使用的flag变量
 
-## 根据难度分歧来自定义地图
+众所周知，自定义flag变量都可以任意定义并取用（未定义直接取用的flag默认值为0）。
 
-遗憾的是，所有地图数据必须在剧本的map中指定，换句话说，我们无法在游戏进行中动态修改地图，比如为简单难度增加一个血瓶。
+下面是一些可能会被系统设置或取用的flag变量：
 
-幸运的是，我们可以采用如下方式进行难度分歧，为用户简单难度下增加额外的血瓶或宝石。
-
-``` js
-"firstArrive": [ // 第一次到该楼层触发的事件
-    {"type": "if", "condition": "flag:hard!=3", // 判断是否困难难度
-        "true": [ // 不为困难，则为普通或简单难度
-            {"type": "show", "loc": [3,6]} // 显示血瓶
-            {"type": "if", "condition": "flag:hard==1", // 判断是否是简单难度
-                "true": [
-                    {"type": "show", "loc": [3,7]} // 简单难度则显示宝石
-                ],
-                "false": [] // 普通难度则只显示血瓶
-            },
-        ],
-        "false": [] // 困难难度，不进行任何操作
-  },
-],
-"events": {
-  "3,6": {"enable": false} // 比如[3,6]点是一个血瓶，初始不可见
-  "3,7": {"enable": false} // 比如[3,7]点是一个宝石，初始不可见
-}
-```
-
-如上所示，我们在地图上设置一个额外的血瓶和宝石，并初始时设为禁用状态。
-
-当第一次到达该楼层时，进行一次判断；如果不为困难难度，则将血瓶显示出来；再判断是否为简单难度，如果是则再把宝石显示出来。
-
-通过对`flag:hard`进行判断的方式，我们也可以达成“对于不同的难度有着不同的地图效果”。
+- **`flag:hard`**: 当前的难度标志；此flag变量在setInitData中被定义，可以直接取用来判定当前难度分歧。上传成绩时将根据此flag来对不同难度进行排序。
+- **`flag:posion`**, **`flag:weak`**, **`flag:curse`**: 中毒、衰弱、诅咒状态。
+- **`flag:no_zone`**, **`flag:no_snipe`**, **`flag:no_laser`**, **`flag:no_betweenAttack`**: 是否分别免疫领域、阻击、激光、夹击效果。
+- **`flag:hatred`**: 当前的仇恨数值。
+- **`flag:commonTimes`**: 全局商店共用次数时的访问次数。
+- **`flag:input`**: 接受用户输入的事件后，存放用户输入的结果。
+- **`flag:type`**, **`flag:keycode`**, **`flag:x`**, **`flag:y`**, **`flag:px`**, **`flag:py`**: 等待用户操作后，用户的操作类型，按键keycode或点击/像素坐标。
+- **`flag:skill`**, **`flag:skillName`**: 开启的技能编号和技能名。
+- **`flag:heroIcon`**: 当前的勇士行走图名称。
+- **`flag:saveEquips`**: 快速换装时保存的套装。
+- **`flag:__visited__`**: 当前访问过的楼层。
+- **`flag:equip_atk_buff`**, **`flag:equip_def_buff`**, **`flag:equip_mdef_buff`**: 当前攻防魔防的实际计算比例加成。
+- **`flag:__color__`**, **`flag:__weather__`**, **`flag:__volume__`**: 当前的画面色调、天气和音量。
+- **`flag:__events__`**: 当前保存的事件列表，读档时会恢复（适用于在事件中存档）
+- **`flag:textAttribute`**, **`flag:globalAttribute`**, **`flag:globalFlags`**: 当前的剧情文本属性，当前的全局属性，当前的全局开关。
+- **`flag:cannotMoveDirectly`**, **`flag:clickMove`**: 当前是否不允许瞬间移动，当前用户是否开启了单击瞬移。
+- **`flag:hideStatusBar`**, **`flag:showToolbox`**: 是否隐藏状态栏，是否显示工具栏。
+- **`flag:debug`**, **`flag:consoleOpened`**: 当前是否开启了调试模式，是否开启了控制台。
+- **`flag:__seed__`**, **`flag:__rand__`**: 伪随机数生成种子和当前的状态
 
 ==========================================================================================
 

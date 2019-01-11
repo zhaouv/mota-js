@@ -3,23 +3,56 @@ utils.js 工具类
 
  */
 
-function utils() {
+"use strict";
 
+function utils() {
+    this.init();
+    this.scan = {
+        'up': {'x': 0, 'y': -1},
+        'left': {'x': -1, 'y': 0},
+        'down': {'x': 0, 'y': 1},
+        'right': {'x': 1, 'y': 0}
+    };
 }
 
 utils.prototype.init = function () {
+    // 定义Object.assign
+    if (typeof Object.assign != "function") {
+        Object.assign = function(target, varArgs) { // .length of function is 2
+            if (target == null) { // TypeError if undefined or null
+                throw new TypeError('Cannot convert undefined or null to object');
+            }
+
+            var to = Object(target);
+
+            for (var index = 1; index < arguments.length; index++) {
+                var nextSource = arguments[index];
+
+                if (nextSource != null) { // Skip over if undefined or null
+                    for (var nextKey in nextSource) {
+                        // Avoid bugs when hasOwnProperty is shadowed
+                        if (Object.prototype.hasOwnProperty.call(nextSource, nextKey)) {
+                            to[nextKey] = nextSource[nextKey];
+                        }
+                    }
+                }
+            }
+            return to;
+        };
+    }
+
 
 }
 
 ////// 将文字中的${和}（表达式）进行替换 //////
-utils.prototype.replaceText = function (text) {
-    return text.replace(/\${([^}]+)}/g, function (word, value) {
-        return core.calValue(value);
+utils.prototype.replaceText = function (text, need, times) {
+    return text.replace(/\${(.*?)}/g, function (word, value) {
+        return core.calValue(value, null, need, times);
     });
 }
 
 ////// 计算表达式的值 //////
-utils.prototype.calValue = function (value) {
+utils.prototype.calValue = function (value, prefix, need, times) {
     if (!core.isset(value)) return value;
     if (typeof value == 'number') {
         return value;
@@ -30,6 +63,7 @@ utils.prototype.calValue = function (value) {
     value=value.replace(/status:([\w\d_]+)/g, "core.getStatus('$1')");
     value=value.replace(/item:([\w\d_]+)/g, "core.itemCount('$1')");
     value=value.replace(/flag:([\w\d_]+)/g, "core.getFlag('$1', 0)");
+    value=value.replace(/switch:([\w\d_]+)/g, "core.getFlag('"+(prefix||"global")+"@$1', 0)");
     return eval(value);
 }
 
@@ -51,8 +85,8 @@ utils.prototype.splitLines = function(canvas, text, maxLength, font) {
         }
         else {
             var toAdd = text.substring(last, i+1);
-            var width = core.canvas[canvas].measureText(toAdd).width;
-            if (width>maxLength) {
+            var width = core.calWidth(canvas, toAdd);
+            if (core.isset(maxLength) && width>maxLength) {
                 contents.push(text.substring(last, i));
                 last=i;
             }
@@ -77,6 +111,11 @@ utils.prototype.unshift = function (a,b) {
 ////// 设置本地存储 //////
 utils.prototype.setLocalStorage = function(key, value) {
     try {
+        if (!core.isset(value)) {
+            this.removeLocalStorage(key);
+            return;
+        }
+
         var str = JSON.stringify(value);
         var compressed = LZString.compress(str);
 
@@ -90,6 +129,10 @@ utils.prototype.setLocalStorage = function(key, value) {
             localStorage.setItem(core.firstData.name + "_" + key, str);
         }
         localStorage.removeItem("__tmp__");
+
+        if (key == 'autoSave') core.saves.ids[0] = true;
+        else if (/^save\d+$/.test(key)) core.saves.ids[parseInt(key.substring(4))] = true;
+
         return true;
     }
     catch (e) {
@@ -108,7 +151,9 @@ utils.prototype.getLocalStorage = function(key, defaultValue) {
                 try {
                     return JSON.parse(output);
                 }
-                catch (ee) {}
+                catch (ee) {
+                    // Ignore, use default value
+                }
             }
             return JSON.parse(value);
         }
@@ -123,6 +168,8 @@ utils.prototype.getLocalStorage = function(key, defaultValue) {
 ////// 移除本地存储 //////
 utils.prototype.removeLocalStorage = function (key) {
     localStorage.removeItem(core.firstData.name+"_"+key);
+    if (key == 'autoSave') delete core.saves.ids[0];
+    else if (/^save\d+$/.test(key)) delete core.saves.ids[parseInt(key.substring(4))];
 }
 
 utils.prototype.setLocalForage = function (key, value, successCallback, errorCallback) {
@@ -137,13 +184,22 @@ utils.prototype.setLocalForage = function (key, value, successCallback, errorCal
         return;
     }
 
+    if (!core.isset(value)) {
+        this.removeLocalForage(key);
+        return;
+    }
+
     // Save to localforage
     var compressed = LZString.compress(JSON.stringify(value));
     localforage.setItem(core.firstData.name+"_"+key, compressed, function (err) {
         if (core.isset(err)) {
             if (core.isset(errorCallback)) errorCallback(err);
         }
-        else if (core.isset(successCallback)) successCallback();
+        else {
+            if (key == 'autoSave') core.saves.ids[0] = true;
+            else if (/^save\d+$/.test(key)) core.saves.ids[parseInt(key.substring(4))] = true;
+            if (core.isset(successCallback)) successCallback();
+        }
     });
 }
 
@@ -194,7 +250,11 @@ utils.prototype.removeLocalForage = function (key, successCallback, errorCallbac
         if (core.isset(err)) {
             if (core.isset(errorCallback)) errorCallback(err);
         }
-        else if (core.isset(successCallback)) successCallback();
+        else {
+            if (key == 'autoSave') delete core.saves.ids[0];
+            else if (/^save\d+$/.test(key)) delete core.saves.ids[parseInt(key.substring(4))];
+            if (core.isset(successCallback)) successCallback();
+        }
     })
 }
 
@@ -270,14 +330,14 @@ utils.prototype.setTwoDigits = function (x) {
     return parseInt(x)<10?"0"+x:x;
 }
 
-utils.prototype.formatBigNumber = function (x) {
+utils.prototype.formatBigNumber = function (x, onMap) {
     x = Math.floor(parseFloat(x));
     if (!core.isset(x)) return '???';
 
     var c = x<0?"-":"";
     x = Math.abs(x);
 
-    if (x<=999999) return c + x;
+    if (x<=99999 || (!onMap && x<=999999)) return c + x;
 
     var all = [
         {"val": 1e20, "c": "g"},
@@ -289,9 +349,17 @@ utils.prototype.formatBigNumber = function (x) {
 
     for (var i=0;i<all.length;i++) {
         var one = all[i];
-        if (x>=10*one.val) {
-            var v = x/one.val;
-            return c + v.toFixed(Math.max(0, Math.floor(4-Math.log10(v+1)))) + one.c;
+        if (onMap) {
+            if (x>=one.val) {
+                var v = x/one.val;
+                return c + v.toFixed(Math.max(0, Math.floor(3-Math.log10(v+1)))) + one.c;
+            }
+        }
+        else {
+            if (x>=10*one.val) {
+                var v = x/one.val;
+                return c + v.toFixed(Math.max(0, Math.floor(4-Math.log10(v+1)))) + one.c;
+            }
         }
     }
 
@@ -300,10 +368,16 @@ utils.prototype.formatBigNumber = function (x) {
 
 ////// 数组转RGB //////
 utils.prototype.arrayToRGB = function (color) {
-    var nowR = parseInt(color[0])||0, nowG = parseInt(color[1])||0, nowB = parseInt(color[2])||0;
-    if (nowR<0) nowR=0; if (nowB<0) nowB=0;if (nowG<0) nowG=0;
-    if (nowR>255) nowR=255; if (nowB>255) nowB=255; if (nowG>255) nowG=255;
+    var nowR = this.clamp(parseInt(color[0]),0,255), nowG = this.clamp(parseInt(color[1]),0,255),
+        nowB = this.clamp(parseInt(color[2]),0,255);
     return "#"+((1<<24)+(nowR<<16)+(nowG<<8)+nowB).toString(16).slice(1);
+}
+
+utils.prototype.arrayToRGBA = function (color) {
+    if (!this.isset(color[3])) color[3]=1;
+    var nowR = this.clamp(parseInt(color[0]),0,255), nowG = this.clamp(parseInt(color[1]),0,255),
+        nowB = this.clamp(parseInt(color[2]),0,255), nowA = this.clamp(parseFloat(color[3]),0,1);
+    return "rgba("+nowR+","+nowG+","+nowB+","+nowA+")";
 }
 
 ////// 加密路线 //////
@@ -389,17 +463,16 @@ utils.prototype.decodeRoute = function (route) {
         index++;
         return str;
     }
+    var mp = {
+        "U": "up",
+        "D": "down",
+        "L": "left",
+        "R": "right"
+    }
 
     while (index<route.length) {
         var c=route.charAt(index++);
         var nxt=(c=='I'|| c=='e' ||c=='F'||c=='S'||c=='Q'||c=='t')?getString():getNumber();
-
-        var mp = {
-            "U": "up",
-            "D": "down",
-            "L": "left",
-            "R": "right"
-        }
 
         switch (c) {
             case "U": case "D": case "L": case "R": for (var i=0;i<nxt;i++) ans.push(mp[c]); break;
@@ -447,6 +520,11 @@ utils.prototype.clamp = function (x, a, b) {
     return Math.min(Math.max(x||0, min), max);
 }
 
+utils.prototype.getCookie = function (name) {
+    var match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+	return match?match[2]:null;
+}
+
 ////// Base64加密 //////
 utils.prototype.encodeBase64 = function (str) {
     return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, function (match, p1) {
@@ -486,8 +564,8 @@ utils.prototype.__init_seed = function () {
     rand = this.__next_rand(rand);
     rand = this.__next_rand(rand);
     rand = this.__next_rand(rand);
-    core.setFlag('seed', rand);
-    core.setFlag('rand', rand);
+    core.setFlag('__seed__', rand);
+    core.setFlag('__rand__', rand);
 }
 
 utils.prototype.__next_rand = function (_rand) {
@@ -497,9 +575,9 @@ utils.prototype.__next_rand = function (_rand) {
 }
 
 utils.prototype.rand = function (num) {
-    var rand = core.getFlag('rand');
+    var rand = core.getFlag('__rand__');
     rand = this.__next_rand(rand);
-    core.setFlag('rand', rand);
+    core.setFlag('__rand__', rand);
     var ans = rand/2147483647;
     if (core.isset(num) && num>0)
         return Math.floor(ans*num);
@@ -511,7 +589,7 @@ utils.prototype.rand2 = function (num) {
     num = num||2147483648;
 
     var value;
-    if (core.status.replay.replaying) {
+    if (core.isReplaying()) {
         var action = core.status.replay.toReplay.shift();
         if (action.indexOf("random:")==0 ) {
             value=parseInt(action.substring(7));
@@ -592,6 +670,7 @@ utils.prototype.readFileContent = function (content) {
     }
     catch (e) {
         console.log(e);
+        alert(e);
     }
     alert("不是有效的JSON文件！");
 
@@ -615,7 +694,12 @@ utils.prototype.download = function (filename, content) {
 
     // Step 1: 如果是iOS平台，直接不支持
     if (core.platform.isIOS) {
-        alert("iOS平台下不支持下载操作！");
+        if (core.copy(content)) {
+            alert("iOS平台下不支持直接下载文件！\n所有应下载内容已经复制到您的剪切板，请自行创建空白文件并粘贴。");
+        }
+        else {
+            alert("iOS平台下不支持下载操作！");
+        }
         return;
     }
 
@@ -638,7 +722,6 @@ utils.prototype.download = function (filename, content) {
         var blob = new Blob([content], {type: 'text/plain;charset=utf-8'});
         var href = window.URL.createObjectURL(blob);
         var opened=window.open(href, "_blank");
-        // if (!opened) window.location.href=href;
         window.URL.revokeObjectURL(href);
         return;
     }
@@ -698,14 +781,10 @@ utils.prototype.copy = function (data) {
 
 ////// 动画显示某对象 //////
 utils.prototype.show = function (obj, speed, callback) {
-    if (!core.isset(speed)) {
-        obj.style.display = 'block';
-        return;
-    }
     obj.style.display = 'block';
-    if (main.mode!='play'){
+    if (!core.isset(speed) && main.mode!='play') {
         obj.style.opacity = 1;
-        if (core.isset(callback)) {callback();}
+        if (core.isset(callback)) callback();
         return;
     }
     obj.style.opacity = 0;
@@ -724,15 +803,12 @@ utils.prototype.show = function (obj, speed, callback) {
 
 ////// 动画使某对象消失 //////
 utils.prototype.hide = function (obj, speed, callback) {
-    if (!core.isset(speed)) {
+    if (!core.isset(speed) || main.mode!='play'){
         obj.style.display = 'none';
+        if (core.isset(callback)) callback();
         return;
     }
-    if (main.mode!='play'){
-        obj.style.display = 'none';
-        if (core.isset(callback)) {callback();}
-        return;
-    }
+    obj.style.opacity = 1;
     var opacityVal = 1;
     var hideAnimate = window.setInterval(function () {
         opacityVal -= 0.03;
@@ -775,6 +851,12 @@ utils.prototype.encodeCanvas = function (ctx) {
 
 ////// 解析arr数组，并绘制到tempCanvas上 //////
 utils.prototype.decodeCanvas = function (arr, width, height) {
+    // 清空tempCanvas
+    var tempCanvas = core.bigmap.tempCanvas;
+    tempCanvas.canvas.width=width;
+    tempCanvas.canvas.height=height;
+    tempCanvas.clearRect(0, 0, width, height);
+
     if (!core.isset(arr)) return null;
     // to byte array
     var curr = 0, list = [];
@@ -782,11 +864,6 @@ utils.prototype.decodeCanvas = function (arr, width, height) {
         for (var i=0;i<x;i++) list.push(curr);
         curr = 1-curr;
     })
-    // 使用tempCanvas
-    var tempCanvas = core.bigmap.tempCanvas;
-    tempCanvas.canvas.width=width;
-    tempCanvas.canvas.height=height;
-    tempCanvas.clearRect(0, 0, width, height);
 
     var imgData = tempCanvas.getImageData(0, 0, width, height);
     for (var i=0;i<imgData.data.length;i+=4) {
@@ -800,12 +877,13 @@ utils.prototype.decodeCanvas = function (arr, width, height) {
 }
 
 utils.prototype.consoleOpened = function () {
+    if (!core.flags.checkConsole) return false;
+    if (window.Firebug && window.Firebug.chrome && window.Firebug.chrome.isInitialized)
+        return true;
     var threshold = 160;
-    var widthThreshold = window.outerWidth - window.innerWidth > threshold;
-    var heightThreshold = window.outerHeight - window.innerHeight > threshold;
-    return !(heightThreshold && widthThreshold) &&
-        ((window.Firebug && window.Firebug.chrome && window.Firebug.chrome.isInitialized)
-            || widthThreshold || heightThreshold);
+    var zoom = Math.min(window.outerWidth/window.innerWidth, window.outerHeight/window.innerHeight);
+    return window.outerWidth - zoom*window.innerWidth > threshold
+        || window.outerHeight - zoom*window.innerHeight > threshold;
 }
 
 utils.prototype.hashCode = function (obj) {

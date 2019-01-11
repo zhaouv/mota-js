@@ -1,6 +1,6 @@
 # 附录: API列表
 
-?> 目前版本**v2.5**，上次更新时间：* {docsify-updated} *
+?> 目前版本**v2.5.3**，上次更新时间：* {docsify-updated} *
 
 **这里只列出所有可能会被造塔者用到的常用API，更多的有关内容请在代码内进行查询。**
 
@@ -115,6 +115,10 @@ core.hasFlag('xyz')
 返回是否存在某个变量且不为0。等价于 core.getFlag('xyz', 0)!=0 。
 
 
+core.removeFlag('xyz')
+删除某个flag/变量。
+
+
 core.insertAction(list, x, y, callback)
 插入并执行一段自定义事件。在这里你可以写任意的自定义事件列表，有关详细写法请参见文档-事件。
 x和y如果设置则覆盖"当前事件点"的坐标，callback如果设置则覆盖事件执行完毕后的回调函数。
@@ -131,11 +135,15 @@ core.changeFloor('MT5', null, {'x': 3, 'y': 6}, 0) 无动画切换到MT5层的(3
 
 
 core.resetMap()
-重置当前楼层地图。
+重置当前楼层地图和楼层属性。
 当我们修改某一层地图后，进游戏读档，会发现修改的内容并没有被更新上去。
 这是因为，H5的存档是会存下来每一个楼层的地图的，读档会从档里面获得地图信息。
 此时，如果我们在某一层地图执行 core.resetMap() ，则可以立刻从剧本中读取并重置当前楼层地图。
 已经被修改过的内容也会相应出现。
+此函数参数有三种形式：
+ - 不加任何参数，表示重置当前层：core.resetMap()
+ - 加上一个floorId，表示重置某一层：core.resetMap("MT1")
+ - 使用一个数组，表示重置若干层：core.resetMap(["MT1", "MT2", "MT3"])
 
 
 R
@@ -160,6 +168,10 @@ core.nextY(n)
 获得勇士面向的第n个位置的y坐标，n可以省略默认为1（即正前方）
 
 
+core.nearHero(x, y)
+判断某个点是否和勇士的距离不超过1。
+
+
 core.openDoor(id, x, y, needKey, callback)    [异步]
 尝试开门操作。id为目标点的ID，x和y为坐标，needKey表示是否需要使用钥匙，callback为开门完毕后的回调函数。
 id可为null代表使用地图上的值。
@@ -176,10 +188,8 @@ core.trigger(x, y)    [异步]
 触发某个地点的事件。
 
 
-core.clearMap(mapName)
-清空某个画布图层。
-mapName可为'bg', 'event', 'hero', 'event2', 'fg', 'damage', 'animate', 'weather', 'ui', 'data', 'all'之一。
-如果mapName为'all'，则为清空所有画布；否则只清空对应的画布。
+core.isReplaying()
+当前是否正在录像播放中
 
 
 core.drawBlock(block)
@@ -279,7 +289,7 @@ core.replaceText(text)
 将一段文字中的${}进行计算并替换。
 
 
-core.calValue(value)
+core.calValue(value, prefix, need, times)
 计算表达式的实际值。这个函数可以传入status:atk等这样的参数。
 
 
@@ -290,6 +300,11 @@ core.getLocalStorage(key, defaultValue)
 core.getLocalForage(key, defaultValue, successCallback, errorCallback)
 从localForage中获得某个数据（已被parse），如果对应的key不存在则返回defaultValue。
 如果成功则通过successCallback回调，失败则通过errorCallback回调。
+
+
+core.hasSave(index)
+判定当前某个存档位是否存在存档，返回true/false。
+index为存档编号，0代表自动存档，大于0则为正常的存档位。
 
 
 core.clone(data)
@@ -328,11 +343,18 @@ control.js主要用来进行游戏控制，比如行走控制、自动寻路、�
 core.control.setGameCanvasTranslate(canvasId, x, y)
 设置大地图的偏移量
 
+
 core.control.updateViewport()
 更新大地图的可见区域
 
+
+core.control.gatherFollowers()
+立刻聚集所有的跟随者
+
+
 core.control.replay()
 回放下一个操作
+
 
 ========== core.enemys.XXX 和怪物相关的函数 ==========
 enemys.js主要用来进行怪物相关的内容，比如怪物的特殊属性，伤害和临界计算等。
@@ -439,6 +461,10 @@ loader.js将主要用来进行资源的加载，比如加载音乐、图片、�
 maps.js主要用来进行地图相关的的操作。包括绘制地图，获取地图上的点等等。
 
 
+core.maps.getNumberById(id)
+根据ID来获得对应的数字。如果该ID不存在对应的数字则返回0。
+
+
 core.maps.canMoveHero(x,y,direction,floorId)
 判断能否前往某个方向。x,y为坐标，可忽略为当前点；direction为方向，可忽略为当前方向。
 floorId为楼层ID，可忽略为当前楼层。
@@ -457,8 +483,111 @@ core.maps.removeBlockByIds(floorId, ids)
 根据索引删除或禁用若干块。
 
 
+core.maps.drawAnimate(name, x, y, callback)
+播放一段动画，name为动画名（需在全塔属性注册），x和y为坐标（0-12之间），callback可选，为播放完毕的回调函数。
+播放过程是异步的，如需等待播放完毕请使用insertAction插入一条type:waitAsync事件。
+此函数将随机返回一个数字id，为此异步动画的唯一标识符。
+
+
+core.maps.stopAnimate(id, doCallback)
+立刻停止一个异步动画。
+id为该动画的唯一标识符（由drawAnimate函数返回），doCallback可选，若为true则会执行该动画所绑定的回调函数。
+
+
 ========== core.ui.XXX 和对话框绘制相关的函数 ==========
 ui.js主要用来进行UI窗口的绘制，比如对话框、怪物手册、楼传器、存读档界面等等。
+
+
+core.ui.getContextByName(canvas)
+根据画布名找到一个画布的context；支持系统画布和自定义画布。如果不存在画布返回null。
+也可以传画布的context自身，则返回自己。
+
+
+core.clearMap(name)
+清空某个画布图层。
+name为画布名，可以是系统画布之一，也可以是任意自定义动态创建的画布名；还可以直接传画布的context本身。（下同）
+如果name也可以是'all'，若为all则为清空所有系统画布。
+
+
+core.ui.fillText(name, text, x, y, style, font)
+在某个画布上绘制一段文字。
+text为要绘制的文本，x,y为要绘制的坐标，style可选为绘制的样式，font可选为绘制的字体。（下同）
+
+
+core.ui.fillBoldText(name, text, x, y, style, font)
+在某个画布上绘制一个描黑边的文字。
+
+
+core.ui.fillRect(name, x, y, width, height, style)
+绘制一个矩形。style可选为绘制样式。
+
+
+core.ui.strokeRect(name, x, y, width, height, style)
+绘制一个矩形的边框。
+
+
+core.ui.drawLine(name, x1, y1, x2, y2, style, lineWidth)
+绘制一条线。lineWidth可选为线宽。
+
+
+core.ui.drawArrow(name, x1, y1, x2, y2, style, lineWidth)
+绘制一个箭头。
+
+
+core.ui.setFont(name, font) / core.ui.setLineWidth(name, lineWidth)
+设置一个画布的字体/线宽。
+
+
+core.ui.setAlpha(name, font) / core.ui.setOpacity(name, font)
+设置一个画布的绘制不透明度和画布本身的不透明度。
+两者区别如下：
+ - setAlpha是设置"接下来绘制的内容的不透明度"，不会对已经绘制的内容产生影响。比如setAlpha('ui', 0.5)则会在接下来的绘制中使用0.5的不透明度。
+ - setOpacity是设置"画布本身的不透明度"，已经绘制的内容也会产生影响。比如我已经在UI层绘制了一段文字，再setOpacity则也会看起来变得透明。
+尽量不要对系统画布使用setOpacity（因为会对已经绘制的内容产生影响），自定义创建的画布则不受此限制。
+
+
+core.ui.setFillStyle(name, style) / core.ui.setStrokeStyle(name, style)
+设置一个画布的填充样式/描边样式。
+
+
+core.ui.setTextAlign(name, align)
+设置一个画布的文字对齐模式。
+
+
+core.ui.calWidth(name, text, font)
+计算一段文字在画布上的绘制宽度
+font可选，如果存在则会先设置该画布上的字体。
+
+
+core.ui.drawImage(name, image, x, y, w, h, x1, y1, w1, h1)
+在一个画布上绘制图片。
+name为画布名，可以是系统画布之一，也可以是任意自定义动态创建的画布名；还可以直接传画布的context本身。
+image为要绘制的图片，可以是一个全塔属性中定义的图片名（会从images中去获取），图片本身，或者一个画布。
+后面的8个坐标参数与canvas的drawImage的八个参数完全相同。
+请查看 http://www.w3school.com.cn/html5/canvas_drawimage.asp 了解更多。
+
+
+core.ui.createCanvas(name, x, y, width, height, zIndex)
+动态创建一个画布。name为要创建的画布名，如果已存在则会直接取用当前存在的。
+x,y为创建的画布相对窗口左上角的像素坐标，width,height为创建的长宽。
+zIndex为创建的纵向高度（关系到画布之间的覆盖），z值高的将覆盖z值低的；系统画布的z值可在个性化中查看。
+返回创建的画布的context，也可以通过core.dymCanvas[name]调用。
+
+
+core.ui.relocateCanvas(name, x, y)
+重新定位一个自定义画布。
+
+
+core.ui.resizeCanvas(name, x, y)
+重新设置一个自定义画布的大小。
+
+
+core.ui.deleteCanvas(name)
+删除一个自定义画布。
+
+
+core.ui.deleteAllCanvas()
+清空所有的自定义画布。
 
 
 core.ui.drawThumbnail(floorId, canvas, blocks, x, y, size, heroLoc, heroIcon)
@@ -492,7 +621,7 @@ core.utils.decodeBase64(str)
 Base64解密字符串
 
 
-core.utils.formatBigNumber(x)
+core.utils.formatBigNumber(x, onMap)
 大数据的格式化
 
 
@@ -502,6 +631,10 @@ core.utils.clamp(x, a, b)
 
 core.utils.arrayToRGB(color)
 将形如[255,0,0]之类的数组转成#FF0000这样的RGB形式。
+
+
+core.utils.arrayToRGBA(color)
+将形如[255,0,0,1]之类的数组转成rgba(255,0,0,1)这样的RGBA形式。
 
 
 core.utils.encodeRoute(list)

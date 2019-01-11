@@ -18,6 +18,7 @@
 <body>
 <div id='gameGroup'>
     <p id='mainTips'>请稍后...</p>
+    <img id='musicBtn'>
     <div id='startPanel'>
         <div id='startTop'>
             <div id='startTopProgressBar'>
@@ -58,7 +59,7 @@
             <img id="img-hpmax">
             <p class='statusLabel statusText' id='hpmax'></p>
         </div>
-        <div class="status">
+        <div class="status" id='hpCol'>
             <img id="img-hp">
             <p class='statusLabel statusText' id='hp'></p>
         </div>
@@ -66,11 +67,11 @@
             <img id="img-mana">
             <p class='statusLabel statusText' id='mana'></p>
         </div>
-        <div class="status">
+        <div class="status" id='atkCol'>
             <img id="img-atk">
             <p class='statusLabel statusText' id='atk'></p>
         </div>
-        <div class="status">
+        <div class="status" id='defCol'>
             <img id="img-def">
             <p class='statusLabel statusText' id='def'></p>
         </div>
@@ -82,7 +83,7 @@
             <img id="img-money">
             <p class='statusLabel statusText' id='money'></p>
         </div>
-        <div class="status" id="expCol">
+        <div class="status" id="experienceCol">
             <img id="img-experience">
             <p class='statusLabel statusText' id='experience'></p>
         </div>
@@ -109,15 +110,25 @@
             <span class='statusLabel' id='weak' style="color: #FECCD0;"></span>
             <span class='statusLabel' id='curse' style="color: #C2F4E7;"></span>
         </div>
+
+        <!-- 状态栏canvas化 -->
+        <canvas id="statusCanvas" style="position: absolute; left: 0; top: 0;"></canvas>
     </div>
     <div id="toolBar" class="clearfix">
         <img class="tools" id='img-book'>
         <img class="tools" id='img-fly'>
         <img class="tools" id='img-toolbox'>
-        <img class="tools" id='img-shop'>
+        <img class="tools" id='img-keyboard'>
         <img class="tools" id='img-save'>
         <img class="tools" id='img-load'>
         <img class="tools" id='img-settings'>
+        <img class="tools" id='img-btn1' style='display:none'>
+        <img class="tools" id='img-btn2' style='display:none'>
+        <img class="tools" id='img-btn3' style='display:none'>
+        <img class="tools" id='img-btn4' style='display:none'>
+        <img class="tools" id='img-btn5' style='display:none'>
+        <img class="tools" id='img-btn6' style='display:none'>
+        <img class="tools" id='img-btn7' style='display:none'>
         <p class="statusLabel tools" id="hard"></p>
     </div>
     <div id="gameDraw">
@@ -130,15 +141,11 @@
         <canvas class='gameCanvas' id='fg' width='416' height='416'></canvas>
         <canvas class='gameCanvas' id='damage' width='416' height='416'></canvas>
         <canvas class='gameCanvas' id='animate' width='416' height='416'></canvas>
-        <canvas class='gameCanvas' id='weather' width='416' height='416'></canvas>
-        <canvas class='gameCanvas' id='route' width='416' height='416'></canvas>
         <canvas class='gameCanvas' id='curtain' width='416' height='416'></canvas>
-        <canvas class='gameCanvas' id='image' width='416' height='416'></canvas>
         <canvas class='gameCanvas' id='ui' width='416' height='416'></canvas>
         <canvas class='gameCanvas' id='data' width='416' height='416'>此浏览器不支持HTML5</canvas>
     </div>
 </div>
-<script src='libs/thirdparty/mid.min.js'></script>
 <script src='libs/thirdparty/lz-string.min.js'></script>
 <script src='libs/thirdparty/priority-queue.min.js'></script>
 <script src='libs/thirdparty/localforage.min.js'></script>

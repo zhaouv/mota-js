@@ -2,6 +2,8 @@
  * 初始化 start
  */
 
+"use strict";
+
 function core() {
     this.material = {
         'animates': {},
@@ -18,39 +20,41 @@ function core() {
         'getItemTipTimeout': null,
         'turnHeroTimeout': null,
         'onDownTimeout': null,
+        'sleepTimeout': null,
     }
     this.interval = {
         'heroMoveInterval': null,
         "tipAnimate": null,
-        'openDoorAnimate': null,
-        'animateInterval': null,
         'onDownInterval': null,
     }
     this.animateFrame = {
-        'background': null,
         'globalAnimate': false,
-        'globalTime': null,
-        'boxTime': null,
-        'animateTime': null,
-        'moveTime': null,
-        'speed': null,
+        'globalTime': 0,
+        'selectorTime': 0,
+        'selectorUp': true,
+        'animateTime': 0,
+        'moveTime': 0,
+        'lastLegTime': 0,
+        'leftLeg': true,
         'weather': {
-            'time': null,
+            'time': 0,
             'type': null,
             'level': 0,
             'nodes': [],
             'data': null,
-        }
+            'fog': null,
+        },
+        "asyncId": {}
     }
     this.musicStatus = {
         'audioContext': null, // WebAudioContext
-        'startDirectly': false, // 是否直接播放（加载）音乐
         'bgmStatus': false, // 是否播放BGM
         'soundStatus': true, // 是否播放SE
         'playingBgm': null, // 正在播放的BGM
-        'isPlaying': false,
         'gainNode': null,
         'volume': 1.0, // 音量
+        'cachedBgms': [], // 缓存BGM内容
+        'cachedBgmCount': 4, // 缓存的bgm数量
     }
     this.platform = {
         'isOnline': true, // 是否http
@@ -62,6 +66,7 @@ function core() {
         'isChrome': false, // 是否是Chrome
         'supportCopy': false, // 是否支持复制到剪切板
         'useLocalForage': true,
+        'extendKeyboard': false,
 
         'fileInput': null, // FileInput
         'fileReader': null, // 是否支持FileReader
@@ -72,16 +77,29 @@ function core() {
     this.domStyle = {
         styles: [],
         scale: 1.0,
+        screenMode: null,
+        isVertical: false,
+        toolbarBtn: false,
+        showStatusBar: true,
     }
     this.bigmap = {
-        canvas: ["bg", "event", "event2", "fg", "damage", "route"],
+        canvas: ["bg", "event", "event2", "fg", "damage"],
         offsetX: 0, // in pixel
         offsetY: 0,
         width: 13, // map width and height
         height: 13,
         tempCanvas: null, // A temp canvas for drawing
     }
-    this.paint = {}
+    this.paint = {};
+    this.saves = {
+        "saveIndex": null,
+        "ids": {},
+        "autosave": {
+            "data": null,
+            "time": 0,
+            "updated": false,
+        }
+    }
     this.initStatus = {
         'played': false,
         'gameOver': false,
@@ -111,6 +129,8 @@ function core() {
             'destStep': 0,
             'destX': null,
             'destY': null,
+            'offsetX': null,
+            'offsetY': null,
             'autoStepRoutes': [],
             'moveStepBeforeStop': [],
             'lastDirection': null,
@@ -137,7 +157,6 @@ function core() {
         },
 
         // event事件
-        'saveIndex': null,
         'shops': {},
         'event': {
             'id': null,
@@ -148,7 +167,7 @@ function core() {
         },
         'textAttribute': {
             'position': "center",
-            "offset": 20,
+            "offset": 0,
             "title": [255,215,0,1],
             "background": [0,0,0,0.85],
             "text": [255,255,255,1],
@@ -157,6 +176,17 @@ function core() {
             "bold": false,
             "time": 0,
         },
+        "globalAttribute": {
+            "statusLeftBackground": main.statusLeftBackground || "url(project/images/ground.png) repeat",
+            "statusTopBackground": main.statusTopBackground || "url(project/images/ground.png) repeat",
+            "toolsBackground": main.toolsBackground || "url(project/images/ground.png) repeat",
+            "borderColor": main.borderColor || "white",
+            "statusBarColor": main.statusBarColor || "white",
+            "hardLabelColor": main.hardLabelColor || "red",
+            "floorChangingBackground": main.floorChangingBackground || "black",
+            "floorChangingTextColor": main.floorChangingTextColor || "white",
+            "font": main.font || "Verdana"
+        },
         'curtainColor': null,
         'openingDoor': null,
         'isSkiing': false,
@@ -164,10 +194,12 @@ function core() {
         // 动画
         'globalAnimateObjs': [],
         'boxAnimateObjs': [],
-        'autotileAnimateObjs': {},
+        'autotileAnimateObjs': {"blocks": [], "map": null, "bgmap": null, "fgmap": null},
+        "globalAnimateStatus": 0,
         'animateObjs': [],
     };
     this.status = {};
+    this.dymCanvas = {};
 }
 
 /////////// 系统事件相关 ///////////
@@ -183,6 +215,8 @@ core.prototype.init = function (coreData, callback) {
 
     if (!core.flags.enableExperience)
         core.flags.enableLevelUp = false;
+    if (!core.flags.enableLevelUp)
+        core.flags.levelUpLeftMode = false;
     if (!core.flags.canOpenBattleAnimate) {
         core.flags.showBattleAnimateConfirm = false;
         core.flags.battleAnimate = false;
@@ -201,6 +235,11 @@ core.prototype.init = function (coreData, callback) {
     document.getElementById("startLogo").innerHTML = core.firstData.title;
     core.material.items = core.clone(core.items.getItems());
     core.material.enemys = core.clone(core.enemys.getEnemys());
+    if (main.mode == 'play') {
+        for (var enemyId in core.material.enemys) {
+            core.material.enemys[enemyId].id = enemyId;
+        }
+    }
     core.material.icons = core.icons.getIcons();
     core.material.events = core.events.getEvents();
 
@@ -263,6 +302,8 @@ core.prototype.init = function (coreData, callback) {
         catch (e) {console.log(e); core.platform.useLocalForage=false;}
     }
 
+    core.platform.extendKeyboard = core.getLocalStorage("extendKeyboard", false);
+
     if (window.FileReader) {
         core.platform.fileReader = new FileReader();
         core.platform.fileReader.onload = function () {
@@ -274,24 +315,11 @@ core.prototype.init = function (coreData, callback) {
         }
     }
 
-    if (core.platform.isPC) {
-        // 如果是PC端直接加载
-        core.musicStatus.startDirectly = true;
-    }
-    else {
-        var connection = navigator.connection;
-        if (core.isset(connection) && connection.type=='wifi')
-            core.musicStatus.startDirectly = true;
-    }
-
     // 先从存储中读取BGM状态
     core.musicStatus.bgmStatus = core.getLocalStorage('bgmStatus', true);
-    if (!core.musicStatus.startDirectly) // 如果当前网络环境不允许
+    if (!core.platform.isPC && (navigator.connection||{}).type!='wifi')
         core.musicStatus.bgmStatus = false;
-    core.setLocalStorage('bgmStatus', core.musicStatus.bgmStatus);
-
     core.musicStatus.soundStatus = core.getLocalStorage('soundStatus', true);
-    core.setLocalStorage('soundStatus', core.musicStatus.soundStatus);
 
     // switchs
     core.flags.battleAnimate = core.getLocalStorage('battleAnimate', core.flags.battleAnimate);
@@ -299,10 +327,29 @@ core.prototype.init = function (coreData, callback) {
     core.flags.displayCritical = core.getLocalStorage('critical', core.flags.displayCritical);
     core.flags.displayExtraDamage = core.getLocalStorage('extraDamage', core.flags.displayExtraDamage);
 
-    core.material.ground = new Image();
-    core.material.ground.src = "project/images/ground.png";
+    core.material.groundCanvas = document.createElement('canvas').getContext('2d');
+    core.material.groundCanvas.canvas.width = core.material.groundCanvas.canvas.height = 32;
+    core.material.groundPattern = core.material.groundCanvas.createPattern(core.material.groundCanvas.canvas, 'repeat');
+
+    core.animateFrame.weather.fog = new Image();
+    core.animateFrame.weather.fog.onerror = function () {
+        core.animateFrame.weather.fog = null;
+    }
+    core.animateFrame.weather.fog.src = "project/images/fog.png";
+
+    core.material.images.keyboard = new Image();
+    core.material.images.keyboard.onerror  = function () {
+        core.material.images.keyboard = null;
+    }
+    core.material.images.keyboard.src = "project/images/keyboard.png";
 
     core.bigmap.tempCanvas = document.createElement('canvas').getContext('2d');
+
+    ////// 记录所有的存档编号！！！ //////
+    core.saves.saveIndex = core.getLocalStorage('saveIndex', 1);
+    core.control.getSaveIndexes(function (indexes) {
+        core.saves.ids = indexes;
+    });
 
     core.loader.load(function () {
         console.log(core.material);
@@ -313,13 +360,19 @@ core.prototype.init = function (coreData, callback) {
 
         core.initStatus.maps = core.maps.initMaps(core.floorIds);
         core.setRequestAnimationFrame();
-        core.showStartAnimate();
 
         if (main.mode=='play')
             core.events.initGame();
 
-        if (core.isset(functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a.plugins))
-            core.plugin = new functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a.plugins.plugin();
+        if (core.isset(functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a.plugins)) {
+            core.plugin = new function () {
+                this.__renderFrameFuncs = [];
+            };
+            core.plugin.__init__ = functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a.plugins.plugin;
+            core.plugin.__init__();
+        }
+
+        core.showStartAnimate();
 
         if (core.isset(callback)) callback();
 
@@ -392,8 +445,8 @@ core.prototype.keyDown = function(keyCode) {
 }
 
 ////// 根据放开键的code来执行一系列操作 //////
-core.prototype.keyUp = function(keyCode, altKey) {
-    return core.actions.keyUp(keyCode, altKey);
+core.prototype.keyUp = function(keyCode, altKey, fromReplay) {
+    return core.actions.keyUp(keyCode, altKey, fromReplay);
 }
 
 ////// 点击（触摸）事件按下时 //////
@@ -556,6 +609,11 @@ core.prototype.nextY = function (n) {
     return core.control.nextY(n);
 }
 
+////// 某个点是否在勇士旁边 //////
+core.prototype.nearHero = function (x, y) {
+    return core.control.nearHero(x, y);
+}
+
 /////////// 自动行走 & 行走控制 END ///////////
 
 
@@ -587,69 +645,122 @@ core.prototype.changeFloor = function (floorId, stair, heroLoc, time, callback, 
     core.events.changeFloor(floorId, stair, heroLoc, time, callback, fromLoad);
 }
 
+////// 从名字获得画布 //////
+core.prototype.getContextByName = function (canvas) {
+    return core.ui.getContextByName(canvas);
+}
+
 ////// 清除地图 //////
-core.prototype.clearMap = function (map, x, y, width, height) {
-    core.ui.clearMap(map, x, y, width, height);
+core.prototype.clearMap = function (name, x, y, width, height) {
+    core.ui.clearMap(name, x, y, width, height);
 }
 
 ////// 在某个canvas上绘制一段文字 //////
-core.prototype.fillText = function (map, text, x, y, style, font) {
-    core.ui.fillText(map, text, x, y, style, font);
+core.prototype.fillText = function (name, text, x, y, style, font) {
+    core.ui.fillText(name, text, x, y, style, font);
+}
+
+////// 在某个canvas上绘制一段描边文字 //////
+core.prototype.fillBoldText = function (name, text, x, y, style, font) {
+    core.ui.fillBoldText(name, text, x, y, style, font);
 }
 
 ////// 在某个canvas上绘制一个矩形 //////
-core.prototype.fillRect = function (map, x, y, width, height, style) {
-    core.ui.fillRect(map, x, y, width, height, style)
+core.prototype.fillRect = function (name, x, y, width, height, style) {
+    core.ui.fillRect(name, x, y, width, height, style)
 }
 
 ////// 在某个canvas上绘制一个矩形的边框 //////
-core.prototype.strokeRect = function (map, x, y, width, height, style, lineWidth) {
-    core.ui.strokeRect(map, x, y, width, height, style, lineWidth)
+core.prototype.strokeRect = function (name, x, y, width, height, style, lineWidth) {
+    core.ui.strokeRect(name, x, y, width, height, style, lineWidth)
 }
 
 ////// 在某个canvas上绘制一条线 //////
-core.prototype.drawLine = function (map, x1, y1, x2, y2, style, lineWidth) {
-    core.ui.drawLine(map, x1, y1, x2, y2, style, lineWidth);
+core.prototype.drawLine = function (name, x1, y1, x2, y2, style, lineWidth) {
+    core.ui.drawLine(name, x1, y1, x2, y2, style, lineWidth);
+}
+
+////// 在某个canvas上绘制一个箭头 //////
+core.prototype.drawArrow = function (name, x1, y1, x2, y2, style, lineWidth) {
+    core.ui.drawArrow(name, x1, y1, x2, y2, style, lineWidth);
 }
 
 ////// 设置某个canvas的文字字体 //////
-core.prototype.setFont = function (map, font) {
-    core.ui.setFont(map, font);
+core.prototype.setFont = function (name, font) {
+    core.ui.setFont(name, font);
 }
 
 ////// 设置某个canvas的线宽度 //////
-core.prototype.setLineWidth = function (map, lineWidth) {
-    core.ui.setLineWidth(map, lineWidth);
+core.prototype.setLineWidth = function (name, lineWidth) {
+    core.ui.setLineWidth(name, lineWidth);
 }
 
 ////// 保存某个canvas状态 //////
-core.prototype.saveCanvas = function (map) {
-    core.ui.saveCanvas(map);
+core.prototype.saveCanvas = function (name) {
+    core.ui.saveCanvas(name);
 }
 
 ////// 加载某个canvas状态 //////
-core.prototype.loadCanvas = function (map) {
-    core.ui.loadCanvas(map);
+core.prototype.loadCanvas = function (name) {
+    core.ui.loadCanvas(name);
 }
-
-////// 设置某个canvas边框属性 //////
-core.prototype.setStrokeStyle = function (map, style) {
-    core.ui.setStrokeStyle(map, style);
-}
-
 ////// 设置某个canvas的alpha值 //////
-core.prototype.setAlpha = function (map, alpha) {
-    core.ui.setAlpha(map, alpha);
+core.prototype.setAlpha = function (name, alpha) {
+    core.ui.setAlpha(name, alpha);
 }
 
 ////// 设置某个canvas的透明度 //////
-core.prototype.setOpacity = function (map, opacity) {
-    core.ui.setOpacity(map, opacity);
+core.prototype.setOpacity = function (name, opacity) {
+    core.ui.setOpacity(name, opacity);
 }
 
 ////// 设置某个canvas的绘制属性（如颜色等） //////
-core.prototype.setFillStyle = function (map, style) {
-    core.ui.setFillStyle(map, style);
+core.prototype.setFillStyle = function (name, style) {
+    core.ui.setFillStyle(name, style);
+}
+
+////// 设置某个canvas的边框属性 //////
+core.prototype.setStrokeStyle = function (name, style) {
+    core.ui.setStrokeStyle(name, style);
+}
+
+////// 设置某个canvas的对齐 //////
+core.prototype.setTextAlign = function (name, align) {
+    core.ui.setTextAlign(name, align);
+}
+
+////// 计算某段文字的宽度 //////
+core.prototype.calWidth = function (name, text, font) {
+    return core.ui.calWidth(name, text, font);
+}
+
+////// 绘制一张图片 //////
+core.prototype.drawImage = function (name, image, x, y, w, h, x1, y1, w1, h1) {
+    core.ui.drawImage(name, image, x, y, w, h, x1, y1, w1, h1);
+}
+
+////// canvas创建 //////
+core.prototype.createCanvas = function (name, x, y, width, height, z) {
+    return core.ui.createCanvas(name, x, y, width, height, z);
+}
+
+////// canvas重定位 //////
+core.prototype.relocateCanvas = function (name, x, y) {
+    return core.ui.relocateCanvas(name, x, y);
+}
+
+////// canvas重置 //////
+core.prototype.resizeCanvas = function (name, width, height) {
+    return core.ui.resizeCanvas(name, width, height);
+}
+
+////// canvas删除 //////
+core.prototype.deleteCanvas = function (name) {
+    core.ui.deleteCanvas(name);
+}
+////// 删除所有canvas //////
+core.prototype.deleteAllCanvas = function () {
+    core.ui.deleteAllCanvas();
 }
 
 core.prototype.drawBlock = function (block, animate, dx, dy) {
@@ -657,8 +768,8 @@ core.prototype.drawBlock = function (block, animate, dx, dy) {
 }
 
 ////// 绘制某张地图 //////
-core.prototype.drawMap = function (mapName, callback) {
-    core.maps.drawMap(mapName, callback);
+core.prototype.drawMap = function (floorId, callback) {
+    core.maps.drawMap(floorId, callback);
 }
 
 ////// 绘制Autotile //////
@@ -732,8 +843,8 @@ core.prototype.animateBlock = function (loc,type,time,callback) {
 }
 
 ////// 将某个块从禁用变成启用状态 //////
-core.prototype.showBlock = function(x, y, floodId) {
-    core.maps.showBlock(x,y,floodId);
+core.prototype.showBlock = function(x, y, floorId) {
+    core.maps.showBlock(x,y,floorId);
 }
 
 ////// 将某个块从启用变成禁用状态，但是并不删除它 //////
@@ -771,6 +882,10 @@ core.prototype.addGlobalAnimate = function (block) {
     core.maps.addGlobalAnimate(block);
 }
 
+core.prototype.addAutotileGlobalAnimate = function (block) {
+    core.maps.addAutotileGlobalAnimate(block);
+}
+
 ////// 删除一个或所有全局动画 //////
 core.prototype.removeGlobalAnimate = function (x, y, all) {
     core.maps.removeGlobalAnimate(x, y, all);
@@ -781,11 +896,6 @@ core.prototype.setGlobalAnimate = function (speed) {
     core.maps.setGlobalAnimate(speed);
 }
 
-////// 同步所有的全局动画效果 //////
-core.prototype.syncGlobalAnimate = function () {
-    core.maps.syncGlobalAnimate();
-}
-
 ////// 绘制UI层的box动画 //////
 core.prototype.drawBoxAnimate = function () {
     core.maps.drawBoxAnimate();
@@ -793,7 +903,12 @@ core.prototype.drawBoxAnimate = function () {
 
 ////// 绘制动画 //////
 core.prototype.drawAnimate = function (name, x, y, callback) {
-    core.maps.drawAnimate(name, x, y, callback);
+    return core.maps.drawAnimate(name, x, y, callback);
+}
+
+////// 停止动画 //////
+core.prototype.stopAnimate = function (id, doCallback) {
+    return core.maps.stopAnimate(id, doCallback);
 }
 
 ////// 更新领域、夹击、阻击的伤害地图 //////
@@ -819,6 +934,11 @@ core.prototype.setWeather = function (type, level) {
 ////// 更改画面色调 //////
 core.prototype.setFg = function(color, time, callback) {
     core.control.setFg(color, time, callback);
+}
+
+////// 画面闪烁 //////
+core.prototype.screenFlash = function (color, time, times, callback) {
+    core.control.screenFlash(color, time, times, callback);
 }
 
 ////// 更新全地图显伤 //////
@@ -929,18 +1049,18 @@ core.prototype.drawText = function (contents, callback) {
 /////////// 系统机制 ///////////
 
 ////// 将文字中的${和}（表达式）进行替换 //////
-core.prototype.replaceText = function (text) {
-    return core.utils.replaceText(text);
+core.prototype.replaceText = function (text, need, times) {
+    return core.utils.replaceText(text, need, times);
 }
 
 ////// 计算表达式的值 //////
-core.prototype.calValue = function (value) {
-    return core.utils.calValue(value);
+core.prototype.calValue = function (value, prefix, need, times) {
+    return core.utils.calValue(value, prefix, need, times);
 }
 
 ////// 执行一个表达式的effect操作 //////
-core.prototype.doEffect = function (expression) {
-    core.control.doEffect(expression);
+core.prototype.doEffect = function (expression, need, times) {
+    core.control.doEffect(expression, need, times);
 }
 
 ////// 字符串自动换行的分割 //////
@@ -1001,8 +1121,8 @@ core.prototype.formatDate2 = function (date) {
 }
 
 ////// 格式化大数 //////
-core.prototype.formatBigNumber = function (x) {
-    return core.utils.formatBigNumber(x);
+core.prototype.formatBigNumber = function (x, onMap) {
+    return core.utils.formatBigNumber(x, onMap);
 }
 
 ////// 两位数显示 //////
@@ -1014,6 +1134,12 @@ core.prototype.setTwoDigits = function (x) {
 core.prototype.arrayToRGB = function (color) {
     return core.utils.arrayToRGB(color);
 }
+
+////// 数组转RGBA //////
+core.prototype.arrayToRGBA = function (color) {
+    return core.utils.arrayToRGBA(color);
+}
+
 
 ////// 作弊 //////
 core.prototype.debug = function() {
@@ -1048,6 +1174,11 @@ core.prototype.startReplay = function (list) {
 ////// 关闭UI窗口 //////
 core.prototype.closePanel = function () {
     core.ui.closePanel();
+}
+
+////// 一般清除事件 //////
+core.prototype.clearLastEvent = function () {
+    core.ui.clearLastEvent();
 }
 
 ////// 更改播放状态 //////
@@ -1110,6 +1241,11 @@ core.prototype.replay = function () {
     core.control.replay();
 }
 
+////// 是否正在回放录像 //////
+core.prototype.isReplaying = function () {
+    return core.control.isReplaying();
+}
+
 ////// 判断当前能否进入某个事件 //////
 core.prototype.checkStatus = function (name, need, item) {
     return core.control.checkStatus(name, need, item);
@@ -1138,6 +1274,10 @@ core.prototype.openToolbox = function (need) {
 ////// 点击快捷商店按钮时的打开操作 //////
 core.prototype.openQuickShop = function (need) {
     core.control.openQuickShop(need);
+}
+
+core.prototype.openKeyBoard = function (need) {
+    core.control.openKeyBoard(need);
 }
 
 ////// 点击保存按钮时的打开操作 //////
@@ -1200,6 +1340,11 @@ core.prototype.http = function (type, url, formData, success, error, mimeType, r
     core.utils.http(type, url, formData, success, error, mimeType, responseType)
 }
 
+////// 判断某个存档位是否存在存档 //////
+core.prototype.hasSave = function (index) {
+    return core.control.hasSave(index);
+}
+
 ////// 设置勇士属性 //////
 core.prototype.setStatus = function (statusName, statusVal) {
     core.control.setStatus(statusName, statusVal);
@@ -1230,6 +1375,12 @@ core.prototype.hasFlag = function(flag) {
     return core.control.hasFlag(flag);
 }
 
+////// 删除某个自定义变量或flag //////
+core.prototype.removeFlag = function(flag) {
+    core.control.removeFlag(flag);
+}
+
+////// 执行下一个自定义事件 //////
 core.prototype.doAction = function() {
     core.events.doAction();
 }
@@ -1261,6 +1412,10 @@ core.prototype.subarray = function (a, b) {
 
 core.prototype.clamp = function (x, a, b) {
     return core.utils.clamp(x, a, b);
+}
+
+core.prototype.getCookie = function (name) {
+    return core.utils.getCookie(name);
 }
 
 ////// Base64加密 //////
@@ -1318,6 +1473,21 @@ core.prototype.resumeBgm = function () {
     core.control.resumeBgm();
 }
 
+////// 更改背景音乐的状态 //////
+core.prototype.triggerBgm = function () {
+    core.control.triggerBgm();
+}
+
+////// 预加载一个背景音乐 //////
+core.prototype.loadBgm = function (bgm) {
+    core.loader.loadBgm(bgm);
+}
+
+////// 手动释放一个背景音乐的缓存 //////
+core.prototype.freeBgm = function (bgm) {
+    core.loader.freeBgm(bgm);
+}
+
 ////// 播放音频 //////
 core.prototype.playSound = function (sound) {
     core.control.playSound(sound);
@@ -1341,6 +1511,11 @@ core.prototype.clearStatusBar = function() {
 ////// 更新状态栏 //////
 core.prototype.updateStatusBar = function () {
     core.control.updateStatusBar();
+}
+
+////// 绘制状态栏 //////
+core.prototype.drawStatusBar = function () {
+    core.ui.drawStatusBar();
 }
 
 ////// 屏幕分辨率改变后重新自适应 //////

@@ -1,4 +1,4 @@
-comment_c456ea59_6018_45ef_8bcc_211a24c627dc = 
+var comment_c456ea59_6018_45ef_8bcc_211a24c627dc =
 {
     "_leaf": false,
     "_type": "object",
@@ -41,7 +41,13 @@ comment_c456ea59_6018_45ef_8bcc_211a24c627dc =
                             "_leaf": true,
                             "_type": "textarea",
                             "_data": "装备属性设置，仅对cls为equips有效。\n如果此项不为null，需要是一个对象，里面可含\"type\"，\"atk\"，\"def\"，\"mdef\"，\"animate\"五项，分别对应装备部位、攻防魔防和动画。\n具体详见文档（元件说明-装备）和已有的几个装备的写法。"
-                        }, 
+                        },
+                        "hideInReplay": {
+                            "_leaf": true,
+                            "_type": "checkbox",
+                            "_bool": "bool",
+                            "_data": "是否回放时绘制道具栏。\n如果此项为true，则在回放录像时使用本道具将不会绘制道具栏页面，而是直接使用。\n此项建议在会频繁连续多次使用的道具开启（如开启技能，或者《镜子》那样的镜像切换等等）"
+                        }
                     }
                 },
                 "itemEffect": {
@@ -49,28 +55,35 @@ comment_c456ea59_6018_45ef_8bcc_211a24c627dc =
                     "_type": "textarea",
                     "_string": true,
                     "_lint": true,
-                    "_data": "cls为items的即捡即用类物品的效果。"
+                    "_data": "即捡即用类物品的效果，仅对cls为items有效。"
                 },
                 "itemEffectTip": {
                     "_leaf": true,
                     "_type": "textarea",
                     "_string": true,
                     "_lint": true,
-                    "_data": "cls为items的即捡即用类物品，在获得时左上角额外显示的文字。"
+                    "_data": "即捡即用类物品在获得时提示的文字，仅对cls为items有效。"
                 },
                 "useItemEffect": {
                     "_leaf": true,
                     "_type": "textarea",
                     "_string": true,
                     "_lint": true,
-                    "_data": "cls为tools或constants时的使用物品效果。"
+                    "_data": "道具效果，仅对cls为tools或constants有效。"
                 },
                 "canUseItemEffect": {
                     "_leaf": true,
                     "_type": "textarea",
                     "_string": true,
                     "_lint": true,
-                    "_data": "cls为tools或constants时对当前能否使用该物品的判断。"
+                    "_data": "当前能否使用该道具，仅对cls为tools或constants有效。"
+                },
+                "canEquip":{
+                    "_leaf": true,
+                    "_type": "textarea",
+                    "_string": true,
+                    "_lint": true,
+                    "_data": "当前能否装备某个装备，仅对cls为equips有效。\n与canUseItemEffect不同，这里null代表可以装备。"
                 }
             }
         },
@@ -84,6 +97,12 @@ comment_c456ea59_6018_45ef_8bcc_211a24c627dc =
                     "_type": "textarea",
                     "_string": true,
                     "_data": "名称"
+                },
+                "displayIdInBook": {
+                    "_leaf": true,
+                    "_type": "textarea",
+                    "_string": true,
+                    "_data": "在怪物手册中映射到的怪物ID。如果此项不为null，则在怪物手册中，将用目标ID来替换该怪物原本的ID。\n此项应被运用在同一个怪物的多朝向上。\n例如，如果想定义同一个怪物的向下和向左的行走图，则需要建立两个属性完全相同的怪物。\n但是这样会导致在怪物手册中同时存在向下和向左的两种怪物的显示。\n可以将朝向左的怪物的displayIdInBook项指定为朝向下的怪物ID，这样在怪物手册中则会归一化，只显示一个。"
                 },
                 "hp": {
                     "_leaf": true,
@@ -119,54 +138,54 @@ comment_c456ea59_6018_45ef_8bcc_211a24c627dc =
                     "_leaf": true,
                     "_type": "textarea",
                     "_range": "thiseval==null || thiseval instanceof Array || (thiseval==~~thiseval && thiseval>=0)",
-                    "_data": "特殊属性\n\n0:无,1:先攻,2:魔攻,3:坚固,4:2连击,\n5:3连击,6:n连击,7:破甲,8:反击,9:净化,\n10:模仿,11:吸血,12:中毒,13:衰弱,14:诅咒,\n15:领域,16:夹击,17:仇恨,18:阻击,19:自爆,\n20:无敌,21:退化,22:固伤,23:重生,24:激光\n\n多个属性例如用[1,4,11]表示先攻2连击吸血\n模仿怪的攻防设为0就好"
+                    "_data": "特殊属性\n\n0:无,1:先攻,2:魔攻,3:坚固,4:2连击,\n5:3连击,6:n连击,7:破甲,8:反击,9:净化,\n10:模仿,11:吸血,12:中毒,13:衰弱,14:诅咒,\n15:领域,16:夹击,17:仇恨,18:阻击,19:自爆,\n20:无敌,21:退化,22:固伤,23:重生,24:激光,25:光环\n\n多个属性例如用[1,4,11]表示先攻2连击吸血"
                 },
                 "value": {
                     "_leaf": true,
                     "_type": "textarea",
-                    "_data": "特殊属性的数值\n领域怪需要加value表示领域伤害的数值\n吸血怪需要在后面添加value代表吸血比例"
+                    "_data": "特殊属性的数值\n如：领域/阻激/激光怪的伤害值；吸血怪的吸血比例；光环怪增加生命的比例"
                 },
                 "zoneSquare": {
                     "_leaf": true,
                     "_type": "checkbox",
                     "_bool": "bool",
-                    "_data": "领域怪zoneSquare代表是否九宫格伤害"
+                    "_data": "领域怪是否九宫格伤害"
                 },
                 "range": {
                     "_leaf": true,
                     "_type": "textarea",
                     "_range": "(thiseval==~~thiseval && thiseval>0)||thiseval==null",
-                    "_data": "range可选，代表领域伤害的范围；不加默认为1"
+                    "_data": "领域伤害的范围；不加默认为1"
                 },
                 "notBomb": {
                     "_leaf": true,
                     "_type": "checkbox",
                     "_bool": "bool",
-                    "_data": "加入 \"notBomb\": true 代表该怪物不可被炸弹或圣锤炸掉"
+                    "_data": "该怪物不可被炸"
                 },
                 "n": {
                     "_leaf": true,
                     "_type": "textarea",
                     "_range": "(thiseval==~~thiseval && thiseval>0)||thiseval==null",
-                    "_data": "多连击需要在后面指定n代表是几连击"
+                    "_data": "多连击的连击数"
                 },
                 "add": {
                     "_leaf": true,
                     "_type": "checkbox",
                     "_bool": "bool",
-                    "_data": "代表吸血后是否加到自身"
+                    "_data": "吸血后是否加到自身；光环是否叠加"
                 },
                 "atkValue": {
                     "_leaf": true,
                     "_type": "textarea",
                     "_range": "thiseval==~~thiseval||thiseval==null",
-                    "_data": "退化时勇士下降的攻击力点数"
+                    "_data": "退化时勇士下降的攻击力点数；光环怪增加攻击的比例"
                 },
                 "defValue": {
                     "_leaf": true,
                     "_type": "textarea",
                     "_range": "thiseval==~~thiseval||thiseval==null",
-                    "_data": "退化时勇士下降的防御力点数"
+                    "_data": "退化时勇士下降的防御力点数；光环怪增加防御的比例"
                 },
                 "damage": {
                     "_leaf": true,
@@ -242,7 +261,12 @@ comment_c456ea59_6018_45ef_8bcc_211a24c627dc =
                     "_leaf": true,
                     "_type": "textarea",
                     "_range": "thiseval==null||(thiseval instanceof Array)",
-                    "_data": "该图块的不可入方向\n可以在这里定义不能从哪个方向访问该图块，可以达到悬崖之类的效果\n例如 [\"down\", \"right\"] 代表不能从下或右访问此图块\n此值对背景层、事件层、前景层上的图块均有效"
+                    "_data": "该图块的不可入方向\n可以在这里定义不能朝哪个方向进入该图块，可以达到悬崖之类的效果\n例如 [\"down\"] 代表不能从该图块的上方点朝向下进入此图块\n此值对背景层、事件层、前景层上的图块均有效"
+                },
+                "faceIds": {
+                    "_leaf": true,
+                    "_type": "textarea",
+                    "_data": "行走图朝向，仅对NPC有效。可以在这里定义同一个NPC的多个朝向行走图。\n比如 {\"up\":\"N333\",\"down\":\"N334\",\"left\":\"N335\",\"right\":\"N336\"} 就将该素材的上下左右朝向分别绑定到N333,N334,N335和N336四个图块。\n在勇士撞上NPC时，或NPC在移动时，会自动选择最合适的朝向图块（如果存在定义）来进行绘制。"
                 }
             }
         },
@@ -300,6 +324,31 @@ comment_c456ea59_6018_45ef_8bcc_211a24c627dc =
                             "_bool": "bool",
                             "_data": "该层是否不允许被浏览地图看到；如果勾上则浏览地图会跳过该层"
                         },
+                        "cannotMoveDirectly": {
+                            "_leaf": true,
+                            "_type": "checkbox",
+                            "_bool": "bool",
+                            "_data": "该层是否不允许瞬间移动；如果勾上则不可在此层进行瞬移"
+                        },
+                        "firstArrive": {
+                            "_leaf": true,
+                            "_type": "event",
+                            "_event": "firstArrive",
+                            "_data": "第一次到该楼层触发的事件，可以双击进入事件编辑器。"
+                        },
+                        "eachArrive": {
+                            "_leaf": true,
+                            "_type": "event",
+                            "_event": "eachArrive",
+                            "_data": "每次到该楼层触发的事件，可以双击进入事件编辑器；该事件会在firstArrive执行后再执行。"
+                        },
+                        "parallelDo": {
+                            "_leaf": true,
+                            "_type": "textarea",
+                            "_string": true,
+                            "_lint": true,
+                            "_data": "在该层楼时执行的并行事件处理。\n可以在这里写上任意需要自动执行的脚本，比如打怪自动开门等。\n详见文档-事件-并行事件处理。"
+                        },
                         "upFloor": {
                             "_leaf": true,
                             "_type": "textarea",
@@ -310,7 +359,7 @@ comment_c456ea59_6018_45ef_8bcc_211a24c627dc =
                             "_leaf": true,
                             "_type": "textarea",
                             "_range": "thiseval==null||((thiseval instanceof Array) && thiseval.length==2)",
-                            "_data": "该层上楼点，如[2,3]。\n如果此项不为null，则楼层转换时的stair:downFloor，以及楼传器的落点会被替换成该点而不是该层的下楼梯。"
+                            "_data": "该层下楼点，如[2,3]。\n如果此项不为null，则楼层转换时的stair:downFloor，以及楼传器的落点会被替换成该点而不是该层的下楼梯。"
                         },
                         "defaultGround": {
                             "_leaf": true,
@@ -333,11 +382,14 @@ comment_c456ea59_6018_45ef_8bcc_211a24c627dc =
                         "weather": {
                             "_leaf": true,
                             "_type": "textarea",
-                            "_data": "该层的默认天气。本项可忽略表示晴天，如果写则第一项为\"rain\"或\"snow\"代表雨雪，第二项为1-10之间的数代表强度。\n如[\"rain\", 8]代表8级雨天。"
+                            "_data": "该层的默认天气。本项可忽略表示晴天，如果写则第一项为\"rain\"，\"snow\"或\"fog\"代表雨雪雾，第二项为1-10之间的数代表强度。\n如[\"rain\", 8]代表8级雨天。"
                         },
                         "bgm": {
                             "_leaf": true,
-                            "_type": "textarea",
+                            "_type": "select",
+                            "_select": {
+                                "values": [null].concat(Object.keys(editor.core.material.bgms))
+                            },
                             "_data": "到达该层后默认播放的BGM。本项可忽略，或者为一个定义过的背景音乐如\"bgm.mp3\"。"
                         },
                         "item_ratio": {
@@ -345,12 +397,6 @@ comment_c456ea59_6018_45ef_8bcc_211a24c627dc =
                             "_type": "textarea",
                             "_range": "(thiseval==~~thiseval && thiseval>=0)||thiseval==null",
                             "_data": "每一层的宝石/血瓶效果，即获得宝石和血瓶时框内\"ratio\"的值。"
-                        },
-                        "firstArrive": {
-                            "_leaf": true,
-                            "_type": "event",
-                            "_event": "firstArrive",
-                            "_data": "第一次到该楼层触发的事件，可以双击进入事件编辑器。"
                         },
                         "underGround": {
                             "_leaf": true,

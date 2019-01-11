@@ -4,12 +4,13 @@ editor_blockly = function () {
 
     initscript = String.raw`
 (function(){
-  var getCategory = function(name){
+  var getCategory = function(name,custom){
     for(var node of document.getElementById('toolbox').children) {
       if(node.getAttribute('name')==name) return node;
     }
     var node = document.createElement('category');
     node.setAttribute('name',name);
+    if(custom)node.setAttribute('custom',custom);
     document.getElementById('toolbox').appendChild(node);
     return node;
   }
@@ -52,26 +53,22 @@ editor_blockly = function () {
       MotaActionBlocks['afterGetItem_m'].xmlText(),
       MotaActionBlocks['afterOpenDoor_m'].xmlText(),
       MotaActionBlocks['firstArrive_m'].xmlText(),
+      MotaActionBlocks['eachArrive_m'].xmlText(),
+      MotaActionBlocks['level_m'].xmlText(),
     ],
     '显示文字':[
       MotaActionBlocks['text_0_s'].xmlText(),
       MotaActionBlocks['text_1_s'].xmlText(),
       MotaActionBlocks['comment_s'].xmlText(),
-      MotaActionFunctions.actionParser.parseList({"type": "choices", "text": "是否跳过剧情", "choices": [
-        {"text": "是", "action": []},
-        {"text": "否", "action": [
-          {"type": "autoText", "text": "\\t[小妖精,fairy]双击方块进入多行编辑\\n用户无法跳过自动剧情文本,大段剧情文本请添加“是否跳过剧情”的提示\\n自动剧情文本\\n自动剧情文本\\n自动剧情文本", "time" :3000},
-          {"type": "autoText", "text": "(可以右键方块后点复制)", "time" :3000},
-        ]},
-      ]}),
+      MotaActionBlocks['autoText_s'].xmlText(),
+      MotaActionBlocks['scrollText_s'].xmlText(),
       MotaActionBlocks['setText_s'].xmlText(),
-      MotaActionBlocks['showImage_0_s'].xmlText(),
-      MotaActionBlocks['animateImage_0_s'].xmlText(),
-      MotaActionBlocks['animateImage_1_s'].xmlText(),
-      MotaActionBlocks['showImage_1_s'].xmlText(),
+      MotaActionBlocks['showImage_s'].xmlText(),
+      MotaActionBlocks['hideImage_s'].xmlText(),
+      MotaActionBlocks['showTextImage_s'].xmlText(),
+      MotaActionBlocks['moveImage_s'].xmlText(),
       MotaActionBlocks['showGif_0_s'].xmlText(),
       MotaActionBlocks['showGif_1_s'].xmlText(),
-      MotaActionBlocks['moveImage_0_s'].xmlText(),
       MotaActionBlocks['tip_s'].xmlText(),
       MotaActionBlocks['win_s'].xmlText(),
       MotaActionBlocks['lose_s'].xmlText(),
@@ -89,6 +86,9 @@ editor_blockly = function () {
         MotaActionBlocks['idString_1_e'].xmlText(['status','hp'])
       ]),
       MotaActionBlocks['setFloor_s'].xmlText(),
+      MotaActionBlocks['setGlobalAttribute_s'].xmlText(),
+      MotaActionBlocks['setGlobalValue_s'].xmlText(),
+      MotaActionBlocks['setGlobalFlag_s'].xmlText(),
       MotaActionBlocks['input_s'].xmlText(),
       MotaActionBlocks['input2_s'].xmlText(),
       MotaActionBlocks['update_s'].xmlText(),
@@ -108,10 +108,10 @@ editor_blockly = function () {
     ],
     '事件控制':[
       MotaActionBlocks['if_s'].xmlText(),
-      MotaActionFunctions.actionParser.parseList({"type": "switch", "condition": "判别量", "caseList": [
+      MotaActionFunctions.actionParser.parseList({"type": "switch", "condition": "判别值", "caseList": [
         {"action": [{"type": "comment", "text": "当判别值是值的场合执行此事件"}]},
         {"action": []},
-        {"case": "'default'", "action": [{"type": "comment", "text": "当没有符合的值的场合执行此事件"}]},
+        {"case": "default", "action": [{"type": "comment", "text": "当没有符合的值的场合执行default事件"}]},
       ]}),
       MotaActionBlocks['while_s'].xmlText(),
       MotaActionBlocks['break_s'].xmlText(),
@@ -126,6 +126,7 @@ editor_blockly = function () {
       MotaActionBlocks['hideBgFgMap_s'].xmlText(),
       MotaActionBlocks['setBgFgBlock_s'].xmlText(),
       MotaActionBlocks['trigger_s'].xmlText(),
+      MotaActionBlocks['insert_s'].xmlText(),
       MotaActionBlocks['move_s'].xmlText(),
       MotaActionBlocks['jump_s'].xmlText(),
       MotaActionBlocks['disableShop_s'].xmlText(),
@@ -133,16 +134,25 @@ editor_blockly = function () {
     '特效/声音':[
       MotaActionBlocks['sleep_s'].xmlText(),
       MotaActionBlocks['wait_s'].xmlText(),
-      MotaActionBlocks['viberate_s'].xmlText(),
+      MotaActionBlocks['waitAsync_s'].xmlText(),
+      MotaActionBlocks['vibrate_s'].xmlText(),
       MotaActionBlocks['animate_s'].xmlText(),
+      MotaActionBlocks['showStatusBar_s'].xmlText(),
+      MotaActionBlocks['hideStatusBar_s'].xmlText(),
       MotaActionBlocks['setFg_0_s'].xmlText(),
       MotaActionBlocks['setFg_1_s'].xmlText(),
+      MotaActionBlocks['screenFlash_s'].xmlText(),
       MotaActionBlocks['setWeather_s'].xmlText(),
       MotaActionBlocks['playBgm_s'].xmlText(),
-      MotaActionBlocks['pauseBgm_s'].xmlText(),
-      MotaActionBlocks['resumeBgm_s'].xmlText(),
+      // MotaActionBlocks['pauseBgm_s'].xmlText(),
+      // MotaActionBlocks['resumeBgm_s'].xmlText(),
+      MotaActionBlocks['loadBgm_s'].xmlText(),
+      MotaActionBlocks['freeBgm_s'].xmlText(),
       MotaActionBlocks['playSound_s'].xmlText(),
       MotaActionBlocks['setVolume_s'].xmlText(),
+      MotaActionBlocks['callBook_s'].xmlText(),
+      MotaActionBlocks['callSave_s'].xmlText(),
+      MotaActionBlocks['callLoad_s'].xmlText(),
     ],
     '原生脚本':[
       MotaActionBlocks['function_s'].xmlText(),
@@ -152,6 +162,7 @@ editor_blockly = function () {
         MotaActionBlocks['idString_1_e'].xmlText(['status','hp'])
       ]),
       MotaActionBlocks['expression_arithmetic_0'].xmlText(),
+      MotaActionBlocks['evFlag_e'].xmlText(),
       MotaActionBlocks['negate_e'].xmlText(),
       MotaActionBlocks['bool_e'].xmlText(),
       MotaActionBlocks['idString_e'].xmlText(),
@@ -240,15 +251,19 @@ editor_blockly = function () {
           }
         ]
       },'event'),
-
     ],
+    '最近使用事件':[
+      '<label text="此处只是占位符,实际定义在editor_blockly.searchBlockCategoryCallback中"></label>',
+    ]
   }
   var toolboxgap = '<sep gap="5"></sep>'
   //xml_text = MotaActionFunctions.actionParser.parse(obj,type||'event')
   //MotaActionBlocks['idString_e'].xmlText()
 
   for (var name in toolboxObj){
-    getCategory(name).innerHTML = toolboxObj[name].join(toolboxgap);
+    var custom = null;
+    if(name=='最近使用事件')custom='searchBlockCategory';
+    getCategory(name,custom).innerHTML = toolboxObj[name].join(toolboxgap);
   }
 
 var blocklyArea = document.getElementById('blocklyArea');
@@ -266,6 +281,23 @@ var workspace = Blockly.inject(blocklyDiv,{
   },
   trashcan: false,
 });
+
+editor_blockly.searchBlockCategoryCallback = function(workspace) {
+  var xmlList = [];
+  var labels = editor_blockly.searchBlock();
+  for (var i = 0; i < labels.length; i++) {
+    var blockText = '<xml>' +
+        MotaActionBlocks[labels[i]].xmlText() +
+        '</xml>';
+    var block = Blockly.Xml.textToDom(blockText).firstChild;
+    block.setAttribute("gap", 5);
+    xmlList.push(block);
+  }
+  return xmlList;
+};
+
+workspace.registerToolboxCategoryCallback(
+  'searchBlockCategory', editor_blockly.searchBlockCategoryCallback);
  
 var onresize = function(e) {
   blocklyDiv.style.width = blocklyArea.offsetWidth + 'px';
@@ -286,8 +318,11 @@ document.getElementById('blocklyDiv').onmousewheel = function(e){
   workspace.setScale(workspace.scale);
 }
 
-  var doubleClickCheck=[[0,'abc']];
-  function omitedcheckUpdateFunction(event) {
+var doubleClickCheck=[[0,'abc']];
+function omitedcheckUpdateFunction(event) {
+  if(event.type==='create'){
+    editor_blockly.addIntoLastUsedType(event.blockId);
+  }
   if(event.type==='ui'){
     var newClick = [new Date().getTime(),event.blockId];
     var lastClick = doubleClickCheck.shift();
@@ -332,6 +367,54 @@ document.getElementById('blocklyDiv').onmousewheel = function(e){
 
   MotaActionFunctions.workspace = function(){
     return editor_blockly.workspace;
+  }
+
+  // 因为在editor_blockly.parse里已经HTML转义过一次了,所以这里要覆盖掉以避免在注释中出现&lt;等
+  MotaActionFunctions.xmlText = function (ruleName,inputs,isShadow,comment) {
+    var rule = MotaActionBlocks[ruleName];
+    var blocktext = isShadow?'shadow':'block';
+    var xmlText = [];
+    xmlText.push('<'+blocktext+' type="'+ruleName+'">');
+    if(!inputs)inputs=[];
+    for (var ii=0,inputType;inputType=rule.argsType[ii];ii++) {
+      var input = inputs[ii];
+      var _input = '';
+      var noinput = (input===null || input===undefined);
+      if(noinput && inputType==='field') continue;
+      if(noinput) input = '';
+      if(inputType!=='field') {
+        var subList = false;
+        var subrulename = rule.args[ii];
+        subrulename=subrulename.split('_').slice(0,-1).join('_');
+        var subrule = MotaActionBlocks[subrulename];
+        if (subrule instanceof Array) {
+          subrulename=subrule[subrule.length-1];
+          subrule = MotaActionBlocks[subrulename];
+          subList = true;
+        }
+        _input = subrule.xmlText([],true);
+        if(noinput && !subList && !isShadow) {
+          //无输入的默认行为是: 如果语句块的备选方块只有一个,直接代入方块
+          input = subrule.xmlText();
+        }
+      }
+      xmlText.push('<'+inputType+' name="'+rule.args[ii]+'">');
+      xmlText.push(_input+input);
+      xmlText.push('</'+inputType+'>');
+    }
+    if(comment){
+      xmlText.push('<comment>');
+      xmlText.push(comment);
+      xmlText.push('</comment>');
+    }
+    var next = inputs[rule.args.length];
+    if (next) {//next
+      xmlText.push('<next>');
+      xmlText.push(next);
+      xmlText.push('</next>');
+    }
+    xmlText.push('</'+blocktext+'>');
+    return xmlText.join('');
   }
 })();
 `;
@@ -405,7 +488,7 @@ document.getElementById('blocklyDiv').onmousewheel = function(e){
         MotaActionFunctions.parse(
             eval('obj=' + codeAreaHL.getValue().replace(/[<>&]/g, function (c) {
                 return {'<': '&lt;', '>': '&gt;', '&': '&amp;'}[c];
-            })),
+            }).replace(/\\r/g, '\\\\r').replace(/\\f/g, '\\\\f')),
             document.getElementById('entryType').value
         );
     }
@@ -490,8 +573,10 @@ document.getElementById('blocklyDiv').onmousewheel = function(e){
             'text_0_s': 'EvalString_0',
             'text_1_s': 'EvalString_2',
             'autoText_s': 'EvalString_2',
+            'scrollText_s': 'EvalString_0',
             'comment_s': 'EvalString_0',
             'choices_s': 'EvalString_0',
+            'showTextImage_s': 'EvalString_0',
             'function_s': 'RawEvalString_0',
             'shopsub': 'EvalString_3',
         }
@@ -505,6 +590,97 @@ document.getElementById('blocklyDiv').onmousewheel = function(e){
                 b.setFieldValue(newvalue.split('\n').join('\\n'), f);
             });
         }
+    }
+
+    editor_blockly.lastUsedType=[
+        'text_0_s',
+        'comment_s',
+        'show_s',
+        'hide_s',
+        'setValue_s',
+        'if_s',
+        'battle_s',
+        'openDoor_s',
+        'choices_s',
+        'setText_s',
+        'exit_s',
+        'revisit_s',
+        'sleep_s',
+        'setBlock_s'
+    ]; // 最常用的15个图块
+    editor_blockly.lastUsedTypeNum=15;
+
+    editor_blockly.addIntoLastUsedType=function(blockId) {
+        var b = editor_blockly.workspace.getBlockById(blockId);
+        if(!b)return;
+        var blockType = b.type;
+        if(!blockType || blockType.indexOf("_s")!==blockType.length-2 || blockType==='pass_s')return;
+        editor_blockly.lastUsedType = editor_blockly.lastUsedType.filter(function (v) {return v!==blockType;});
+        if (editor_blockly.lastUsedType.length >= editor_blockly.lastUsedTypeNum)
+            editor_blockly.lastUsedType.pop();
+        editor_blockly.lastUsedType.unshift(blockType);
+
+        document.getElementById("searchBlock").value='';
+    }
+
+    // Index from 1 - 9
+    editor_blockly.openToolbox = function(index) {
+        // var element = document.getElementById(':'+index);
+        // if (element == null || element.getAttribute("aria-selected")=="true") return;
+        // element.click();
+        editor_blockly.workspace.toolbox_.tree_.setSelectedItem(editor_blockly.workspace.toolbox_.tree_.children_[index-1]);
+    }
+    editor_blockly.reopenToolbox = function(index) {
+        // var element = document.getElementById(':'+index);
+        // if (element == null) return;
+        // if (element.getAttribute("aria-selected")=="true") element.click();
+        // element.click();
+        editor_blockly.workspace.toolbox_.tree_.setSelectedItem(editor_blockly.workspace.toolbox_.tree_.children_[index-1]);
+        editor_blockly.workspace.getFlyout_().show(editor_blockly.workspace.toolbox_.tree_.children_[index-1].blocks);
+    }
+
+    editor_blockly.closeToolbox = function() {
+        /*
+        for (var i=1; i<=10; i++) {
+            var element = document.getElementById(':'+i);
+            if (element && element.getAttribute("aria-selected")=="true") {
+                element.click();
+                return;
+            }
+        }
+        */
+        editor_blockly.workspace.toolbox_.clearSelection();
+    }
+
+    var searchInput = document.getElementById("searchBlock");
+    searchInput.onfocus = function () {
+        editor_blockly.reopenToolbox(9);
+    }
+
+    searchInput.oninput = function () {
+        editor_blockly.reopenToolbox(9);
+    }
+
+    editor_blockly.searchBlock = function (value) {
+        if (value == null) value = searchInput.value;
+        value = value.toLowerCase();
+        if (value == '') return editor_blockly.lastUsedType;
+        var results = [];
+        for (var name in MotaActionBlocks) {
+            if (typeof name !== 'string' || name.indexOf("_s") !== name.length-2) continue;
+            var block = MotaActionBlocks[name];
+            if(block && block.json) {
+                if ((block.json.type||"").toLowerCase().indexOf(value)>=0
+                    || (block.json.message0||"").toLowerCase().indexOf(value)>=0
+                    || (block.json.tooltip||"").toLowerCase().indexOf(value)>=0) {
+                    results.push(name);
+                    if (results.length>=editor_blockly.lastUsedTypeNum)
+                        break;
+                }
+            }
+        }
+
+        return results.length == 0 ? editor_blockly.lastUsedType : results;
     }
 
     return editor_blockly;

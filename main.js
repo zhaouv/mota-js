@@ -2,7 +2,7 @@ function main() {
 
     //------------------------ 用户修改内容 ------------------------//
 
-    this.version = "2.5"; // 游戏版本号；如果更改了游戏内容建议修改此version以免造成缓存问题。
+    this.version = "2.5.4"; // 游戏版本号；如果更改了游戏内容建议修改此version以免造成缓存问题。
 
     this.useCompress = false; // 是否使用压缩文件
     // 当你即将发布你的塔时，请使用“JS代码压缩工具”将所有js代码进行压缩，然后将这里的useCompress改为true。
@@ -55,16 +55,20 @@ function main() {
         'nameCol': document.getElementById('nameCol'),
         'lvCol': document.getElementById('lvCol'),
         'hpmaxCol': document.getElementById('hpmaxCol'),
+        'hpCol': document.getElementById('hpCol'),
         'manaCol': document.getElementById('manaCol'),
+        'atkCol': document.getElementById('atkCol'),
+        'defCol': document.getElementById('defCol'),
         'mdefCol': document.getElementById('mdefCol'),
         'moneyCol': document.getElementById('moneyCol'),
-        'expCol': document.getElementById('expCol'),
+        'experienceCol': document.getElementById('experienceCol'),
         'upCol': document.getElementById('upCol'),
         'keyCol': document.getElementById('keyCol'),
         'pzfCol': document.getElementById('pzfCol'),
         'debuffCol': document.getElementById('debuffCol'),
         'skillCol': document.getElementById('skillCol'),
         'hard': document.getElementById('hard'),
+        'statusCanvas': document.getElementById('statusCanvas'),
     };
     this.mode = 'play';
     this.loadList = [
@@ -95,10 +99,17 @@ function main() {
             'book': document.getElementById("img-book"),
             'fly': document.getElementById("img-fly"),
             'toolbox': document.getElementById("img-toolbox"),
-            'shop': document.getElementById("img-shop"),
+            'keyboard': document.getElementById("img-keyboard"),
             'save': document.getElementById("img-save"),
             'load': document.getElementById("img-load"),
-            'settings': document.getElementById("img-settings")
+            'settings': document.getElementById("img-settings"),
+            'btn1': document.getElementById("img-btn1"),
+            'btn2': document.getElementById("img-btn2"),
+            'btn3': document.getElementById("img-btn3"),
+            'btn4': document.getElementById("img-btn4"),
+            'btn5': document.getElementById("img-btn5"),
+            'btn6': document.getElementById("img-btn6"),
+            'btn7': document.getElementById("img-btn7")
         },
         'icons': {
             'floor': 0,
@@ -115,7 +126,7 @@ function main() {
             'book': 10,
             'fly': 11,
             'toolbox': 12,
-            'shop': 13,
+            'keyboard': 13,
             'save': 14,
             'load': 15,
             'settings': 16,
@@ -132,6 +143,13 @@ function main() {
             'erase': 27,
             'empty': 28,
             'exit': 29,
+            'btn1': 30,
+            'btn2': 31,
+            'btn3': 32,
+            'btn4': 33,
+            'btn5': 34,
+            'btn6': 35,
+            'btn7': 36
         },
         'floor': document.getElementById('floor'),
         'name': document.getElementById('name'),
@@ -159,6 +177,9 @@ function main() {
     }
     this.floors = {}
     this.canvas = {};
+
+    this.__VERSION__ = "2.5.4";
+    this.__VERSION_CODE__ = 20;
 }
 
 main.prototype.init = function (mode, callback) {
@@ -295,23 +316,23 @@ main.prototype.listen = function () {
 window.onresize = function () {
     try {
         main.core.resize(main.dom.body.clientWidth, main.dom.body.clientHeight);
-    }catch (e) {}
+    }catch (e) { console.log(e); }
 }
 
 ////// 在界面上按下某按键时 //////
 main.dom.body.onkeydown = function(e) {
     try {
-        if (main.core.isPlaying() || main.core.status.lockControl)
+        if (main.core && (main.core.isPlaying() || main.core.status.lockControl))
             main.core.onkeyDown(e);
-    } catch (ee) {}
+    } catch (ee) { console.log(ee); }
 }
 
 ////// 在界面上放开某按键时 //////
 main.dom.body.onkeyup = function(e) {
     try {
-        if (main.core.isPlaying() || main.core.status.lockControl)
+        if (main.core && (main.core.isPlaying() || main.core.status.lockControl))
             main.core.onkeyUp(e);
-    } catch (ee) {}
+    } catch (ee) { console.log(ee); }
 }
 
 ////// 开始选择时 //////
@@ -323,14 +344,10 @@ main.dom.body.onselectstart = function () {
 main.dom.data.onmousedown = function (e) {
     try {
         e.stopPropagation();
-        if(e.button==1){// 把鼠标中键绑定为ESC
-            core.keyUp(27);
-            return;
-        }
         var loc = main.core.getClickLoc(e.clientX, e.clientY);
         if (loc == null) return;
         main.core.ondown(loc);
-    } catch (ee) {}
+    } catch (ee) { console.log(ee); }
 }
 
 ////// 鼠标移动时 //////
@@ -340,14 +357,14 @@ main.dom.data.onmousemove = function (e) {
         var loc = main.core.getClickLoc(e.clientX, e.clientY);
         if (loc == null) return;
         main.core.onmove(loc);
-    }catch (ee) {}
+    }catch (ee) { console.log(ee); }
 }
 
 ////// 鼠标放开时 //////
 main.dom.data.onmouseup = function () {
     try {
         main.core.onup();
-    }catch (e) {}
+    }catch (e) { console.log(e); }
 }
 
 ////// 鼠标滑轮滚动时 //////
@@ -357,7 +374,7 @@ main.dom.data.onmousewheel = function(e) {
             main.core.onmousewheel(Math.sign(e.wheelDelta))
         else if (e.detail)
             main.core.onmousewheel(Math.sign(e.detail));
-    } catch (ee) {}
+    } catch (ee) { console.log(ee); }
 }
 
 ////// 手指在触摸屏开始触摸时 //////
@@ -367,7 +384,7 @@ main.dom.data.ontouchstart = function (e) {
         var loc = main.core.getClickLoc(e.targetTouches[0].clientX, e.targetTouches[0].clientY);
         if (loc == null) return;
         main.core.ondown(loc);
-    }catch (ee) {}
+    }catch (ee) { console.log(ee); }
 }
 
 ////// 手指在触摸屏上移动时 //////
@@ -377,7 +394,7 @@ main.dom.data.ontouchmove = function (e) {
         var loc = main.core.getClickLoc(e.targetTouches[0].clientX, e.targetTouches[0].clientY);
         if (loc == null) return;
         main.core.onmove(loc);
-    }catch (ee) {}
+    }catch (ee) { console.log(ee); }
 }
 
 ////// 手指离开触摸屏时 //////
@@ -386,12 +403,15 @@ main.dom.data.ontouchend = function (e) {
         e.preventDefault();
         main.core.onup();
     } catch (e) {
+        console.log(e); 
     }
 }
 
 ////// 点击状态栏中的怪物手册时 //////
-main.statusBar.image.book.onclick = function () {
-    if (core.isset(core.status.replay) && core.status.replay.replaying) {
+main.statusBar.image.book.onclick = function (e) {
+    e.stopPropagation();
+
+    if (core.isReplaying()) {
         core.triggerReplay();
         return;
     }
@@ -406,10 +426,11 @@ main.statusBar.image.book.onclick = function () {
 }
 
 ////// 点击状态栏中的楼层传送器/装备栏时 //////
-main.statusBar.image.fly.onclick = function () {
+main.statusBar.image.fly.onclick = function (e) {
+    e.stopPropagation();
 
     // 播放录像时
-    if (core.isset(core.status.replay) && core.status.replay.replaying) {
+    if (core.isReplaying()) {
         core.stopReplay();
         return;
     }
@@ -417,15 +438,6 @@ main.statusBar.image.fly.onclick = function () {
     // 绘图模式
     if (main.core.isPlaying() && (core.status.event||{}).id=='paint') {
         core.actions.setPaintMode('erase');
-        return;
-    }
-
-    // 浏览地图时
-    if (main.core.isPlaying() && (core.status.event||{}).id=='viewMaps') {
-        if (core.isset(core.status.event.data)) {
-            core.status.event.data.paint = !core.status.event.data.paint;
-            core.ui.drawMaps(core.status.event.data);
-        }
         return;
     }
 
@@ -440,9 +452,10 @@ main.statusBar.image.fly.onclick = function () {
 }
 
 ////// 点击状态栏中的工具箱时 //////
-main.statusBar.image.toolbox.onclick = function () {
+main.statusBar.image.toolbox.onclick = function (e) {
+    e.stopPropagation();
 
-    if (core.isset(core.status.replay) && core.status.replay.replaying) {
+    if (core.isReplaying()) {
         core.rewindReplay();
         return;
     }
@@ -458,9 +471,10 @@ main.statusBar.image.toolbox.onclick = function () {
 }
 
 ////// 双击状态栏中的工具箱时 //////
-main.statusBar.image.toolbox.ondblclick = function () {
+main.statusBar.image.toolbox.ondblclick = function (e) {
+    e.stopPropagation();
 
-    if (core.isset(core.status.replay) && core.status.replay.replaying) {
+    if (core.isReplaying()) {
         core.rewindReplay();
         return;
     }
@@ -470,22 +484,24 @@ main.statusBar.image.toolbox.ondblclick = function () {
 
 }
 
-////// 点击状态栏中的快捷商店时 //////
-main.statusBar.image.shop.onclick = function () {
+////// 点击状态栏中的虚拟键盘时 //////
+main.statusBar.image.keyboard.onclick = function (e) {
+    e.stopPropagation();
 
-    if (core.isset(core.status.replay) && core.status.replay.replaying) {
+    if (core.isReplaying()) {
         core.bookReplay();
         return;
     }
 
     if (main.core.isPlaying())
-        main.core.openQuickShop(true);
+        main.core.openKeyBoard(true);
 }
 
 ////// 点击状态栏中的存档按钮时 //////
-main.statusBar.image.save.onclick = function () {
+main.statusBar.image.save.onclick = function (e) {
+    e.stopPropagation();
 
-    if (core.isset(core.status.replay) && core.status.replay.replaying) {
+    if (core.isReplaying()) {
         core.speedDownReplay();
         return;
     }
@@ -500,9 +516,10 @@ main.statusBar.image.save.onclick = function () {
 }
 
 ////// 点击状态栏中的读档按钮时 //////
-main.statusBar.image.load.onclick = function () {
+main.statusBar.image.load.onclick = function (e) {
+    e.stopPropagation();
 
-    if (core.isset(core.status.replay) && core.status.replay.replaying) {
+    if (core.isReplaying()) {
         core.speedUpReplay();
         return;
     }
@@ -517,9 +534,10 @@ main.statusBar.image.load.onclick = function () {
 }
 
 ////// 点击状态栏中的系统菜单时 //////
-main.statusBar.image.settings.onclick = function () {
+main.statusBar.image.settings.onclick = function (e) {
+    e.stopPropagation();
 
-    if (core.isset(core.status.replay) && core.status.replay.replaying) {
+    if (core.isReplaying()) {
         core.saveReplay();
         return;
     }
@@ -533,18 +551,53 @@ main.statusBar.image.settings.onclick = function () {
         main.core.openSettings(true);
 }
 
+////// 点击工具栏时 //////
+main.dom.toolBar.onclick = function () {
+    if (core.isReplaying())
+        return;
+    main.core.control.setToolbarButton(!core.domStyle.toolbarBtn);
+}
+
+////// 手机端的按钮1-7 //////
+main.statusBar.image.btn1.onclick = function (e) {
+    e.stopPropagation();
+    main.core.onkeyUp({"keyCode": 49});
+};
+
+main.statusBar.image.btn2.onclick = function (e) {
+    e.stopPropagation();
+    main.core.onkeyUp({"keyCode": 50});
+};
+
+main.statusBar.image.btn3.onclick = function (e) {
+    e.stopPropagation();
+    main.core.onkeyUp({"keyCode": 51});
+};
+
+main.statusBar.image.btn4.onclick = function (e) {
+    e.stopPropagation();
+    main.core.onkeyUp({"keyCode": 52});
+};
+
+main.statusBar.image.btn5.onclick = function (e) {
+    e.stopPropagation();
+    main.core.onkeyUp({"keyCode": 53});
+};
+
+main.statusBar.image.btn6.onclick = function (e) {
+    e.stopPropagation();
+    main.core.onkeyUp({"keyCode": 54});
+};
+
+main.statusBar.image.btn7.onclick = function (e) {
+    e.stopPropagation();
+    main.core.onkeyUp({"keyCode": 55});
+};
+
 ////// 点击“开始游戏”时 //////
 main.dom.playGame.onclick = function () {
     main.dom.startButtons.style.display='none';
-
-    if (main.core.isset(main.core.musicStatus) && main.core.musicStatus.startDirectly
-        && main.core.musicStatus.bgmStatus) {
-        if (main.core.musicStatus.playingBgm==null
-            || core.material.bgms[main.core.musicStatus.playingBgm].paused) {
-            main.core.musicStatus.playingBgm=null;
-            main.core.playBgm(main.core.bgms[0]);
-        }
-    }
+    main.core.control.checkBgm();
 
     if (main.core.isset(main.core.flags.startDirectly) && main.core.flags.startDirectly) {
         core.events.startGame("");
@@ -556,34 +609,28 @@ main.dom.playGame.onclick = function () {
 
 ////// 点击“载入游戏”时 //////
 main.dom.loadGame.onclick = function() {
-
-    if (main.core.isset(main.core.musicStatus) && main.core.musicStatus.startDirectly
-        && main.core.musicStatus.bgmStatus) {
-        if (main.core.musicStatus.playingBgm==null
-            || core.material.bgms[main.core.musicStatus.playingBgm].paused) {
-            main.core.musicStatus.playingBgm=null;
-            main.core.playBgm(main.core.bgms[0]);
-        }
-    }
-
+    main.core.control.checkBgm();
     main.core.load();
 }
 
 ////// 点击“录像回放”时 //////
 main.dom.replayGame.onclick = function () {
-
-    if (main.core.isset(main.core.musicStatus) && main.core.musicStatus.startDirectly
-        && main.core.musicStatus.bgmStatus) {
-        if (main.core.musicStatus.playingBgm==null
-            || core.material.bgms[main.core.musicStatus.playingBgm].paused) {
-            main.core.musicStatus.playingBgm=null;
-            main.core.playBgm(main.core.bgms[0]);
-        }
-    }
-
-    core.chooseReplayFile();
+    main.core.control.checkBgm();
+    main.core.chooseReplayFile();
 }
 
+main.dom.musicBtn.onclick = function () {
+    try {
+        if (main.core)
+            main.core.triggerBgm();
+    } catch (e) {console.log(e);}
+}
+
+window.onblur = function () {
+    if (main.core && main.core.control) {
+        main.core.control.checkAutosave();
+    }
+}
 
 }//listen end
 

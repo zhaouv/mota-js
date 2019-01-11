@@ -1,4 +1,4 @@
-data_comment_c456ea59_6018_45ef_8bcc_211a24c627dc = 
+var data_comment_c456ea59_6018_45ef_8bcc_211a24c627dc =
 {
     "_leaf": false,
     "_type": "object",
@@ -31,7 +31,7 @@ data_comment_c456ea59_6018_45ef_8bcc_211a24c627dc =
                 "bgms": {
                     "_leaf": true,
                     "_type": "textarea",
-                    "_data": "在此存放所有的bgm，和文件名一致。第一项为默认播放项 \n音频名不能使用中文，不能带空格或特殊字符；可以直接改名拼音就好"
+                    "_data": "在此存放所有的bgm，和文件名一致。 \n音频名不能使用中文，不能带空格或特殊字符；可以直接改名拼音就好"
                 },
                 "sounds": {
                     "_leaf": true,
@@ -41,11 +41,13 @@ data_comment_c456ea59_6018_45ef_8bcc_211a24c627dc =
                 "startBackground": {
                     "_leaf": true,
                     "_type": "textarea",
+                    "_string": true,
                     "_data": "标题界面的背景，建议使用jpg格式以压缩背景图空间"
                 },
                 "startLogoStyle": {
                     "_leaf": true,
                     "_type": "textarea",
+                    "_string": true,
                     "_data": "标题样式：可以改变颜色，也可以写\"display: none\"来隐藏标题"
                 },
                 "levelChoose": {
@@ -60,45 +62,65 @@ data_comment_c456ea59_6018_45ef_8bcc_211a24c627dc =
                     "_range": "(thiseval instanceof Array && thiseval.length<=6)||thiseval==null",
                     "_data": "装备位名称，为不超过6个的数组，此项的顺序与equiptype数值关联；例如可写[\"武器\",\"防具\",\"首饰\"]等等。"
                 },
+                "startBgm": {
+                    "_leaf": true,
+                    "_type": "textarea",
+                    "_string": true,
+                    "_data": "在标题界面应该播放的bgm内容"
+                },
                 "statusLeftBackground": {
                     "_leaf": true,
                     "_type": "textarea",
+                    "_string": true,
                     "_data": "横屏时左侧状态栏的背景样式，可以定义背景图、平铺方式等。\n具体请网上搜索\"css background\"了解写法。\n如果弄一张图片作为背景图，推荐写法：\n\"url(project/images/XXX.png) 0 0/100% 100% no-repeat\"\n图片最好进行一些压缩等操作节省流量。"
                 },
                 "statusTopBackground": {
                     "_leaf": true,
                     "_type": "textarea",
+                    "_string": true,
                     "_data": "竖屏时上方状态栏的背景样式，可以定义背景图、平铺方式等。\n具体请网上搜索\"css background\"了解写法。\n如果弄一张图片作为背景图，推荐写法：\n\"url(project/images/XXX.png) 0 0/100% 100% no-repeat\"\n图片最好进行一些压缩等操作节省流量。"
                 },
                 "toolsBackground": {
                     "_leaf": true,
                     "_type": "textarea",
+                    "_string": true,
                     "_data": "竖屏时下方道具栏的背景样式，可以定义背景图、平铺方式等。\n具体请网上搜索\"css background\"了解写法。\n如果弄一张图片作为背景图，推荐写法：\n\"url(project/images/XXX.png) 0 0/100% 100% no-repeat\"\n图片最好进行一些压缩等操作节省流量。"
                 },
                 "borderColor": {
                     "_leaf": true,
                     "_type": "textarea",
+                    "_string": true,
                     "_data": "边框颜色，包括游戏边界的边框和对话框边框等。"
                 },
                 "statusBarColor": {
                     "_leaf": true,
                     "_type": "textarea",
+                    "_string": true,
                     "_data": "状态栏的文字颜色，默认是白色"
                 },
                 "hardLabelColor": {
                     "_leaf": true,
                     "_type": "textarea",
+                    "_string": true,
                     "_data": "难度显示的颜色，默认是红色"
                 },
                 "floorChangingBackground": {
                     "_leaf": true,
                     "_type": "textarea",
+                    "_string": true,
                     "_data": "楼层转换界面的背景样式；可以使用纯色（默认值black），也可以使用图片（参见状态栏的图片写法）"
                 },
                 "floorChangingTextColor": {
                     "_leaf": true,
                     "_type": "textarea",
+                    "_string": true,
                     "_data": "楼层转换界面的文字颜色，默认是白色"
+                },
+                "font": {
+                    "_leaf": true,
+                    "_type": "textarea",
+                    "_string": true,
+                    "_data": "游戏中使用的字体，默认是Verdana"
                 }
             }
         },
@@ -124,7 +146,10 @@ data_comment_c456ea59_6018_45ef_8bcc_211a24c627dc =
                 },
                 "floorId": {
                     "_leaf": true,
-                    "_type": "textarea",
+                    "_type": "select",
+                    "_select": {
+                        "values": data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d.main.floorIds
+                    },
                     "_range": "data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d.main.floorIds.indexOf(thiseval)!==-1",
                     "_data": "初始楼层的ID"
                 },
@@ -225,8 +250,16 @@ data_comment_c456ea59_6018_45ef_8bcc_211a24c627dc =
                             "_data": {
                                 "direction": {
                                     "_leaf": true,
-                                    "_type": "textarea",
-                                    "_data": "勇士初始方向"
+                                    "_type": "select",
+                                    "_data": "勇士初始方向",
+                                    "_select": {
+                                        "values": [
+                                            "up",
+                                            "down",
+                                            "left",
+                                            "right"
+                                        ]
+                                    },
                                 },
                                 "x": {
                                     "_leaf": true,
@@ -252,6 +285,13 @@ data_comment_c456ea59_6018_45ef_8bcc_211a24c627dc =
                         }
                     }
                 },
+                "startCanvas": {
+                    "_leaf": true,
+                    "_type": "event",
+                    "_event": "firstArrive",
+                    "_range": "thiseval==null || thiseval instanceof Array",
+                    "_data": "标题界面事件化，可以使用事件流的形式来绘制开始界面等。\n需要开启startUsingCanvas这个开关。\n详见文档-个性化-标题界面事件化。"
+                },
                 "startText": {
                     "_leaf": true,
                     "_type": "event",
@@ -268,9 +308,10 @@ data_comment_c456ea59_6018_45ef_8bcc_211a24c627dc =
                 },
                 "levelUp": {
                     "_leaf": true,
-                    "_type": "textarea",
+                    "_type": "event",
+                    "_event": "level",
                     "_range": "thiseval==null || thiseval instanceof Array",
-                    "_data": "经验升级所需要的数值，是一个数组，可以双击进行编辑。 \n 第一项为初始等级，可以简单留空，也可以写name \n 每一个里面可以含有三个参数 need, name, effect \n need为所需要的经验数值，是一个正整数。请确保need所需的依次递增 \n name为该等级的名称，也可以省略代表使用系统默认值；本项将显示在状态栏中 \n effect为本次升级所执行的操作，可由若干项组成，由分号分开 \n 其中每一项写法和上面的商店完全相同，同样必须是X+=Y的形式，Y是一个表达式，同样可以使用status:xxx或item:xxx代表勇士的某项数值/道具个数"
+                    "_data": "经验升级所需要的数值，是一个数组，可以双击进行编辑。 \n 第一项为初始等级，仅title生效 \n 每一个里面可以含有三个参数 need, title, action \n need为所需要的经验数值，可以是个表达式。请确保need依次递增 \n title为该等级的名称，也可以省略代表使用系统默认值；本项将显示在状态栏中 \n action为本次升级所执行的事件，可由若干项组成"
                 }
             }
         },
@@ -328,11 +369,6 @@ data_comment_c456ea59_6018_45ef_8bcc_211a24c627dc =
                     "_type": "textarea",
                     "_data": "绿血瓶加血数值"
                 },
-                "moneyPocket": {
-                    "_leaf": true,
-                    "_type": "textarea",
-                    "_data": "金钱袋加金币的数值"
-                },
                 "breakArmor": {
                     "_leaf": true,
                     "_type": "textarea",
@@ -353,16 +389,20 @@ data_comment_c456ea59_6018_45ef_8bcc_211a24c627dc =
                     "_type": "textarea",
                     "_data": "仇恨属性中，每杀死一个怪物获得的仇恨值"
                 },
-                "maxValidHp": {
+                "moveSpeed": {
                     "_leaf": true,
                     "_type": "textarea",
-                    "_range": "thiseval==null||thiseval>0",
-                    "_data": "最大合法生命值；如果此项不为null且用户通关血量超过本值，则视为作弊，不上传成绩"
+                    "_data": "行走速度，即勇士每走一格的时间，一般100比较合适"
                 },
                 "animateSpeed": {
                     "_leaf": true,
                     "_type": "textarea",
-                    "_data": "动画时间，一般300比较合适"
+                    "_data": "全局动画时间，即怪物振动频率，一般300比较合适"
+                },
+                "floorChangeTime": {
+                    "_leaf": true,
+                    "_type": "textarea",
+                    "_data": "默认楼层切换时间"
                 }
             }
         },
@@ -424,6 +464,12 @@ data_comment_c456ea59_6018_45ef_8bcc_211a24c627dc =
                     "_bool": "bool",
                     "_data": "是否允许等级提升（进阶）；如果上面enableExperience为false，则此项恒视为false"
                 },
+                "levelUpLeftMode": {
+                    "_leaf": true,
+                    "_type": "checkbox",
+                    "_bool": "bool",
+                    "_data": "进阶使用扣除模式，即在状态栏显示距离下个等级所需要的经验值；只有enableExperience和enableLevelUp均开启时才有效。"
+                },
                 "enableKeys": {
                     "_leaf": true,
                     "_type": "checkbox",
@@ -440,7 +486,7 @@ data_comment_c456ea59_6018_45ef_8bcc_211a24c627dc =
                     "_leaf": true,
                     "_type": "checkbox",
                     "_bool": "bool",
-                    "_data": "是否涉及毒衰咒；如果此项为false则不会在状态栏中显示毒衰咒的debuff"
+                    "_data": "是否在状态栏显示毒衰咒"
                 },
                 "enableSkill": {
                     "_leaf": true,
@@ -490,20 +536,6 @@ data_comment_c456ea59_6018_45ef_8bcc_211a24c627dc =
                     "_bool": "bool",
                     "_data": "状态栏的装备按钮。若此项为true则将状态栏中的楼层转换器按钮换为装备栏按钮"
                 },
-                "equipPercentage": {
-                    "_leaf": true,
-                    "_type": "checkbox",
-                    "_bool": "bool",
-                    "_data": "装备增加百分比属性。如果此项为true，则装备属性全部按照百分比进行计算，比如\"atk\": 20意味着攻击增加20%。\n如果多个装备百分比增加同一个属性的，按加算处理。（即一个10%一个20%总共是30%而不是32%）"
-                },
-                /*
-                "enableDeleteItem": {
-                    "_leaf": true,
-                    "_type": "checkbox",
-                    "_bool": "bool",
-                    "_data": "是否允许删除（丢弃）道具"
-                },
-                */
                 "enableAddPoint": {
                     "_leaf": true,
                     "_type": "checkbox",
@@ -532,13 +564,31 @@ data_comment_c456ea59_6018_45ef_8bcc_211a24c627dc =
                     "_leaf": true,
                     "_type": "checkbox",
                     "_bool": "bool",
-                    "_data": "是否循环计算临界；如果此项为true则使用循环法（而不是回合数计算法）来算临界"
+                    "_data": "是否循环计算临界；如果此项为true则使用循环法（而不是回合数计算法）来算临界\n从V2.5.3开始，对于大数据的循环法将改为使用二分法进行计算"
+                },
+                "startUsingCanvas": {
+                    "_leaf": true,
+                    "_type": "checkbox",
+                    "_bool": "bool",
+                    "_data": "是否开始菜单canvas化；如果此项为true，则将使用canvas来绘制开始菜单"
                 },
                 "startDirectly": {
                     "_leaf": true,
                     "_type": "checkbox",
                     "_bool": "bool",
                     "_data": "点击“开始游戏”后是否立刻开始游戏而不显示难度选择界面"
+                },
+                "statusCanvas": {
+                    "_leaf": true,
+                    "_type": "checkbox",
+                    "_bool": "bool",
+                    "_data": "是否状态栏canvas化，即手动自定义绘制状态栏。\n如果此项开启，则可在脚本编辑的drawStatusBar中自定义绘制菜单栏。"
+                },
+                "statusCanvasRowsOnMobile": {
+                    "_leaf": true,
+                    "_type": "textarea",
+                    "_range": "thiseval==null || (thiseval>0 && thiseval<=4)",
+                    "_data": "竖屏模式下，顶端状态栏canvas化后的行数。\n此项将决定竖屏的状态栏高度，如果设置则不小于1且不大于4。\n仅在statusCanvas开启时才有效"
                 },
                 "canOpenBattleAnimate": {
                     "_leaf": true,
@@ -612,6 +662,18 @@ data_comment_c456ea59_6018_45ef_8bcc_211a24c627dc =
                     "_bool": "bool",
                     "_data": "是否允许查看未开启状态的快捷商店内容；如果此项为真，则对于未开启状态的商店允许查看其内容（但不能购买）"
                 },
+                "disableShopOnDamage": {
+                    "_leaf": true,
+                    "_type": "checkbox",
+                    "_bool": "bool",
+                    "_data": "是否在经过领域/夹击/路障等伤害后禁用快捷商店。"
+                },
+                "checkConsole": {
+                    "_leaf": true,
+                    "_type": "checkbox",
+                    "_bool": "bool",
+                    "_data": "是否检查控制台的开启情况。"
+                }
             }
         }
     }

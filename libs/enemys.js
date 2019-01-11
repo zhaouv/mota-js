@@ -1,3 +1,5 @@
+"use strict";
+
 function enemys() {
     this.init();
 }
@@ -125,6 +127,38 @@ enemys.prototype.getExtraDamage = function (enemy) {
     return extra_damage;
 }
 
+enemys.prototype.getDamageString = function (enemy, x, y) {
+    if (typeof enemy == 'string') enemy = core.material.enemys[enemy];
+    var damage = core.enemys.getDamage(enemy, x, y);
+
+    var color = '#000000';
+
+    if (damage == null) {
+        damage = "???";
+        color = '#FF0000';
+    }
+    else {
+        if (damage <= 0) color = '#00FF00';
+        else if (damage < core.status.hero.hp / 3) color = '#FFFFFF';
+        else if (damage < core.status.hero.hp * 2 / 3) color = '#FFFF00';
+        else if (damage < core.status.hero.hp) color = '#FF7F00';
+        else color = '#FF0000';
+
+        damage = core.formatBigNumber(damage, true);
+        if (core.enemys.hasSpecial(enemy, 19))
+            damage += "+";
+        if (core.enemys.hasSpecial(enemy, 21))
+            damage += "-";
+        if (core.enemys.hasSpecial(enemy, 11))
+            damage += "^";
+    }
+
+    return {
+        "damage": damage,
+        "color": color
+    };
+}
+
 ////// 接下来N个临界值和临界减伤计算 //////
 enemys.prototype.nextCriticals = function (enemy, number, x, y, floorId) {
     if (typeof enemy == 'string') enemy = core.material.enemys[enemy];
@@ -162,9 +196,7 @@ enemys.prototype.nextCriticals = function (enemy, number, x, y, floorId) {
         for (var t = turn-1;t>=1;t--) {
             var nextAtk = Math.ceil(mon_hp/t) + mon_def;
             // 装备提升比例的计算临界
-            if (core.flags.equipPercentage) {
-                nextAtk = Math.ceil(nextAtk / core.getFlag('equip_atk_buff', 1));
-            }
+            nextAtk = Math.ceil(nextAtk / core.getFlag('equip_atk_buff', 1));
             if (nextAtk<=hero_atk) break;
             if (nextAtk!=pre) {
                 var nextInfo = this.getDamageInfo(enemy, core.status.hero.hp, nextAtk, core.status.hero.def, core.status.hero.mdef, x, y, floorId);
@@ -178,14 +210,45 @@ enemys.prototype.nextCriticals = function (enemy, number, x, y, floorId) {
         }
     }
     else { // 暴力for循环法
+
+        // V2.5.3以后，大数据改为二分法进行计算
+        var LOOP_MAX_VALUE = 1;
         pre = info.damage;
-        for (var atk=hero_atk+1;atk<=mon_hp+mon_def;atk++) {
-            var nextInfo = this.getDamageInfo(enemy, core.status.hero.hp, atk, core.status.hero.def, core.status.hero.mdef, x, y, floorId);
-            if (nextInfo==null) break;
-            if (pre>nextInfo.damage) {
-                pre = nextInfo.damage;
-                list.push([atk-hero_atk, Math.floor(info.damage-nextInfo.damage)]);
-                if (nextInfo.damage<=0 && !core.flags.enableNegativeDamage) break;
+        if (hero_atk <= LOOP_MAX_VALUE) { // 循环法
+            for (var atk=hero_atk+1;atk<=mon_hp+mon_def;atk++) {
+                var nextInfo = this.getDamageInfo(enemy, core.status.hero.hp, atk, core.status.hero.def, core.status.hero.mdef, x, y, floorId);
+                if (nextInfo==null) break;
+                if (pre>nextInfo.damage) {
+                    pre = nextInfo.damage;
+                    list.push([atk-hero_atk, info.damage-nextInfo.damage]);
+                    if (nextInfo.damage<=0 && !core.flags.enableNegativeDamage) break;
+                    if (list.length>=number) break;
+                }
+            }
+        }
+        else { // 二分法算临界
+            var calNext = function (currAtk, maxAtk) {
+                var start = Math.floor(currAtk), end = Math.floor(maxAtk);
+                if (start>end) return null;
+
+                while (start<end) {
+                    var mid = Math.floor((start+end)/2);
+                    var nextInfo = core.enemys.getDamageInfo(enemy, core.status.hero.hp, mid, core.status.hero.def, core.status.hero.mdef, x, y, floorId);
+                    if (nextInfo == null) return null;
+                    if (pre>nextInfo.damage) end = mid;
+                    else start = mid+1;
+                }
+                var nextInfo = core.enemys.getDamageInfo(enemy, core.status.hero.hp, start, core.status.hero.def, core.status.hero.mdef, x, y, floorId);
+                return nextInfo==null||nextInfo.damage>=pre?null:[start,nextInfo.damage];
+            }
+            var currAtk = hero_atk;
+            while (true) {
+                var next = calNext(currAtk+1, mon_hp+mon_def, pre);
+                if (next == null) break;
+                currAtk = next[0];
+                pre = next[1];
+                list.push([currAtk-hero_atk, info.damage-pre]);
+                if (pre<=0 && !core.flags.enableNegativeDamage) break;
                 if (list.length>=number) break;
             }
         }
@@ -240,17 +303,25 @@ enemys.prototype.getCurrentEnemys = function (floorId) {
         if (core.isset(mapBlocks[b].event) && !mapBlocks[b].disable
             && mapBlocks[b].event.cls.indexOf('enemy')==0) {
             var enemyId = mapBlocks[b].event.id;
-            if (core.isset(used[enemyId])) continue;
 
             var enemy = core.material.enemys[enemyId];
+            if (!core.isset(enemy)) continue;
+
+            // 检查displayIdInBook
+            var tmpId = enemy.displayIdInBook;
+            if (core.isset(core.material.enemys[tmpId])) {
+                enemyId = tmpId;
+                enemy = core.material.enemys[tmpId];
+            }
+            if (core.isset(used[enemyId])) continue;
+
             var mon_hp = enemy.hp, mon_atk = enemy.atk, mon_def = enemy.def;
             var hero_atk = core.status.hero.atk, hero_def = core.status.hero.def, hero_mdef = core.status.hero.mdef;
 
-            if (core.flags.equipPercentage) {
-                hero_atk = Math.floor(core.getFlag('equip_atk_buff',1)*hero_atk);
-                hero_def = Math.floor(core.getFlag('equip_def_buff',1)*hero_def);
-                hero_mdef = Math.floor(core.getFlag('equip_mdef_buff',1)*hero_mdef);
-            }
+            hero_atk = Math.floor(core.getFlag('equip_atk_buff',1)*hero_atk);
+            hero_def = Math.floor(core.getFlag('equip_def_buff',1)*hero_def);
+            hero_mdef = Math.floor(core.getFlag('equip_mdef_buff',1)*hero_mdef);
+
             var enemyInfo = this.getEnemyInfo(enemy, core.status.hero.hp, hero_atk, hero_def, hero_mdef, null, null, floorId);
 
             var specialText = core.enemys.getSpecialText(enemyId);

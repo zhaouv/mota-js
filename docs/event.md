@@ -1,6 +1,6 @@
 # 事件
 
-?> 目前版本**v2.5**，上次更新时间：* {docsify-updated} *
+?> 目前版本**v2.5.3**，上次更新时间：* {docsify-updated} *
 
 本章内将对样板所支持的事件进行介绍。
 
@@ -207,6 +207,8 @@
 
 对于hero和怪物，也可以不写名字代表使用默认值。
 
+从V2.5.2以后，新增了绘制大头像的功能。绘制大头像图的基本写法是`\t[1.png]`或者`\t[标题,1.png]`。
+
 ``` js
 "x,y": [ // 实际执行的事件列表
     "一段普通文字",
@@ -216,13 +218,17 @@
     "\t[blackMagician]如果使用怪物的默认名称也可以简写怪物id",
     "\t[小妖精,fairy]这是一段小妖精说的话，使用仙子(fairy)的图标",
     "\t[你赢了]直接显示标题为【你赢了】",
+    "\t[1.png]绘制1.png这个头像图",
+    "\t[标题,1.png]同时绘制标题和1.png这个头像图"
 ]
 ```
+
+!> 大头像的头像图需要在全塔属性中注册，且必须是png格式，不可以用jpg或者其他格式，请自行转换。
 
 除此以外，我们还能实现“对话框效果”，只要有`\b[...]`就可以。
 
 - `\b[up]` 直接显示在当前点上方。同样把这里的up换成down则为下方。
-  - 如果不存在当前点（如在firstArrive中调用），则显示在屏幕最上方（最下方）
+  - 如果不存在当前点（如在firstArrive或eachArrive中调用），则显示在屏幕最上方（最下方）
 - `\b[up,hero]` 显示在勇士上方。同样把这里的up换成down则为下方。
 - `\b[up,x,y]` 显示在(x,y)点的上方（下方）；x和y都为整数且在0到12之间。
 
@@ -237,6 +243,29 @@
 
 !> `\t[...]`必须在`\b[...]`前面！不然两者都无法正常显示。
 
+还可以使用`\r[...]`来调整剧情文本的颜色。
+
+``` js
+"x,y": [ // 实际执行的事件列表
+    "这句话是默认颜色，\r[red]将颜色变成红色，\r[blue]将颜色变成蓝色",
+    "\r[#FF00FF]还可以使用RGB值来控制颜色，\r如果不加中括号则回到默认颜色",
+    "\t[hero]\b[up,hero]啊啊啊，别过来，\r[red]别过来！！！\n\r你到底是什么东西！"
+]
+```
+
+从V2.5.3以后，也可以使用`\f[...]`来同时绘制一张图片。
+
+其基本写法是`\f[图片名,起始x像素,起始y像素]`，或者`\f[图片名,起始x像素,起始y像素,绘制宽度,绘制高度]`。
+
+需要注意的是，这个图片是绘制在UI层上的，下一个事件执行时即会擦除；同时如果使用了\t的图标动画效果，重叠的地方也会被图标动画给覆盖掉。
+
+``` js
+"x,y": [ // 实际执行的事件列表
+    "\t[勇士]\b[up,hero]\f[1.png,100,100]以(100,100)为左上角绘制1.png图片",
+    "\t[hero]\f[1.png,100,100]\f[2.png,300,300]同时绘制了两张图片",
+    "\f[1.png,100,100,300,300]也可以填写宽高，这样会把图片强制进行放缩到指定的宽高值"
+]
+```
 
 另外值得一提的是，我们是可以在文字中计算一个表达式的值的。只需要将表达式用 `${ }`整个括起来就可以。
 
@@ -287,15 +316,36 @@ time为可选项，代表该自动文本的时间。可以不指定，不指定�
 
 !> 由于用户无法跳过自动剧情文本，因此对于大段剧情文本请自行添加“是否跳过剧情”的提示，否则可能会非常不友好。
 
+### scrollText：滚动剧情文本
+
+使用`{"type": "scrollText"}`可以使用滚动剧情文本，即将一段文字从屏幕最下方滚动到屏幕最上方。
+
+``` js
+"x,y": [ // 实际执行的事件列表
+    {"type": "scrollText", "text": "第一排\n第二牌\n\n空行后的一排", "time": 5000, "async": true},
+]
+```
+
+text为正文文本内容。可以使用`${ }`来计算表达式的值，且使用`\n`手动换行。系统不会对滚动剧情文本进行自动换行。
+
+time为可选项，代表总的滚动时间。默认为5000毫秒。
+
+async可选，如果为true则会异步执行（即不等待当前事件执行完毕，立刻执行下一个事件）。
+
+可以使用下面的[设置剧情文本的属性](event#setText：设置剧情文本的属性)来对文字颜色、文字大小、粗体、距离左边的偏移量进行设置。
+
+!> 滚动剧情文本会绘制在UI层（和对话框冲突）！如果是异步处理请注意不要和对话框混用。
+
 ### setText：设置剧情文本的属性
 
 使用`{"type": "setText"}`可以设置剧情文本的各项属性。
 
 ``` js
 "x,y": [ // 实际执行的事件列表
-    {"type": "setText", "title": [255,0,0], "text": [255,255,0], "background": [0,0,255,0.3]},
-    {"type": "setText", "position": "up", "bold": true, "titlefont": 26, "textfont": 17, "time": 70},
-    "这段话将显示在上方，标题为红色，正文为黄色粗体，背景为透明度0.3的蓝色，标题26px，正文17px，70毫秒速度打字机效果"
+    {"type": "setText", "title": [255,0,0], "text": [255,255,0], "background": [0,0,255,0.3], "time": 70},
+    {"type": "setText", "position": "up", "offset": 15, "bold": true, "titlefont": 26, "textfont": 17},
+    "这段话将显示在上方（距离顶端15像素），标题为红色，正文为黄色粗体，背景为透明度0.3的蓝色，标题26px，正文17px，70毫秒速度打字机效果",
+    {"type": "setText", "background": "winskin.png"} // 还可以一张使用WindowSkin作为皮肤。
 ]
 ```
 
@@ -303,9 +353,13 @@ title为可选项，如果设置则为一个RGB三元组或RGBA四元组，表�
 
 text为可选项，如果设置则为一个RGB三元组或RGBA四元组，表示正文颜色。 默认值：`[255,255,255,1]`
 
-background为可选项，如果设置则为一个RGB三元组或RGBA四元组，表示背景色。 默认值：`[0,0,0,0.85]`
+background为可选项，如果设置可为一个RGB三元组或RGBA四元组，表示背景色。 默认值：`[0,0,0,0.85]`
+
+V2.5.2以后，background也可以为一个WindowSkin的文件名。详见[剧情文本控制与界面皮肤](element#剧情文本控制与界面皮肤)。
 
 position为可选项，表示设置文字显示位置。只能为up（上），center（中）和down（下）三者。 默认值： `center`
+
+offset为可选项，如果设置则为代表距离如果显示位置是上/下的话，距离顶端/底端的像素值。也作为滚动剧情文本时距离左边的像素值。
 
 bold为可选项，如果设置则为true或false，表示正文是否使用粗体。 默认值：`false`
 
@@ -387,7 +441,7 @@ value是一个表达式，将通过这个表达式计算出的结果赋值给nam
 ]
 ```
 
-name为必填项，代表要修改的楼层属性。其和楼层属性中一一对应，目前只能为`"title", "name", "canFlyTo", "canUseQuickShop", "cannotViewMap", "color", "weather",
+name为必填项，代表要修改的楼层属性。其和楼层属性中一一对应，目前只能为`"title", "name", "canFlyTo", "canUseQuickShop", "cannotViewMap", "cannotMoveDirectly", "color", "weather",
 "defaultGround", "images", "item_ratio", "upFloor", "bgm", "downFloor", "underGround"`。
 
 floorId为可选项，代表要修改的楼层ID；可以省略代表当前楼层。
@@ -395,6 +449,54 @@ floorId为可选项，代表要修改的楼层ID；可以省略代表当前楼�
 value为必填项，代表要修改到的数值。其应该和楼层属性中的对应数值类型完全一致，对于字符串需要加单引号，其他类型（数字、true/false、数组）等则不需要引号。
 
 !> 如果修改到的是字符串类型，比如楼层中文名、状态栏名称、地面素材ID、背景音乐等，必须加引号，否则会报错。
+
+### setGlobalAttribute：设置一个全局属性
+
+使用`{"type":"setGlobalAttribute"}`可以设置一个全局属性。
+
+``` js
+"x,y": [ // 实际执行的事件列表
+  {"type": "setGlobalAttribute", "name": "font", "value": "Verdana"}, // 设置字体为Verdana
+]
+```
+
+name必填项，代表要修改的全局属性。目前只能为`"font", "statusLeftBackground", "statusTopBackground", "toolsBackground", 
+"borderColor", "statusBarColor", "hardLabelColor", "floorChangingBackground", "floorChangingTextColor"`。
+
+value为必填项，代表要修改到的结果。此项无需再手动加单引号。
+
+### setGlobalValue：设置一个全局数值
+
+使用`{"type":"setGlobalValue"}`可以设置一个全局数值。
+
+``` js
+"x,y": [ // 实际执行的事件列表
+  {"type": "setGlobalValue", "name": "lavaDamage", "value": 200}, // 设置血网伤害为200
+]
+```
+
+name必填项，代表要修改的全局数值，其和全塔属性中的values一一对应。目前只能为`"lavaDamage", "poisonDamage", "weakValue", "redJewel", 
+"blueJewel", "greenJewel", "redPotion", "bluePotion", "yellowPotion", "greenPotion", "breakArmor", "counterAttack",
+"purify", "hatred", "moveSpeed", "animateSpeed"`。
+
+value为必填项，代表要修改到的结果。该项必须是个数值。
+
+### setGlobalFlag：设置一个系统开关
+
+使用`{"type":"setGlobalFlag"}`可以设置一个系统开关。
+
+``` js
+"x,y": [ // 实际执行的事件列表
+  {"type": "setGlobalFlag", "name": "enableMDef", "value": false}, // 不在状态栏显示魔防值
+]
+```
+
+name必填项，代表要修改的系统开关，其是全塔属性中的flags中的一部分。目前只能为`"enableFloor", "enableName", "enableLv",
+"enableHPMax", "enableMana", "enableMDef", "enableMoney", "enableExperience", "enableLevelUp", "levelUpLeftMode",
+"enableKeys", "enablePZF", "enableDebuff", "enableSkill", "flyNearStair", "enableAddPoint", "enableNegativeDamage",
+"useLoop", "enableGentleClick", "canGoDeadZone", "enableMoveDirectly", "disableShopOnDamage"`。
+
+value为必填项，只能为true或false，代表要修改到的结果。
 
 ### show：将一个禁用事件启用
 
@@ -407,7 +509,8 @@ value为必填项，代表要修改到的数值。其应该和楼层属性中的
   {"type": "show", "loc": [3,6], "floorId": "MT1", "time": 500}, // 启用MT1层[3,6]位置事件，动画500ms
   {"type": "show", "loc": [3,6], "time": 500}, // 如果启用目标是当前层，则可以省略floorId项
   {"type": "show", "loc": [3,6]}, // 如果不指定动画时间，则立刻显示，否则动画效果逐渐显示，time为动画时间
-  {"type": "show", "loc": [[3,6],[2,9],[1,2]], "time": 500} // 我们也可以同时动画显示多个点。
+  {"type": "show", "loc": [[3,6],[2,9],[1,2]], "time": 500}, // 我们也可以同时动画显示多个点。
+  {"type": "show", "loc": [3,6], "time": 500, "async": true} // 可以使用异步动画效果
 ]
 ```
 
@@ -419,13 +522,15 @@ floorId为目标点的楼层，如果不是该楼层的事件（比如4楼小偷
 
 time为动画效果时间，如果指定了某个大于0的数，则会以动画效果慢慢从无到有显示，动画时间为该数值；如果不指定该选项则无动画直接立刻显示。
 
+async可选，如果为true则会异步执行（即不等待当前事件执行完毕，立刻执行下一个事件）。
+
 !> **要注意的是，调用show事件后只是让该事件从禁用状态变成启用，从不可见不可交互变成可见可交互，但本身不会去执行该点的事件。**
 
 ### hide：将一个启用事件禁用
 
 `{"type":"hide"}`和show刚好相反，它会让一个已经启用的事件被禁用。
 
-其参数和show也完全相同，loc指定事件的位置，floorId为楼层（同层可忽略），time指定的话事件会以动画效果从有到无慢慢消失。
+其参数和show也完全相同，loc指定事件的位置，floorId为楼层（同层可忽略），time指定的话事件会以动画效果从有到无慢慢消失，async代表是否是异步效果。
 
 loc同样可以简单的写[x,y]表示单个点，或二维数组[[x1,y1],[x2,y2],...]表示多个点。
 
@@ -443,7 +548,7 @@ NPC对话事件结束后如果需要NPC消失也需要调用 `{"type": "hide"}`�
     {"type": "hide", "loc": [[3,6],[2,9],[1,2]], "time": 500}, // 也可以同时指定多个点消失
     {"type": "hide", "time": 500}, // 如果不指定loc选项则默认为当前点， 例如这个就是500ms消失当前对话的NPC
     {"type": "hide"}, // 无动画将当前事件禁用，常常适用于某个空地点（触发陷阱事件、触发机关门这种）
-    
+    {"type": "hide", "loc": [3,6], "time": 500, "async": true} // 可以使用异步动画效果
 ]
 ```
 
@@ -467,6 +572,32 @@ NPC对话事件结束后如果需要NPC消失也需要调用 `{"type": "hide"}`�
 执行trigger事件后，当前事件将立刻被结束，剩下所有内容被忽略；然后重新启动另一个地点的action事件。
 
 例如上面这个例子，下面的文字将不会再被显示，而是直接跳转到`"3,6"`对应的事件列表从头执行。
+
+### insert：插入另一个地点的事件
+
+`{"type":"insert"}` 会插入另一个地点的事件执行。
+
+其基本写法如下：
+
+``` js
+"x,y": [ // 实际执行的事件列表
+    {"type": "insert", "loc": [3,6]}, // 插入[3,6]点的事件并执行
+    {"type": "insert", "loc": [10,10], "floorId": "MT1"}, // 插入MT1层[10,10]点的事件并执行
+    "上面的插入事件执行完毕后会接着继续执行后面的事件"
+]
+```
+
+loc是必须的，代表另一个地点的坐标。
+
+floorId可选，代表另一个地点所在的楼层；如果不写则默认为当前层。
+
+和`type:trigger`不同的是，**`type:trigger`是立刻将当前事件结束（剩下所有内容都忽略），然后重新启动另一个地点的action事件。**
+
+但是`type:insert`不会结束当前事件，而是直接将另一个地点的事件列表“插入”到当前事件列表中执行。
+
+**这个过程中，当前事件不会被结束，当前的楼层和事件坐标不会发生改变。** 插入的事件执行完毕后，会继续执行接下来的内容。
+
+我们某个事件写在某个角落的墙上然后远程调用，从而达到“公共事件”的效果。
 
 ### revisit：立即重启当前事件
 
@@ -632,6 +763,16 @@ name是可选的，代表目标行走图的文件名。
 
 如果你需要刷新状态栏和地图显伤，只需要简单地调用 `{"type": "update"}` 即可。
 
+### hideStatusBar：隐藏状态栏
+
+使用`{"type": "hideStatusBar"}`可以隐藏状态栏。读档或重新开始游戏时，状态栏会重新显示。
+
+可以添加`"toolbox": true`来不隐藏竖屏模式下的工具栏。
+
+### showStatusBar：显示状态栏
+
+使用`{"type": "showStatusBar"}`会重新显示状态栏。
+
 ### updateEnemys：更新怪物数据
 
 使用 `{"type": "updateEnemys"}` 可以动态修改怪物数据。
@@ -647,9 +788,14 @@ name是可选的，代表目标行走图的文件名。
 ``` js
 "x,y": [ // 实际执行的事件列表
     {"type": "sleep", "time": 1000}, // 等待1000ms
-    "等待1000ms后才开始执行这个事件"
+    "等待1000ms后才开始执行这个事件",
+    {"type": "sleep", "time": 2000, "noSkip": true}, // 等待2000毫秒，且不可被跳过
 ]
 ```
+
+默认的等待事件可以被Ctrl跳过，下面两种情况下不可呗跳过：
+ - 加上`"noSkip": true`后
+ - 当前存在尚未执行完毕的异步事件。
 
 ### battle：强制战斗
 
@@ -722,8 +868,6 @@ time为可选的，指定的话将作为楼层切换动画的时间。
 
 **如果time指定为小于100，则视为没有楼层切换动画。**
 
-!> **changeFloor到达一个新的楼层，将不会执行firstArrive事件！如有需求请在到达点设置自定义事件，然后使用type: trigger立刻调用之。**
-
 ### changePos：当前位置切换/勇士转向
 
 有时候我们不想要楼层切换的动画效果，而是直接让勇士从A点到B点。
@@ -778,9 +922,9 @@ name为可选的，是要取消跟随的行走图文件名。
 
 如果name省略，则会取消所有的跟随效果。
 
-### viberate：画面震动
+### vibrate：画面震动
 
-使用 `{"type": "viberate", "time": 2000, "async": true}` 可以造成画面震动效果。
+使用 `{"type": "vibrate", "time": 2000, "async": true}` 可以造成画面震动效果。
 
 time可以指定震动时间，默认是2000毫秒。
 
@@ -801,7 +945,7 @@ async可选，如果为true则会异步执行（即不等待当前事件执行�
 ]
 ```
 
-name为动画名，**请确保动画在main.js中的this.animates中被定义过。**
+name为动画名，**请确保动画在全塔属性中的animates中被定义过。**
 
 loc为动画的位置，可以是`[x,y]`表示在(x,y)点显示，也可以是字符串`"hero"`表示在勇士点显示。
 
@@ -817,48 +961,66 @@ loc可忽略，如果忽略则显示为事件当前点。
 
 ``` js
 "x,y": [ // 实际执行的事件列表
-    {"type": "showImage", "name": "bg.jpg", "loc": [231,297]}, // 在(231,297)显示bg.jpg
-    {"type": "showImage", "name": "1.png", "loc": [109,167]}, // 在(109,167)显示1.png
-    {"type": "showImage"} // 如果不指定name则清除所有图片。
+    {"type": "showImage", "code": 1, "image": "bg.jpg", "loc": [231,297], "dw": 100, "dy" : 100, "opacity": 1, "time" : 0}, // 在(231,297)显示bg.jpg
+    {"type": "showImage", "code": 12, "image": "1.png", "loc": [209,267], "dw": 100, "dy" : 100, "opacity": 0.5, "time" : 1000}, // 在(209,267)渐变显示1.png，渐变时间为1000毫秒，完成时不透明度为0.5，这张图片将遮盖上一张
+    {"type": "showImage", "code": 8, "image": "hero.png", "loc": [349,367], "dw": 50, "dy" : 50, "opacity": 1, "time" : 500, "async": true}, // 在(209,267)渐变显示hero.png，大小为原图片的一半，渐变时间为500毫秒，异步执行；这张图片将被上一张遮盖
 ]
 ```
 
-name为图片名。**请确保图片在data.js中的images中被定义过。**
+code为图片编号，如果两张图片重叠，编号较大会覆盖编号较小的。该值需要在1~50之间。
+
+image为图片名。**请确保图片在全塔属性中的images中被定义过。**
 
 loc为图片左上角坐标，以像素为单位进行计算。
 
-如果不指定name则清除所有显示的图片。
+dw和dh为图片的横向、纵向放大率，默认值为100，即不进行缩放。
 
-调用show/hide/move/animate等几个事件同样会清除所有显示的图片。
+opacity为图片不透明度，在0~1之间，默认值为1，即不透明。
 
-### animateImage：图片淡入淡出
-
-我们还可以使用 `{"type": "animateImage"}` 来造成显示图片的淡入淡出效果。
-
-``` js
-"x,y": [ // 实际执行的事件列表
-    {"type": "animateImage", "action": "show", "name": "bg.jpg", "loc": [231,297], "time": 500, "keep": true}, // 在(231,297)淡入bg.jpg，动画时间500ms
-    {"type": "animateImage", "action": "hide", "name": "1.png", "loc": [109,167], "time": 300, "async": true}, // 在(109,167)淡出1.png，动画时间300ms，异步执行
-]
-```
-
-action为淡入还是淡出，`show`为淡入，`hide`会淡出。
-
-name为图片名。**请确保图片在data.js中的images中被定义过。**
-
-loc为图片左上角坐标，以像素为单位进行计算。
-
-time为淡入淡出的时间，如果是0则忽略此项。
-
-keep可选，如果为true则在淡入图片后立刻调用showImage以保留图片，在淡出图片前先清除再动画。
+time为渐变时间，默认值为0，即不渐变直接显示。
 
 async可选，如果为true则会异步执行（即不等待当前事件执行完毕，立刻执行下一个事件）。
 
-如果多张图片的淡入淡出可以采用以下方式（仅供参考）：
+### showTextImage：显示文本化图片
 
-假设我现在已经有了`1.jpg`显示在屏幕上：
-- 淡入显示`2.png`：调用`animateImage`淡入图片，然后立刻调用`showImage`显示图片。
-- 淡出`1.png`：清除所有图片，`showImage`显示`2.png`，然后调用`animateImage`淡出`1.jpg`
+我们可以使用 `{"type": "showTextImage"}` 以图片的方式显示文本。
+
+``` js
+"x,y": [ // 实际执行的事件列表
+    {"type": "showTextImage", "code": 1, "text": "第一排\n第二排\n\n空行后的一排", "loc": [231,297], "opacity": 1, "time" : 0}, // 在(231,297)显示"第一排\n第二排\n\n空行后的一排"
+]
+```
+
+code为图片编号，如果两张图片重叠，编号较大会覆盖编号较小的。该值需要在1~50之间。
+
+text为要显示的文本。默认行宽为416。
+
+loc为图片左上角坐标，以像素为单位进行计算。
+
+opacity为图片不透明度，在0~1之间，默认值为1，即不透明。
+
+time为渐变时间，默认值为0，即不渐变直接显示。
+
+async可选，如果为true则会异步执行（即不等待当前事件执行完毕，立刻执行下一个事件）。
+
+文本通过图片的方式显示后，即视为一张正常图片，可以被清除或者移动。
+
+### hideImage：清除图片
+
+我们可以使用 `{"type": "hideImage"}` 来清除一张图片。
+
+``` js
+"x,y": [ // 实际执行的事件列表
+    {"type": "hideImage", "code": 1, "time" : 0}, // 使1号图片消失
+    {"type": "hideImage", "code": 12, "time" : 1000}, // 使12号图片渐变消失，时间为1000毫秒
+]
+```
+
+time为渐变时间，默认值为0，即不渐变直接消除。
+
+code为显示图片时输入的图片编号。
+
+async可选，如果为true则会异步执行（即不等待当前事件执行完毕，立刻执行下一个事件）。
 
 ### showGif：显示动图
 
@@ -871,7 +1033,7 @@ async可选，如果为true则会异步执行（即不等待当前事件执行�
 ]
 ```
 
-name为图片名。**请确保图片在data.js中的images中被定义过。**
+name为图片名。**请确保图片在全塔属性中的images中被定义过。**
 
 loc为动图左上角坐标，以像素为单位进行计算。
 
@@ -879,23 +1041,23 @@ loc为动图左上角坐标，以像素为单位进行计算。
 
 ### moveImage：图片移动
 
-我们可以使用 `{"type": "moveImage"}` 来造成图片移动效果。
+我们可以使用 `{"type": "moveImage"}` 来造成图片移动，淡入淡出等效果。
 
 ``` js
 "x,y": [ // 实际执行的事件列表
-    {"type": "moveImage", "name": "bg.jpg", "from": [231,297], "to": [22,333], "time": 500, "keep": true, "async": true},
+    {"type": "moveImage", "code": 1, "to": [22,333], "opacity": 1, "time": 1000}, // 将1号图片移动到(22,333)，动画时间为1000ms
+    {"type": "moveImage", "code": 12, "opacity": 0.5, "time": 500}, // 将二号图片的透明度变为0.5，动画时间500ms
+    {"type": "moveImage", "code": 1, "to": [109,167], "opacity": 0, "time": 300, "async": true}, // 将1号图片移动到(109,167)，透明度设为0（不可见），动画时间300ms，异步执行
 ]
 ```
 
-name为图片名。**请确保图片在data.js中的images中被定义过。**
+code为图片编号。该值需要在1~50之间。
 
-from为起点图片左上角坐标，以像素为单位进行计算。
+to为终点图片左上角坐标，以像素为单位进行计算，不填写则视为当前图片位置。
 
-to为终点图片左上角坐标，以像素为单位进行计算。
+opacity为完成时图片不透明度，移动过程中逐渐变化。在0~1之间。
 
 time为总移动的时间。
-
-keep可选，如果为true则在移动结束后立刻调用showImage以保留图片。
 
 async可选，如果为true则会异步执行（即不等待当前事件执行完毕，立刻执行下一个事件）。
 
@@ -921,6 +1083,27 @@ time为可选的，如果指定，则会作为更改画面色调的时间。
 
 async可选，如果为true则会异步执行（即不等待当前事件执行完毕，立刻执行下一个事件）。
 
+### screenFlash：画面闪烁
+
+我们可以使用 `{"type": "screenFlash"}` 来进行画面闪烁。
+
+``` js
+"x,y": [ // 实际执行的事件列表
+    {"type": "screenFlash", "color": [255,255,255,0.6], "time": 500, "times": 1}, // 闪光为白色，不透明度0.6，动画时间1000毫秒
+    {"type": "screenFlash", "color": [255,0,0,1], "time": 100, "times": 2, "async": true}, // 闪光为红色，强度最大，动画时间100毫秒，闪烁两次且异步执行
+]
+```
+
+color为闪光的颜色。它是一个数组，分别指定目标颜色的R,G,B,A值。
+- 常见RGB颜色： 纯黑[0,0,0]，纯白[255,255,255]，纯红[255,0,0]，等等。
+A即闪光的不透明度，为一个0到1之间的数，值越高闪烁效果越强。默认为1
+
+time为闪烁时间，默认值为500
+
+times为闪烁次数，两次闪烁会连续进行，默认值为1
+
+async可选，如果为true则会异步执行（即不等待当前事件执行完毕，立刻执行下一个事件）。
+
 ### setWeather：更改天气
 
 我们可以使用 `{"type": "setWeather"}` 来更改天气。
@@ -934,6 +1117,8 @@ async可选，如果为true则会异步执行（即不等待当前事件执行�
 ```
 
 name为天气选项。目前只支持`rain`和`snow`，即雨天和雪天。
+
+从V2.5.3开始，也支持雾天`fog`。
 
 level为天气的强度等级，在1-10之间。1级为最弱，10级为最强。
 
@@ -952,7 +1137,7 @@ level为天气的强度等级，在1-10之间。1级为最弱，10级为最强�
     {"type": "move", "time": 750, "loc": [x,y], "steps": [// 动画效果，time为移动速度(比如这里每750ms一步)，loc为位置可选，steps为移动数组
         {"direction": "right", "value": 2},// 这里steps 的效果为向右移动2步，在向下移动一步并消失
         "down" // 如果该方向上只移动一步则可以这样简写，效果等价于上面value为1
-    ], "keep": true }, // keep可选，如果为true则不消失，否则渐变消失
+    ], "keep": true, "async":true }, // keep可选，如果为true则不消失，否则渐变消失；async可选，如果为true则异步执行。
 ]
 ```
 
@@ -988,7 +1173,9 @@ keep为一个可选项，代表该事件移动完毕后是否消失。如果该�
 }
 ```
 
-即，在移动的到达点指定一个初始禁用的相同NPC，然后move事件中指定immediateHide使立刻消失，并show该到达点坐标使其立刻显示（看起来就像没有消失），然后就可以触发目标点的事件了。
+即，在移动的到达点指定一个事件，然后move事件中指定"keep":true，然后就可以触发目标点的事件了。
+
+async可选，如果为true则会异步执行（即不等待当前事件执行完毕，立刻执行下一个事件）。
 
 ### moveHero：移动勇士
 
@@ -998,7 +1185,7 @@ keep为一个可选项，代表该事件移动完毕后是否消失。如果该�
 
 ``` js
 "x,y": [ // 实际执行的事件列表
-    {"type": "moveHero", "time": 750, "steps": [// 动画效果，time为移动速度(比如这里每750ms一步)，steps为移动数组
+    {"type": "moveHero", "time": 750, "async": true, "steps": [// 动画效果，time为移动速度(比如这里每750ms一步)，steps为移动数组
         {"direction": "right", "value": 2},// 这里steps 的效果为向右移动2步，在向下移动一步并消失
         "down" // 如果该方向上只移动一步则可以这样简写，效果等价于上面value为1
     ]},
@@ -1009,6 +1196,8 @@ keep为一个可选项，代表该事件移动完毕后是否消失。如果该�
 
 不过值得注意的是，用这种方式移动勇士的过程中将无视一切地形，无视一切事件，中毒状态也不会扣血。
 
+async可选，如果为true则会异步执行（即不等待当前事件执行完毕，立刻执行下一个事件）。
+
 ### jump：让某个NPC/怪物跳跃
 
 如果我们需要移动某个NPC或怪物，可以使用`{"type": "jump"}`。
@@ -1017,7 +1206,7 @@ keep为一个可选项，代表该事件移动完毕后是否消失。如果该�
 
 ``` js
 "x,y": [ // 实际执行的事件列表
-    {"type": "jump", "from": [3,6], "to": [2,1], "time": 750, "keep": true},
+    {"type": "jump", "from": [3,6], "to": [2,1], "time": 750, "keep": true, "async": true},
 ]
 ```
 
@@ -1031,6 +1220,8 @@ keep为一个可选项，同上代表该跳跃完毕后是否不消失。如果�
 
 如果指定了`"keep": true`，则相当于会在目标地点触发一个`setBlock`事件；如需能继续对话交互请在目标地点再写事件。
 
+async可选，如果为true则会异步执行（即不等待当前事件执行完毕，立刻执行下一个事件）。
+
 ### jumpHero：跳跃勇士
 
 如果我们需要跳跃勇士，可以使用`{"type": "jumpHero"}`。
@@ -1039,13 +1230,15 @@ keep为一个可选项，同上代表该跳跃完毕后是否不消失。如果�
 
 ``` js
 "x,y": [ // 实际执行的事件列表
-    {"type": "jump", "loc": [3,6], "time": 750},
+    {"type": "jump", "loc": [3,6], "time": 750, "async": true},
 ]
 ```
 
 loc为目标坐标，可以忽略表示原地跳跃（请注意是原地跳跃而不是跳跃到当前事件点）。
 
 time选项为该跳跃所需要用到的时间。
+
+async可选，如果为true则会异步执行（即不等待当前事件执行完毕，立刻执行下一个事件）。
 
 ### playBgm：播放背景音乐
 
@@ -1063,9 +1256,27 @@ time选项为该跳跃所需要用到的时间。
 
 使用`{"type": "pauseBgm"}`可以暂停背景音乐的播放。
 
+**从V2.5.4开始不再支持此事件，请通过设置音量来达到此效果。**
+
 ### resumeBgm：恢复背景音乐
 
 使用`{"type": "resumeBgm"}`可以恢复背景音乐的播放。
+
+**从V2.5.4开始不再支持此事件，请通过设置音量来达到此效果。**
+
+### loadBgm：预加载一个背景音乐
+
+使用loadBgm可以预加载一个背景音乐。
+
+使用方法：`{"type": "loadBgm", "name": "bgm.mp3"}`
+
+有关BGM播放的详细说明参见[背景音乐](element#背景音乐)
+
+### freeBgm：释放一个背景音乐的缓存
+
+使用freeBgm可以预加载一个背景音乐。
+
+使用方法：`{"type": "freeBgm", "name": "bgm.mp3"}`
 
 ### playSound：播放音效
 
@@ -1100,6 +1311,24 @@ async可选，如果为true则会异步执行（即不等待当前事件执行�
 `{"type": "lose", "reason": "xxx"}` 将会直接调用`events.js`中的lose函数，并将reason作为参数传入。
 
 该事件会显示失败页面，并重新开始游戏。
+
+### callBook：呼出怪物手册
+
+`{"type": "callBook"}` 可以呼出怪物手册，玩家可以自由查看当前楼层怪物数据和详细信息。
+
+返回游戏后将继续执行后面的事件。没有怪物手册或在录像播放中，则会跳过本事件。
+
+### callSave：呼出存档界面
+
+`{"type": "callSave"}` 可以呼出存档页面并允许玩家存一次档。
+
+在玩家进行一次存档，或者直接点返回游戏后，将接着执行后面的事件。录像播放将会跳过本事件。
+
+### callLoad：呼出读档界面
+
+`{"type": "callLoad"}` 可以呼出读档页面并允许玩家进行读档。
+
+如果玩家没有进行读档而是直接返回游戏，则会继续执行后面的事件。录像播放将会跳过本事件。
 
 ### input：接受用户输入数字
 
@@ -1199,7 +1428,7 @@ text为提示文字，可以在这里给输入提示文字。这里同样可以�
 
 ``` js
 "x,y": [ // 实际执行的事件列表
-    {"type": "swtich", "condition": "...", // 计算某个表达式
+    {"type": "switch", "condition": "...", // 计算某个表达式
         "caseList": [
             {"case": "a", "action": [// 若表达式的值等于a则执行该处事件
             
@@ -1215,11 +1444,11 @@ text为提示文字，可以在这里给输入提示文字。这里同样可以�
 ]
 ```
 
-我们可以在condition中给出一个表达式（能将`status:xxx, item:xxx, flag:xxx`来作为参数），并计算它的值
+我们可以在condition中给出一个表达式（能将`status:xxx`, `item:xxx`, `flag:xxx`来作为参数），并计算它的值
 
 如果某条件中的值与其相等，则将执行其对应的列表事件内容。
 
-如果没有符合的值，则将执行`"default"`中的列表事件内容。
+如果没有符合的值，则将执行`default`中的列表事件内容。
 
 例如下面这个例子，将检查当前游戏难度并赠送不同属性。
 
@@ -1247,8 +1476,8 @@ text为提示文字，可以在这里给输入提示文字。这里同样可以�
 
 需要额外注意的几点：
 
-- 各个条件分支的判断是顺序执行的，因此若多个分支的条件都满足，将只执行最靠前的分支，同理，请不要在`"default"`分支后添加分支，这些分支将不可能被执行。
--`"default"`分支并不是必要的，如果删除，则在没有满足条件的分支时将不执行任何事件。
+- 各个条件分支的判断是顺序执行的，因此若多个分支的条件都满足，将只执行最靠前的分支，同理，请不要在`default`分支后添加分支，这些分支将不可能被执行。
+- `default`分支并不是必要的，如果删除，则在没有满足条件的分支时将不执行任何事件。
 - 即使某个场合不执行事件，对应的action数组也需要存在，不过简单的留空就好。
 - switch可以不断进行嵌套，一层套一层；如某条件成立的场合再进行另一个switch判断等。
 - switch语句内的内容执行完毕后将接着其后面的语句继续执行。
@@ -1422,7 +1651,7 @@ choices为一个数组，其中每一项都是一个选项列表。
 
 当用户执行操作后：
 - 如果是键盘的按键操作，则会将flag:type置为0，并且把flag:keycode置为刚刚按键的keycode。
-- 如果是屏幕的点击操作，则会将flag:type置为1，并且设置flag:x和flag:y为刚刚的点击坐标。
+- 如果是屏幕的点击操作，则会将flag:type置为1，并且设置flag:x和flag:y为刚刚的点击坐标（0-12之间），flag:px和flag:py置为刚刚的像素坐标（0-415之间）。
 
 下面是一个while事件和wait合并使用的例子，这个例子将不断接收用户的点击或按键行为，并输出该信息。
 如果用户按下了ESC或者点击了屏幕正中心，则退出循环。
@@ -1442,7 +1671,7 @@ choices为一个数组，其中每一项都是一个选项列表。
                     }
                 ],
                 "false": [ // flag:type==1，鼠标点击
-                    "你当前点击屏幕了，坐标是[${flag:x},${flag:y}]",
+                    "你当前点击屏幕了，位置坐标是[${flag:x},${flag:y}]，像素坐标是[${flag:px},${flag:py}]",
                     {"type": "if", "condition": "flag:x==6 && flag:y==6", // 点击(6,6)
                         "true": [{"type": "break"}], // 跳出循环
                         "false": []
@@ -1454,6 +1683,19 @@ choices为一个数组，其中每一项都是一个选项列表。
 ]
 
 ```
+
+### waitAsync：等待所有异步事件执行完毕
+
+上面有很多很多的异步事件（也就是执行时不等待执行完毕）。
+
+由于录像是加速播放，且会跳过`{"type":"sleep"}`（等待X毫秒）事件；因此异步行为很有可能导致录像播放出错。
+
+例如，异步移动一个NPC去某格，然后等待X毫秒，再勇士走过去对话；
+但是录像播放中，等待X毫秒的行为会被跳过，因此勇士可能走过去时异步还未执行完成，导致录像出错。
+
+我们可以使用`{"type":"waitAsync"}`来等待所有异步事件执行完毕。
+
+该事件会进行等待，直到所有可能的异步事件（异步动画除外）执行完毕。
 
 ### function: 自定义JS脚本
 
@@ -1488,6 +1730,23 @@ core.insertAction([
 ])
 // 请勿直接调用 core.changeFloor(toFloor, ...)，这个代码是异步的，会导致事件处理和录像出问题！
 ```
+
+!> 从V2.5.3开始，提供了一个"不自动执行下一个事件"的选项（`"async": true`）。如果设置了此项，那么在该部分代码执行完毕后，不会立刻执行下一个事件。你需要在脚本中手动调用`core.events.doAction()`来执行下一个事件。可以通过此项来实现一些异步的代码，即在异步函数的回调中再执行下一个事件。使用此选项请谨慎，最好向开发者寻求咨询。
+
+## 独立开关
+
+从V2.5.3开始，针对每个事件都提供了独立开关。
+
+独立开关的写法是`switch:A`, `switch:A`直到`switch:Z`，共计26个；不过样板中的值块默认只提供前6个。
+
+独立开关算是特殊的flag，它在事件中使用时会和事件的楼层及坐标进行绑定；换句话说每个事件对应的`switch:A`都是不同的。
+
+事实上，在某个楼层某个点的事件的独立开关A对应的系统flag为`floorId@x@y@A`，
+比如在`MT0`层的`[2,5]`点事件，对应的`switch:B`独立开关，实际会被映射到`flag:MT0@2@5@B`。
+
+如果在事件外想访问某个事件的独立开关也需要通过上面这个方式。
+
+通过独立开关的方式，我们无需对某些NPC的对话都设立单独的互不重复flag，只需要关注该事件自身的逻辑即可。
 
 ## 同一个点的多事件处理
 
@@ -1576,6 +1835,8 @@ core.insertAction([
 
 在脚本编辑里面提供了一个parallelDo函数，这个函数可以用来做并行处理内容。
 
+从V2.5.2开始，每层楼的楼层属性中也增加了一个parallelDo选项，可以在里面写任何脚本代码。该部分代码仅在人物在该楼层时才会被反复执行。
+
 ``` js
 "parallelDo": function (timestamp) {
 	// 并行事件处理，可以在这里写任何需要并行处理的脚本或事件
@@ -1584,13 +1845,22 @@ core.insertAction([
 
 	// 检查当前是否处于游戏开始状态
 	if (!core.isPlaying()) return;
+
+	// 执行当前楼层的并行事件处理
+	if (core.isset(core.status.floorId)) {
+		try {
+			eval(core.floors[core.status.floorId].parallelDo);
+		} catch (e) {
+			console.log(e);
+		}
+	}
 	
 	// 下面是一个并行事件开门的样例
 	/*
 	// 如果某个flag为真
 	if (core.hasFlag("xxx")) {
 		// 千万别忘了将该flag清空！否则下次仍然会执行这段代码。
-		core.setFlag("xxx", false);
+		core.removeFlag("xxx");
 		// 使用insertAction来插入若干自定义事件执行
 		core.insertAction([
 			{"type":"openDoor", "loc":[0,0], "floorId": "MT0"}
@@ -1608,6 +1878,22 @@ core.insertAction([
 如果要执行并行的自定义事件，请使用if+flag判断的形式，然后insertAction将自定义事件插入到事件列表中。
 
 !> 判定flag后千万别忘了将该flag清空！否则下次仍然会执行这段代码。
+
+每层楼的并行事件处理类似，只有角色在当前楼层时才会反复执行当前楼层中parallelDo部分的代码。
+
+下面是一个打怪开门的样例：（假设每打一个怪的战后事件把`flag:door`+1）
+
+``` js
+// 每层楼的并行事件处理代码样例
+if (core.getFlag("door",0)==2) {
+    // 将该flag清空
+    core.removeFlag("door");
+    // 开门，如果是当前层则无需写floorId
+    core.insertAction([
+        {"type":"openDoor", "loc":[0,0]}
+    ]);
+}
+```
 
 ## 加点事件
 
@@ -1677,8 +1963,8 @@ core.insertAction([
             {"text": "攻击+4", "effect": "status:atk+=4"},
             {"text": "防御+4", "effect": "status:def+=4"},
             {"text": "魔防+10", "effect": "status:mdef+=10"}
-            // effect只能对status和item进行操作，不能修改flag值。
-            // 必须是X+=Y的形式，其中Y可以是一个表达式，以status:xxx或item:xxx为参数
+            // effect可以对status，item和flag进行操作。
+            // 必须是X+=Y的形式，其中Y可以是一个表达式，以status:xxx, item:xxx或flag:xxx为参数
             // 其他effect样例：
             // "item:yellowKey+=1" 黄钥匙+1
             // "item:pickaxe+=3" 破墙镐+3
@@ -1720,7 +2006,7 @@ core.insertAction([
 - text 为商店所说的话。可以用${need}表示需要的数值。
 - choices 为商店的各个选项，是一个list，每一项是一个选项
   - text为显示文字。请注意这里不支持 ${} 的表达式计算。
-  - effect 为该选项的效果；effect只能对status或items进行操作，且必须是 `status:xxx+=yyy` 或 `item:xxx+=yyy`的形式。即中间必须是+=符号。
+  - effect 为该选项的效果；effect必须是 `status:xxx+=yyy`, `item:xxx+=yyy`或`flag:xxx+=yyy`的形式。即中间必须是+=符号。
   - 如有多个effect（例如升级全属性提升），使用分号分开，参见经验商店的写法。
 
 像这样定义了全局商店后，即可在快捷栏中看到。
@@ -1915,37 +2201,36 @@ core.insertAction([
 
 要经验升级，你需要先在`data.js`中的全局变量中启用。你需要将`enableExperience`启用经验，且`enableLevelUp`启用进阶。同时你也可以将`enableLv`置为true以在状态栏中显示当前等级（境界）。
 
-同时，你还需要在`data.js`中的`levelUp`来定义每一个进阶所需要的生命值，以及进阶时的效果。
+同时，你还需要在`data.js`中的`levelUp`来定义每一个进阶所需要的经验值，以及进阶时的效果。
 
 ``` js
 "levelUp": [ // 经验升级所需要的数值，是一个数组
-    {}, // 第一项为初始等级，可以简单留空，也可以写name
+    {"need": "0", "title": "", "action": []}, // 第一项为初始等级，仅title生效
 
-    // 每一个里面可以含有三个参数 need, name, effect
-    // need为所需要的经验数值，是一个正整数。请确保need所需的依次递增
-    // name为该等级的名称，也可以省略代表使用系统默认值；本项将显示在状态栏中
-    // effect为本次升级所执行的操作，可由若干项组成，由分号分开
-    // 其中每一项写法和上面的商店完全相同，同样必须是X+=Y的形式，Y是一个表达式，同样可以使用status:xxx或item:xxx代表勇士的某项数值/道具个数
-    {"need": 20, "name": "第二级", "effect": "status:hp+=2*(status:atk+status:def);status:atk+=10;status:def+=10"}, // 先将生命提升攻防和的2倍；再将攻击+10，防御+10
+    // 每一个里面可以含有三个参数 need, title, action
+    // need为所需要的经验数值，可以是个表达式。请确保need依次递增
+    // title为该等级的名称，也可以省略代表使用系统默认值；本项将显示在状态栏中
+    // action为本次升级所执行的操作，可由若干项组成
+    {"need": "20", "title": "第二级", "action": [
+		{"type": "setValue","name": "status:atk","value": "status:atk+10"}, // 攻击+10
+        {"type": "setValue","name": "status:def","value": "status:def+10"}  // 防御+10
+        ]
+    },
 
-    // effect也允许写一个function，代表本次升级将会执行的操作，比如可以显示一段提示文字，或者触发一个事件
-    {"need": 40, "effect": function () {
-        core.drawTip("恭喜升级！");
-        core.status.hero.hp *= 2;
-        core.status.hero.atk += 100;
-        core.status.hero.def += 100;
-    }},
+    // action也允许其他操作，比如可以显示一段提示文字，或者触发一个事件
+    {"need": "40", "effect": [
+        {"type": "tip", "text": "恭喜升级"}, 
+    ]
+    },
 
     // 依次往下写需要的数值即可
 ]
 ```
 
-`levelUp`是一个数组，里面分别定义了每个等级的信息。里面每一项是一个object，主要有三个参数`need`, `name`, `effect`
-- `need` 该等级所需要的经验值，是一个正整数。请确保数组中的need依次递增。
-- `name` 该等级的名称，比如“佣兵下级”等。该项可以忽略，以使用系统默认的等级。该项将显示在状态栏中。
-- `effect` 为本次等级执行的操作。它有两种写法：字符串，或函数。
-  - 如果`effect`为字符串，则和上面的全局商店的写法完全相同。可由分号分开，每一项为X+=Y的形式，X为你要修改的勇士属性/道具个数，Y为一个表达式。
-  - 如果`effect`为函数，则也允许写一个`function`，来代表本次升级将会执行的操作。
+`levelUp`是一个数组，里面分别定义了每个等级的信息。里面每一项有三个参数`need`, `title`, `effect`
+- `need` 该等级所需要的经验值，可以是个表达式。请确保数组中的need依次递增。
+- `title` 该等级的名称，比如“佣兵下级”等。该项可以忽略，以使用系统默认的等级。该项将显示在状态栏中。
+- `action` 为本次等级执行的操作。
 
 ## 开始，难度分歧，获胜与失败，多结局
 
@@ -1965,9 +2250,9 @@ core.insertAction([
     if (hard=='Easy') { // 简单难度
         core.setFlag('hard', 1); // 可以用flag:hard来获得当前难度
         // 可以在此设置一些初始福利，比如设置初始生命值可以调用：
-        // core.setStatus("hp", 10000);
+        // core.setStatus('hp', 10000);
         // 赠送一把黄钥匙可以调用
-        // core.setItem("yellowKey", 1);
+        // core.setItem('yellowKey', 1);
     }
     if (hard=='Normal') { // 普通难度
         core.setFlag('hard', 2); // 可以用flag:hard来获得当前难度
@@ -1990,11 +2275,11 @@ core.insertAction([
 ////// 游戏获胜事件 //////
 "win": function(reason, norank) {
     core.ui.closePanel();
-    var replaying = core.status.replay.replaying;
+    var replaying = core.isReplaying();
     core.stopReplay();
     core.waitHeroToStop(function() {
-        core.removeGlobalAnimate(0,0,true);
         core.clearMap('all'); // 清空全地图
+        core.deleteAllCanvas();
         core.drawText([
             "\t[恭喜通关]你的分数是${status:hp}。"
         ], function () {
@@ -2014,7 +2299,7 @@ core.insertAction([
 ////// 游戏失败事件 //////
 "lose": function(reason) {
     core.ui.closePanel();
-    var replaying = core.status.replay.replaying;
+    var replaying = core.isReplaying();
     core.stopReplay();
     core.waitHeroToStop(function() {
         core.drawText([
