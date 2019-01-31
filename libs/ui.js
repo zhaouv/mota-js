@@ -228,6 +228,7 @@ ui.prototype.closePanel = function () {
     clearInterval(core.status.event.interval);
     core.clearLastEvent();
     core.maps.generateGroundPattern();
+    core.updateStatusBar();
     core.unLockControl();
     core.status.event.data = null;
     core.status.event.id = null;
@@ -1543,6 +1544,7 @@ ui.prototype.drawBook = function (index) {
     var enemys = core.enemys.getCurrentEnemys(floorId);
     
     core.clearLastEvent();
+    core.clearMap('data');
 
     // 生成groundPattern
     core.maps.generateGroundPattern(floorId);
@@ -1768,7 +1770,7 @@ ui.prototype.drawBookDetail = function (index) {
     }
 
     hints.push("");
-    var criticals = core.enemys.nextCriticals(enemyId, 10).map(function (v) {
+    var criticals = core.enemys.nextCriticals(enemyId, 10, null, null, floorId).map(function (v) {
         return core.formatBigNumber(v[0])+":"+core.formatBigNumber(v[1]);
     });
     while (criticals[0]=='0:0') criticals.shift();
@@ -1929,6 +1931,7 @@ ui.prototype.drawMaps = function (index, x, y) {
 
     clearTimeout(core.interval.tipAnimate);
     core.clearLastEvent();
+    core.status.checkBlock.buff = {};
     this.drawThumbnail(floorId, 'ui', core.status.maps[floorId].blocks, 0, 0, 416, x, y);
 
     // 绘图
@@ -2041,7 +2044,7 @@ ui.prototype.drawToolbox = function(index) {
         var text = item.text||"该道具暂无描述。";
         try {
             // 检查能否eval
-            text = eval(text);
+            text = core.replaceText(text);
         } catch (e) {}
 
         var lines = core.splitLines('ui', text, 406, '17px '+globalFont);
@@ -2104,7 +2107,7 @@ ui.prototype.drawEquipbox = function(index) {
     if (!core.isset(core.status.event.data) || !core.isset(core.status.event.data.page))
         core.status.event.data = {"page":1, "selectId":null};
 
-    var allEquips = main.equipName||[];
+    var allEquips = core.status.globalAttribute.equipName;
     var equipLength = allEquips.length;
 
     if (!core.isset(core.status.hero.equipment)) core.status.hero.equipment = [];
@@ -2182,29 +2185,44 @@ ui.prototype.drawEquipbox = function(index) {
         var equip=core.material.items[selectId];
         if (!core.isset(equip.equip)) equip.equip = {"type": 0};
         var equipType = equip.equip.type;
-        core.fillText('ui', equip.name + "（" + (allEquips[equipType]||"未知部位") + "）", 10, 32, '#FFD700', "bold 20px "+globalFont)
+        var equipString;
+        if (typeof equipType === 'string') {
+            equipString = equipType||"未知部位";
+            equipType = core.items.getEquipTypeByName(equipType);
+        }
+        else equipString = allEquips[equipType]||"未知部位";
+
+        core.fillText('ui', equip.name + "（" + equipString + "）", 10, 32, '#FFD700', "bold 20px "+globalFont)
 
         var text = equip.text||"该装备暂无描述。";
+        try {
+            text = core.replaceText(text);
+        } catch (e) {}
         var lines = core.splitLines('ui', text, 406, '17px '+globalFont);
 
         core.fillText('ui', lines[0], 10, 62, '#FFFFFF', '17px '+globalFont);
         
         // 比较属性
         if (lines.length==1) {
-            var compare, differentMode = false;
+            var compare, differentMode = null;
             if (index<12) compare = core.compareEquipment(null, selectId);
             else {
-                var last = core.material.items[equipEquipment[equipType]]||{};
-                // 检查是不是数值模式和比例模式之间的切换
-                if (core.isset(last.equip) && (last.equip.percentage||false) != (equip.equip.percentage||false)) {
-                    differentMode = true;
+                if (equipType<0) {
+                    differentMode = '<当前没有该装备的空位，请先卸下装备>';
                 }
                 else {
-                    compare = core.compareEquipment(selectId, equipEquipment[equipType]);
+                    var last = core.material.items[equipEquipment[equipType]]||{};
+                    // 检查是不是数值模式和比例模式之间的切换
+                    if (core.isset(last.equip) && (last.equip.percentage||false) != (equip.equip.percentage||false)) {
+                        differentMode = '<数值和比例模式之间的切换不显示属性变化>';
+                    }
+                    else {
+                        compare = core.compareEquipment(selectId, equipEquipment[equipType]);
+                    }
                 }
             }
-            if (differentMode) {
-                core.fillText('ui', '<数值和比例模式之间的切换不显示属性变化>', 10, 89, '#CCCCCC', '14px '+globalFont);
+            if (differentMode != null) {
+                core.fillText('ui', differentMode, 10, 89, '#CCCCCC', '14px '+globalFont);
             }
             else {
                 var drawOffset = 10;
@@ -2367,14 +2385,14 @@ ui.prototype.drawSLPanel = function(index, refresh) {
                     core.saves.autosave.data = data;
                     core.status.event.ui[i]=data;
                     loadSave(i+1, callback);
-                }, function(err) {console.log(err);});
+                }, function(err) {main.log(err);});
             }
         }
         else {
             core.getLocalForage("save"+(5*page+i), null, function(data) {
                 core.status.event.ui[i]=data;
                 loadSave(i+1, callback);
-            }, function(err) {console.log(err);});
+            }, function(err) {main.log(err);});
         }
     }
 
@@ -2818,6 +2836,7 @@ ui.prototype.drawPaint = function () {
             core.setStrokeStyle('paint', '#FF0000');
 
             core.statusBar.image.keyboard.style.opacity = 0;
+            core.statusBar.image.shop.style.opacity = 0;
 
             core.statusBar.image.book.src = core.statusBar.icons.paint.src;
             core.statusBar.image.fly.src = core.statusBar.icons.erase.src;

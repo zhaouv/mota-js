@@ -28,6 +28,8 @@ function core() {
         'onDownInterval': null,
     }
     this.animateFrame = {
+        'totalTime': 0,
+        'totalTimeStart': 0,
         'globalAnimate': false,
         'globalTime': 0,
         'selectorTime': 0,
@@ -177,6 +179,7 @@ function core() {
             "time": 0,
         },
         "globalAttribute": {
+            'equipName': main.equipName || [],
             "statusLeftBackground": main.statusLeftBackground || "url(project/images/ground.png) repeat",
             "statusTopBackground": main.statusTopBackground || "url(project/images/ground.png) repeat",
             "toolsBackground": main.toolsBackground || "url(project/images/ground.png) repeat",
@@ -235,11 +238,6 @@ core.prototype.init = function (coreData, callback) {
     document.getElementById("startLogo").innerHTML = core.firstData.title;
     core.material.items = core.clone(core.items.getItems());
     core.material.enemys = core.clone(core.enemys.getEnemys());
-    if (main.mode == 'play') {
-        for (var enemyId in core.material.enemys) {
-            core.material.enemys[enemyId].id = enemyId;
-        }
-    }
     core.material.icons = core.icons.getIcons();
     core.material.events = core.events.getEvents();
 
@@ -293,13 +291,13 @@ core.prototype.init = function (coreData, callback) {
                                 core.removeLocalForage("__test__");
                             }
                         }
-                        catch (e) {console.log(e); core.platform.useLocalForage=false;}
-                    }, function(e) {console.log(e); core.platform.useLocalForage=false;})
+                        catch (e) {main.log(e); core.platform.useLocalForage=false;}
+                    }, function(e) {main.log(e); core.platform.useLocalForage=false;})
                 }
-                catch (e) {console.log(e); core.platform.useLocalForage=false;}
-            }, function(e) {console.log(e); core.platform.useLocalForage=false;})
+                catch (e) {main.log(e); core.platform.useLocalForage=false;}
+            }, function(e) {main.log(e); core.platform.useLocalForage=false;})
         }
-        catch (e) {console.log(e); core.platform.useLocalForage=false;}
+        catch (e) {main.log(e); core.platform.useLocalForage=false;}
     }
 
     core.platform.extendKeyboard = core.getLocalStorage("extendKeyboard", false);
@@ -992,8 +990,8 @@ core.prototype.removeItem = function (itemId, itemNum) {
 }
 
 ////// 使用某个物品 //////
-core.prototype.useItem = function (itemId, callback) {
-    core.items.useItem(itemId, callback);
+core.prototype.useItem = function (itemId, noRoute, callback) {
+    core.items.useItem(itemId, noRoute, callback);
 }
 
 ////// 能否使用某个物品 //////

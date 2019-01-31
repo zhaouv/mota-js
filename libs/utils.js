@@ -40,6 +40,14 @@ utils.prototype.init = function () {
             return to;
         };
     }
+    if (typeof String.prototype.endsWith != "function") {
+        String.prototype.endsWith = function(search, this_len) {
+            if (this_len === undefined || this_len > this.length) {
+                this_len = this.length;
+            }
+            return this.substring(this_len - search.length, this_len) === search;
+        };
+    }
 
 
 }
@@ -136,7 +144,7 @@ utils.prototype.setLocalStorage = function(key, value) {
         return true;
     }
     catch (e) {
-        console.log(e);
+        main.log(e);
         return false;
     }
 }
@@ -160,7 +168,7 @@ utils.prototype.getLocalStorage = function(key, defaultValue) {
         return defaultValue;
     }
     catch (e) {
-        console.log(e);
+        main.log(e);
         return defaultValue;
     }
 }
@@ -218,22 +226,22 @@ utils.prototype.getLocalForage = function (key, defaultValue, successCallback, e
             if (core.isset(errorCallback)) errorCallback(err);
         }
         else {
+            if (!core.isset(successCallback)) return;
             if (core.isset(value)) {
-                var output = LZString.decompress(value);
-                if (core.isset(output) && output.length>0) {
-                    try {
-                        if (core.isset(successCallback))
+                try {
+                    var output = LZString.decompress(value);
+                    if (core.isset(output) && output.length>0) {
+                        try {
                             successCallback(JSON.parse(output));
-                        return;
+                            return;
+                        } catch (ee) {main.log(ee);}
                     }
-                    catch (ee) {console.log(ee);}
-                }
-                if (core.isset(successCallback))
                     successCallback(JSON.parse(value));
-                return;
+                    return;
+                }
+                catch (e) {main.log(e);}
             }
-            if (core.isset(successCallback))
-                successCallback(defaultValue);
+            successCallback(defaultValue);
         }
     })
 }
@@ -669,7 +677,7 @@ utils.prototype.readFileContent = function (content) {
         }
     }
     catch (e) {
-        console.log(e);
+        main.log(e);
         alert(e);
     }
     alert("不是有效的JSON文件！");

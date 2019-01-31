@@ -44,12 +44,17 @@ control.prototype.setRequestAnimationFrame = function () {
         }
     }());
 
+    core.animateFrame.totalTime = Math.max(core.animateFrame.totalTime, core.getLocalStorage('totalTime', 0));
+
     var draw = function(timestamp) {
+
+        core.animateFrame.totalTime += timestamp - core.animateFrame.totalTimeStart;
+        core.animateFrame.totalTimeStart = timestamp;
 
         // move time
         if (core.isPlaying() && core.isset(core.status) && core.isset(core.status.hero)
             && core.isset(core.status.hero.statistics)) {
-            core.status.hero.statistics.totalTime += timestamp-(core.status.hero.statistics.start||timestamp);
+            core.status.hero.statistics.totalTime = core.animateFrame.totalTime;
             core.status.hero.statistics.currTime += timestamp-(core.status.hero.statistics.start||timestamp);
             core.status.hero.statistics.start=timestamp;
         }
@@ -275,7 +280,7 @@ control.prototype.setRequestAnimationFrame = function () {
                     }
                 }
                 catch (e) {
-                    console.log(e);
+                    main.log(e);
                 }
             });
         }
@@ -380,11 +385,7 @@ control.prototype.clearStatus = function() {
 ////// 重置游戏状态和初始数据 //////
 control.prototype.resetStatus = function(hero, hard, floorId, route, maps, values) {
 
-    var totalTime=0;
-    if (core.isset(core.status) && core.isset(core.status.hero)
-        && core.isset(core.status.hero.statistics) && core.isset(route)) {
-        totalTime=core.status.hero.statistics.totalTime;
-    }
+    var totalTime = core.animateFrame.totalTime;
 
     // 清除游戏数据
     core.clearStatus();
@@ -417,7 +418,8 @@ control.prototype.resetStatus = function(hero, hard, floorId, route, maps, value
             'moveDirectly': 0,
             'ignoreSteps': 0,
         }
-    core.status.hero.statistics.totalTime = Math.max(core.status.hero.statistics.totalTime, totalTime);
+    core.status.hero.statistics.totalTime = core.animateFrame.totalTime =
+        Math.max(core.status.hero.statistics.totalTime, core.animateFrame.totalTime);
     core.status.hero.statistics.start = null;
 
     core.status.hard = hard;
@@ -1425,9 +1427,9 @@ control.prototype.updateDamage = function (floorId, canvas) {
     if (!core.hasItem('book')) return;
     canvas.font = "bold 11px Arial";
 
-    var hero_hp = core.status.hero.hp;
     if (core.flags.displayEnemyDamage || core.flags.displayCritical) {
         canvas.textAlign = 'left';
+
         for (var b = 0; b < mapBlocks.length; b++) {
             var x = mapBlocks[b].x, y = mapBlocks[b].y;
             if (core.isset(mapBlocks[b].event) && mapBlocks[b].event.cls.indexOf('enemy')==0
@@ -1440,14 +1442,14 @@ control.prototype.updateDamage = function (floorId, canvas) {
                 var id = mapBlocks[b].event.id;
 
                 if (core.flags.displayEnemyDamage) {
-                    var damageString = core.enemys.getDamageString(id, x, y);
+                    var damageString = core.enemys.getDamageString(id, x, y, floorId);
                     var damage = damageString.damage, color = damageString.color;
                     core.fillBoldText(canvas, damage, 32*x+1, 32*(y+1)-1, color);
                 }
 
                 // 临界显伤
                 if (core.flags.displayCritical) {
-                    var critical = core.enemys.nextCriticals(id);
+                    var critical = core.enemys.nextCriticals(id, 1, x, y, floorId);
                     if (critical.length>0) critical=critical[0];
                     critical = core.formatBigNumber(critical[0], true);
                     if (critical == '???') critical = '?';
@@ -1728,7 +1730,7 @@ control.prototype.bookReplay = function () {
 
     core.lockControl();
     core.status.event.id='book';
-    core.useItem('book');
+    core.useItem('book', true);
 }
 
 ////// 回放录像时浏览地图 //////
@@ -1792,7 +1794,7 @@ control.prototype.replay = function () {
         if (core.canUseItem(itemId)) {
             // 是否绘制道具栏
             if (core.material.items[itemId].hideInReplay) {
-                core.useItem(itemId, function () {
+                core.useItem(itemId, false, function () {
                     core.replay();
                 });
                 return;
@@ -1813,7 +1815,7 @@ control.prototype.replay = function () {
                     core.ui.drawToolbox(index);
                     setTimeout(function () {
                         core.ui.closePanel();
-                        core.useItem(itemId, function () {
+                        core.useItem(itemId, false, function () {
                             core.replay();
                         });
                     }, 750 / Math.max(1, core.status.replay.speed));
@@ -1997,7 +1999,7 @@ control.prototype.openBook = function (need) {
 
     if (!core.checkStatus('book', need, true))
         return;
-    core.useItem('book');
+    core.useItem('book', true);
 }
 
 ////// 点击楼层传送器时的打开操作 //////
@@ -2019,7 +2021,7 @@ control.prototype.useFly = function (need) {
         core.status.event.id = null;
         return;
     }
-    core.useItem('fly');
+    core.useItem('fly', true);
     return;
 }
 
@@ -2053,6 +2055,7 @@ control.prototype.openQuickShop = function (need) {
 
 control.prototype.openKeyBoard = function (need) {
     if (core.isReplaying()) return;
+
     if (!core.checkStatus('keyBoard', need))
         return;
     core.ui.drawKeyBoard();
@@ -2131,6 +2134,8 @@ control.prototype.autosave = function (removeLast) {
 
 /////// 实际进行自动存档 //////
 control.prototype.checkAutosave = function () {
+    core.setLocalStorage('totalTime', core.animateFrame.totalTime);
+
     if (core.saves.autosave.data == null || !core.saves.autosave.updated) return;
     core.saves.autosave.updated = false;
     core.setLocalForage("autoSave", core.saves.autosave.data);
@@ -2206,7 +2211,7 @@ control.prototype.doSL = function (id, type) {
                 if (id == 'autoSave') core.saves.autosave.data = core.clone(data);
                 afterGet(data);
             }, function(err) {
-                console.log(err);
+                main.log(err);
                 alert("无效的存档");
             })
         }
@@ -2248,7 +2253,7 @@ control.prototype.doSL = function (id, type) {
                 if (id == 'autoSave') core.saves.autosave.data = core.clone(data);
                 afterGet(data);
             }, function(err) {
-                console.log(err);
+                main.log(err);
                 alert("无效的存档");
             })
         }
@@ -2425,7 +2430,7 @@ control.prototype.getSaves = function (index, callback) {
         core.getLocalForage("save"+index, null, function(data) {
             if (core.isset(callback)) callback(data);
         }, function(err) {
-            console.log(err);
+            main.log(err);
             if (core.isset(callback))
                 callback(null);
         })
@@ -2445,7 +2450,7 @@ control.prototype.getSaves = function (index, callback) {
             saves.push(data);
             load(index+1, callback);
         }, function(err) {
-            console.log(err);
+            main.log(err);
             load(index+1, callback);
         })
     }
@@ -2486,6 +2491,7 @@ control.prototype.hasSave = function (index) {
 
 ////// 设置勇士属性 //////
 control.prototype.setStatus = function (statusName, statusVal) {
+    if (!core.isset(core.status.hero)) return;
     if (statusName == 'exp') statusName = 'experience';
     if (core.isset(core.status.hero.loc[statusName]))
         core.status.hero.loc[statusName] = statusVal;
@@ -2495,6 +2501,7 @@ control.prototype.setStatus = function (statusName, statusVal) {
 
 ////// 获得勇士属性 //////
 control.prototype.getStatus = function (statusName) {
+    if (!core.isset(core.status.hero)) return null;
     // support status:x
     if (core.isset(core.status.hero.loc[statusName]))
         return core.status.hero.loc[statusName];
@@ -2504,6 +2511,7 @@ control.prototype.getStatus = function (statusName) {
 
 ////// 获得某个等级的名称 //////
 control.prototype.getLvName = function () {
+    if (!core.isset(core.status.hero)) return null;
     return ((core.firstData.levelUp||[])[core.status.hero.lv-1]||{}).title || core.status.hero.lv;
 }
 
@@ -2556,7 +2564,7 @@ control.prototype.playBgm = function (bgm) {
             core.material.bgms[bgm].pause();
         }
         catch (e) {
-            console.log(e);
+            main.log(e);
         }
         return;
     }
@@ -2589,7 +2597,7 @@ control.prototype.playBgm = function (bgm) {
     }
     catch (e) {
         console.log("无法播放BGM "+bgm);
-        console.log(e);
+        main.log(e);
         core.musicStatus.playingBgm = null;
     }
 }
@@ -2600,14 +2608,14 @@ control.prototype.pauseBgm = function () {
     try {
         if (core.isset(core.musicStatus.playingBgm)) {
             core.material.bgms[core.musicStatus.playingBgm].pause();
+            core.musicStatus.playingBgm = null;
         }
     }
     catch (e) {
         console.log("无法暂停BGM");
-        console.log(e);
+        main.log(e);
     }
     this.setMusicBtn();
-
 }
 
 ////// 恢复背景音乐的播放 //////
@@ -2620,7 +2628,7 @@ control.prototype.resumeBgm = function () {
     }
     catch (e) {
         console.log("无法恢复BGM");
-        console.log(e);
+        main.log(e);
     }
     this.setMusicBtn();
 }
@@ -2666,7 +2674,7 @@ control.prototype.playSound = function (sound) {
                     source.noteOn(0);
                 }
                 catch (ee) {
-                    console.log(ee);
+                    main.log(ee);
                 }
             }
         }
@@ -2677,7 +2685,7 @@ control.prototype.playSound = function (sound) {
     }
     catch (eee) {
         console.log("无法播放SE "+sound);
-        console.log(eee);
+        main.log(eee);
     }
 }
 
@@ -2700,7 +2708,8 @@ control.prototype.clearStatusBar = function() {
 ////// 更新状态栏 //////
 control.prototype.updateStatusBar = function () {
 
-    this.controldata.updateStatusBar();
+    if (core.isPlaying())
+        this.controldata.updateStatusBar();
 
     // 回放
     if (core.isReplaying()) {
@@ -2713,6 +2722,7 @@ control.prototype.updateStatusBar = function () {
         core.statusBar.image.toolbox.src = core.statusBar.icons.rewind.src;
 
         core.statusBar.image.keyboard.src = core.statusBar.icons.book.src;
+        core.statusBar.image.shop.style.opacity = 0;
 
         core.statusBar.image.save.src = core.statusBar.icons.speedDown.src;
 
@@ -2737,6 +2747,7 @@ control.prototype.updateStatusBar = function () {
         core.statusBar.image.toolbox.src = core.statusBar.icons.toolbox.src;
 
         core.statusBar.image.keyboard.src = core.statusBar.icons.keyboard.src;
+        core.statusBar.image.shop.style.opacity = 1;
 
         core.statusBar.image.save.src = core.statusBar.icons.save.src;
 
@@ -2873,21 +2884,23 @@ control.prototype.setToolbarButton = function (useButton) {
 
     core.domStyle.toolbarBtn = useButton;
     if (useButton) {
-        ["book","fly","toolbox","keyboard","save","load","settings"].forEach(function (t) {
+        ["book","fly","toolbox","keyboard","shop","save","load","settings"].forEach(function (t) {
             core.statusBar.image[t].style.display = 'none';
         });
-        ["btn1","btn2","btn3","btn4","btn5","btn6","btn7"].forEach(function (t) {
+        ["btn1","btn2","btn3","btn4","btn5","btn6","btn7","btn8"].forEach(function (t) {
             core.statusBar.image[t].style.display = 'block';
         })
     }
     else {
-        ["btn1","btn2","btn3","btn4","btn5","btn6","btn7"].forEach(function (t) {
+        ["btn1","btn2","btn3","btn4","btn5","btn6","btn7","btn8"].forEach(function (t) {
             core.statusBar.image[t].style.display = 'none';
         });
-        ["book","fly","toolbox","keyboard","save","load","settings"].forEach(function (t) {
+        ["book","fly","toolbox","save","load","settings"].forEach(function (t) {
             core.statusBar.image[t].style.display = 'block';
         });
-        core.statusBar.image.keyboard.style.display = core.domStyle.isVertical ? "block":"none";
+        core.statusBar.image.keyboard.style.display
+            = core.statusBar.image.shop.style.display
+            = core.domStyle.isVertical ? "block":"none";
     }
 }
 
@@ -3016,13 +3029,13 @@ control.prototype.resize = function(clientWidth, clientHeight) {
 
             toolBarTop = statusBarHeight + canvasWidth;
             toolBarBorder = '3px '+borderColor+' solid';
-            toolsHeight = scale * BASE_LINEHEIGHT;
+            toolsHeight = scale * BASE_LINEHEIGHT * 0.95;
             toolsPMaxwidth = scale * DEFAULT_BAR_WIDTH * .4;
             toolsBackground = (core.status.globalAttribute||core.initStatus.globalAttribute).toolsBackground;
             borderRight = '3px '+borderColor+' solid';
 
             margin = scale * SPACE * 2;
-            toolsMargin = scale * SPACE * 4;
+            toolsMargin = scale * SPACE * 3;
             fontSize = DEFAULT_FONT_SIZE * scale;
             toolbarFontSize = DEFAULT_FONT_SIZE * scale;
             musicBtnRight = 3;
