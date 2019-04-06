@@ -2,7 +2,7 @@ function main() {
 
     //------------------------ 用户修改内容 ------------------------//
 
-    this.version = "2.5.4"; // 游戏版本号；如果更改了游戏内容建议修改此version以免造成缓存问题。
+    this.version = "2.6"; // 游戏版本号；如果更改了游戏内容建议修改此version以免造成缓存问题。
 
     this.useCompress = false; // 是否使用压缩文件
     // 当你即将发布你的塔时，请使用“JS代码压缩工具”将所有js代码进行压缩，然后将这里的useCompress改为true。
@@ -69,13 +69,19 @@ function main() {
         'skillCol': document.getElementById('skillCol'),
         'hard': document.getElementById('hard'),
         'statusCanvas': document.getElementById('statusCanvas'),
+        'statusCanvasCtx': document.getElementById('statusCanvas').getContext('2d'),
+        'inputDiv': document.getElementById('inputDiv'),
+        'inputMessage': document.getElementById('inputMessage'),
+        'inputBox': document.getElementById('inputBox'),
+        'inputYes': document.getElementById('inputYes'),
+        'inputNo': document.getElementById('inputNo')
     };
     this.mode = 'play';
     this.loadList = [
         'loader', 'control', 'utils', 'items', 'icons', 'maps', 'enemys', 'events', 'actions', 'data', 'ui', 'core'
     ];
     this.pureData = [ 
-        'data', 'enemys', 'icons', 'maps', 'items', 'functions'
+        'data', 'enemys', 'icons', 'maps', 'items', 'functions', 'events', 'plugins'
     ];
     this.materials = [
         'animates', 'enemys', 'hero', 'items', 'npcs', 'terrains', 'enemy48', 'npc48'
@@ -182,20 +188,17 @@ function main() {
     this.floors = {}
     this.canvas = {};
 
-    this.__VERSION__ = "2.5.4";
-    this.__VERSION_CODE__ = 20;
+    this.__VERSION__ = "2.6";
+    this.__VERSION_CODE__ = 30;
 }
 
 main.prototype.init = function (mode, callback) {
     for (var i = 0; i < main.dom.gameCanvas.length; i++) {
         main.canvas[main.dom.gameCanvas[i].id] = main.dom.gameCanvas[i].getContext('2d');
     }
-    if (({"editor":0}).hasOwnProperty(mode)) {
-        main.mode = mode;
-        if (mode === 'editor')main.editor = {'disableGlobalAnimate':true};
-    }
+    main.mode = mode;
 
-    main.loaderJs('project', main.pureData, function(){
+    main.loadJs('project', main.pureData, function(){
         var mainData = data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d.main;
         for(var ii in mainData)main[ii]=mainData[ii];
         
@@ -213,30 +216,30 @@ main.prototype.init = function (mode, callback) {
             main.dom.levelChooseButtons.appendChild(span);
         });
         
-        main.loaderJs('libs', main.loadList, function () {
+        main.loadJs('libs', main.loadList, function () {
             main.core = core;
 
             for (i = 0; i < main.loadList.length; i++) {
                 var name = main.loadList[i];
                 if (name === 'core') continue;
-                main.core[name] = new (eval(name))();
+                main.core[name] = new window[name]();
             }
 
-            main.loaderFloors(function() {
+            main.loadFloors(function() {
                 var coreData = {};
                 ["dom", "statusBar", "canvas", "images", "tilesets", "materials",
                 "animates", "bgms", "sounds", "floorIds", "floors"].forEach(function (t) {
                     coreData[t] = main[t];
                 })
                 main.core.init(coreData, callback);
-                main.core.resize(main.dom.body.clientWidth, main.dom.body.clientHeight);
+                main.core.resize();
             });
         });
     });
 }
 
 ////// 动态加载所有核心JS文件 //////
-main.prototype.loaderJs = function (dir, loadList, callback) {
+main.prototype.loadJs = function (dir, loadList, callback) {
 
     // 加载js
     main.setMainTipsText('正在加载核心js文件...')
@@ -272,7 +275,7 @@ main.prototype.loadMod = function (dir, modName, callback) {
 }
 
 ////// 动态加载所有楼层（剧本） //////
-main.prototype.loaderFloors = function (callback) {
+main.prototype.loadFloors = function (callback) {
 
     // 加载js
     main.setMainTipsText('正在加载楼层文件...')
@@ -316,7 +319,7 @@ main.prototype.setMainTipsText = function (text) {
 main.prototype.log = function (e) {
     if (e) {
         if (main.core && main.core.platform && !main.core.platform.isPC) {
-            console.log((e.stack || e.toString()).replace("\n", " --- "));
+            console.log((e.stack || e.toString()));
         }
         else {
             console.log(e);
@@ -330,13 +333,14 @@ main.prototype.listen = function () {
 ////// 窗口大小变化时 //////
 window.onresize = function () {
     try {
-        main.core.resize(main.dom.body.clientWidth, main.dom.body.clientHeight);
+        main.core.resize();
     }catch (e) { main.log(e); }
 }
 
 ////// 在界面上按下某按键时 //////
 main.dom.body.onkeydown = function(e) {
     try {
+        if (main.dom.inputDiv.style.display == 'block') return;
         if (main.core && (main.core.isPlaying() || main.core.status.lockControl))
             main.core.onkeyDown(e);
     } catch (ee) { main.log(ee); }
@@ -345,6 +349,7 @@ main.dom.body.onkeydown = function(e) {
 ////// 在界面上放开某按键时 //////
 main.dom.body.onkeyup = function(e) {
     try {
+        if (main.dom.inputDiv.style.display == 'block') return;
         if (main.core && (main.core.isPlaying() || main.core.status.lockControl))
             main.core.onkeyUp(e);
     } catch (ee) { main.log(ee); }
@@ -359,7 +364,7 @@ main.dom.body.onselectstart = function () {
 main.dom.data.onmousedown = function (e) {
     try {
         e.stopPropagation();
-        var loc = main.core.getClickLoc(e.clientX, e.clientY);
+        var loc = main.core.actions._getClickLoc(e.clientX, e.clientY);
         if (loc == null) return;
         main.core.ondown(loc);
     } catch (ee) { main.log(ee); }
@@ -369,7 +374,7 @@ main.dom.data.onmousedown = function (e) {
 main.dom.data.onmousemove = function (e) {
     try {
         e.stopPropagation();
-        var loc = main.core.getClickLoc(e.clientX, e.clientY);
+        var loc = main.core.actions._getClickLoc(e.clientX, e.clientY);
         if (loc == null) return;
         main.core.onmove(loc);
     }catch (ee) { main.log(ee); }
@@ -396,7 +401,7 @@ main.dom.data.onmousewheel = function(e) {
 main.dom.data.ontouchstart = function (e) {
     try {
         e.preventDefault();
-        var loc = main.core.getClickLoc(e.targetTouches[0].clientX, e.targetTouches[0].clientY);
+        var loc = main.core.actions._getClickLoc(e.targetTouches[0].clientX, e.targetTouches[0].clientY);
         if (loc == null) return;
         main.core.ondown(loc);
     }catch (ee) { main.log(ee); }
@@ -406,7 +411,7 @@ main.dom.data.ontouchstart = function (e) {
 main.dom.data.ontouchmove = function (e) {
     try {
         e.preventDefault();
-        var loc = main.core.getClickLoc(e.targetTouches[0].clientX, e.targetTouches[0].clientY);
+        var loc = main.core.actions._getClickLoc(e.targetTouches[0].clientX, e.targetTouches[0].clientY);
         if (loc == null) return;
         main.core.onmove(loc);
     }catch (ee) { main.log(ee); }
@@ -490,7 +495,6 @@ main.statusBar.image.toolbox.ondblclick = function (e) {
     e.stopPropagation();
 
     if (core.isReplaying()) {
-        core.rewindReplay();
         return;
     }
 
@@ -514,6 +518,19 @@ main.statusBar.image.keyboard.onclick = function (e) {
 
 ////// 点击状态栏中的快捷商店键盘时 //////
 main.statusBar.image.shop.onclick = function (e) {
+    e.stopPropagation();
+
+    if (core.isReplaying()) {
+        core.viewMapReplay();
+        return;
+    }
+
+    if (main.core.isPlaying())
+        main.core.openQuickShop(true);
+}
+
+////// 点击金币时也可以开启虚拟键盘 //////
+main.statusBar.image.money.onclick = function (e) {
     e.stopPropagation();
 
     if (main.core.isPlaying())
@@ -656,7 +673,36 @@ main.dom.musicBtn.onclick = function () {
 
 window.onblur = function () {
     if (main.core && main.core.control) {
-        main.core.control.checkAutosave();
+        try {
+            main.core.control.checkAutosave();
+        } catch (e) {}
+    }
+}
+
+main.dom.inputYes.onclick = function () {
+    main.dom.inputDiv.style.display = 'none';
+    var func = core.platform.successCallback;
+    core.platform.successCallback = core.platform.errorCallback = null;
+    if (func) func(main.dom.inputBox.value);
+}
+
+main.dom.inputNo.onclick = function () {
+    main.dom.inputDiv.style.display = 'none';
+    var func = core.platform.errorCallback;
+    core.platform.successCallback = core.platform.errorCallback = null;
+    if (func) func(null);
+}
+
+main.dom.inputDiv.onkeyup = function (e) {
+    if (e.keyCode == 13) {
+        setTimeout(function () {
+            main.dom.inputYes.click();
+        }, 50);
+    }
+    else if (e.keyCode == 27) {
+        setTimeout(function () {
+            main.dom.inputNo.click();
+        }, 50);
     }
 }
 

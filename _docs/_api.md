@@ -1,6 +1,6 @@
 # 附录: API列表
 
-?> 目前版本**v2.5.3**，上次更新时间：* {docsify-updated} *
+?> 目前版本**v2.6**，上次更新时间：* {docsify-updated} *
 
 **这里只列出所有可能会被造塔者用到的常用API，更多的有关内容请在代码内进行查询。**
 
@@ -124,6 +124,9 @@ core.insertAction(list, x, y, callback)
 x和y如果设置则覆盖"当前事件点"的坐标，callback如果设置则覆盖事件执行完毕后的回调函数。
 例如： core.insertAction(["楼层切换", {"type":"changeFloor", "floorId": "MT3"}])
 将依次显示剧情文本，并执行一个楼层切换的自定义事件。
+--------
+从V2.5.4开始提出了“公共事件”的说法，这里也可以插入一个公共事件名。
+例如：core.insertAction("毒衰咒处理") 将插入公共事件“毒衰咒处理”。
 
 
 core.changeFloor(floorId, stair, heroLoc, time, callback)    [异步]
@@ -136,15 +139,12 @@ core.changeFloor('MT5', null, {'x': 3, 'y': 6}, 0) 无动画切换到MT5层的(3
 
 core.resetMap()
 重置当前楼层地图和楼层属性。
-当我们修改某一层地图后，进游戏读档，会发现修改的内容并没有被更新上去。
-这是因为，H5的存档是会存下来每一个楼层的地图的，读档会从档里面获得地图信息。
-此时，如果我们在某一层地图执行 core.resetMap() ，则可以立刻从剧本中读取并重置当前楼层地图。
-已经被修改过的内容也会相应出现。
 此函数参数有三种形式：
  - 不加任何参数，表示重置当前层：core.resetMap()
  - 加上一个floorId，表示重置某一层：core.resetMap("MT1")
  - 使用一个数组，表示重置若干层：core.resetMap(["MT1", "MT2", "MT3"])
-
+---------------------------
+** 说明：从V2.5.5开始存档方式发生了改变，在编辑器修改了地图后现在将直接生效，无需再重置地图。
 
 R
 录像回放的快捷键；这不是一个控制台命令，但是也把它放在这里供使用。
@@ -176,6 +176,7 @@ core.openDoor(id, x, y, needKey, callback)    [异步]
 尝试开门操作。id为目标点的ID，x和y为坐标，needKey表示是否需要使用钥匙，callback为开门完毕后的回调函数。
 id可为null代表使用地图上的值。
 例如：core.openDoor('yellowDoor', 10, 3, false, function() {console.log("1")})
+此函数返回true代表成功开门，并将执行callback回调；返回false代表无法开门，且不会执行回调函数。
 
 
 core.battle(id, x, y, force, callback)    [异步]
@@ -430,6 +431,10 @@ core.events.doAction()
 执行下一个事件。此函数中将对所有自定义事件类型分别处理。
 
 
+core.events.getCommonEvent(name)
+根据名称获得一个公共事件；如果不存在对应的公共事件则返回null。
+
+
 core.events.openShop(shopId, needVisited)    [异步]
 打开一个全局商店。needVisited表示是否需要该商店已被打开过。
 
@@ -610,6 +615,10 @@ core.utils.cropImage(image, size)
 纵向对图片进行切分（裁剪）。
 
 
+core.utils.push(a,b)
+向某个数组后插入另一个数组或元素
+
+
 core.utils.unshift(a, b)
 向某个数组前插入另一个数组或元素
 
@@ -624,6 +633,15 @@ Base64解密字符串
 
 core.utils.formatBigNumber(x, onMap)
 大数据的格式化
+
+
+core.utils.subarray(a, b)
+检查b是否是a的从头开始子串。
+如果是，则返回a删去b的一段；否则返回null。
+
+
+core.utils.same(a, b)
+比较a和b两个对象是否相同
 
 
 core.utils.clamp(x, a, b)
