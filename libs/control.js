@@ -189,7 +189,6 @@ control.prototype._animationFrame_animate = function (timestamp) {
 
 control.prototype._animationFrame_heroMoving = function (timestamp) {
     if (core.status.heroMoving <= 0) return;
-    var x=core.getHeroLoc('x'), y=core.getHeroLoc('y'), direction = core.getHeroLoc('direction');
     // 换腿
     if (timestamp - core.animateFrame.moveTime > (core.values.moveSpeed||100)) {
         core.animateFrame.leftLeg = !core.animateFrame.leftLeg;
@@ -777,9 +776,9 @@ control.prototype.drawHero = function (status, offset) {
     core.clearMap('hero');
 
     this._drawHero_getDrawObjs(direction, x, y, status, offset).forEach(function (block) {
-        core.drawImage('hero', block.img, block.heroIcon[block.status]*32,
-            block.heroIcon.loc * block.height, 32, block.height,
-            block.posx, block.posy+32-block.height, 32, block.height);
+        core.drawImage('hero', block.img, block.heroIcon[block.status]*block.width,
+            block.heroIcon.loc * block.height, block.width, block.height,
+            block.posx+(32-block.width)/2, block.posy+32-block.height, block.width, block.height);
     });
 
     core.control.updateViewport();
@@ -789,6 +788,7 @@ control.prototype._drawHero_getDrawObjs = function (direction, x, y, status, off
     var heroIconArr = core.material.icons.hero, drawObjs = [], index = 0;
     drawObjs.push({
         "img": core.material.images.hero,
+        "width": core.material.icons.hero.width || 32,
         "height": core.material.icons.hero.height,
         "heroIcon": heroIconArr[direction],
         "posx": x * 32 - core.bigmap.offsetX + core.utils.scan[direction].x * offset,
@@ -798,8 +798,9 @@ control.prototype._drawHero_getDrawObjs = function (direction, x, y, status, off
     });
     (core.status.hero.followers||[]).forEach(function (t) {
         drawObjs.push({
-            "img": t.img,
-            "height": t.img.height/4,
+            "img": core.material.images.images[t.name],
+            "width": core.material.images.images[t.name].width/4,
+            "height": core.material.images.images[t.name].height/4,
             "heroIcon": heroIconArr[t.direction],
             "posx": 32*t.x - core.bigmap.offsetX + (t.stop?0:core.utils.scan[t.direction].x*offset),
             "posy": 32*t.y - core.bigmap.offsetY + (t.stop?0:core.utils.scan[t.direction].y*offset),
@@ -856,17 +857,20 @@ control.prototype.updateViewport = function() {
 
 ////// 获得勇士面对位置的x坐标 //////
 control.prototype.nextX = function(n) {
-    return core.getHeroLoc('x')+core.utils.scan[core.getHeroLoc('direction')].x*(n||1);
+    if (n == null) n = 1;
+    return core.getHeroLoc('x')+core.utils.scan[core.getHeroLoc('direction')].x*n;
 }
 
 ////// 获得勇士面对位置的y坐标 //////
 control.prototype.nextY = function (n) {
-    return core.getHeroLoc('y')+core.utils.scan[core.getHeroLoc('direction')].y*(n||1);
+    if (n == null) n = 1;
+    return core.getHeroLoc('y')+core.utils.scan[core.getHeroLoc('direction')].y*n;
 }
 
 ////// 某个点是否在勇士旁边 //////
-control.prototype.nearHero = function (x, y) {
-    return Math.abs(x-core.getHeroLoc('x'))+Math.abs(y-core.getHeroLoc('y'))<=1;
+control.prototype.nearHero = function (x, y, n) {
+    if (n == null) n = 1;
+    return Math.abs(x-core.getHeroLoc('x'))+Math.abs(y-core.getHeroLoc('y'))<=n;
 }
 
 ////// 聚集跟随者 //////
@@ -916,6 +920,8 @@ control.prototype.checkBlock = function () {
         core.status.hero.hp -= damage;
         core.drawTip("受到"+(core.status.checkBlock.type[loc]||"伤害")+damage+"点");
         this._checkBlock_soundAndAnimate(x, y);
+        this._checkBlock_disableQuickShop();
+        core.status.hero.statistics.extraDamage += damage;
         if (core.status.hero.hp <= 0) {
             core.status.hero.hp=0;
             core.updateStatusBar();
@@ -930,6 +936,15 @@ control.prototype.checkBlock = function () {
 control.prototype._checkBlock_soundAndAnimate = function (x,y) {
     core.playSound('zone.mp3');
     core.drawAnimate("zone", x, y);
+}
+
+control.prototype._checkBlock_disableQuickShop = function () {
+    // 禁用快捷商店
+    if (core.flags.disableShopOnDamage) {
+        for (var shopId in core.status.shops) {
+            core.status.shops[shopId].visited = false;
+        }
+    }
 }
 
 ////// 阻击 //////
@@ -1042,10 +1057,10 @@ control.prototype.chooseReplayFile = function () {
 control.prototype.startReplay = function (list) {
     if (!core.isPlaying()) return;
     core.status.replay.replaying=true;
-    core.status.replay.pausing=false;
+    core.status.replay.pausing=true;
     core.status.replay.speed=1.0;
     core.status.replay.toReplay = core.clone(list);
-    core.status.replay.totalList = core.clone(list);
+    core.status.replay.totalList = core.status.route.concat(list);
     core.status.replay.steps = 0;
     core.status.replay.save = [];
     core.updateStatusBar();
@@ -1078,15 +1093,24 @@ control.prototype.resumeReplay = function () {
     core.replay();
 }
 
+////// 单步播放 //////
+control.prototype.stepReplay = function () {
+    if (!core.isPlaying() || !core.isReplaying()) return;
+    if (!core.status.replay.pausing) return core.drawTip("请先暂停录像");
+    if (core.isMoving() || core.status.replay.animate || core.status.event.id)
+        return core.drawTip("请等待当前事件的处理结束");
+    core.replay(true);
+}
+
 ////// 加速播放 //////
 control.prototype.speedUpReplay = function () {
     if (!core.isPlaying() || !core.isReplaying()) return;
-    if (core.status.replay.speed==12) core.status.replay.speed=24;
-    else if (core.status.replay.speed==6) core.status.replay.speed=12;
-    else if (core.status.replay.speed==3) core.status.replay.speed=6;
-    else if (core.status.replay.speed<3) {
-        var toAdd = core.status.replay.speed>=2?2:1;
-        core.status.replay.speed = parseInt(10*core.status.replay.speed + toAdd)/10;
+    var speeds = [0.2, 0.5, 1, 2, 3, 6, 12, 24];
+    for (var i = speeds.length - 2; i >= 0; i--) {
+        if (speeds[i] <= core.status.replay.speed) {
+            core.status.replay.speed = speeds[i+1];
+            break;
+        }
     }
     core.drawTip("x"+core.status.replay.speed+"倍");
 }
@@ -1094,14 +1118,13 @@ control.prototype.speedUpReplay = function () {
 ////// 减速播放 //////
 control.prototype.speedDownReplay = function () {
     if (!core.isPlaying() || !core.isReplaying()) return;
-    if (core.status.replay.speed==24) core.status.replay.speed=12.0;
-    else if (core.status.replay.speed==12) core.status.replay.speed=6.0;
-    else if (core.status.replay.speed==6) core.status.replay.speed=3.0;
-    else {
-        var toAdd = core.status.replay.speed>=2?2:1;
-        core.status.replay.speed = parseInt(10*core.status.replay.speed - toAdd)/10;
+    var speeds = [0.2, 0.5, 1, 2, 3, 6, 12, 24];
+    for (var i = 1; i <= speeds.length; i++) {
+        if (speeds[i] >= core.status.replay.speed) {
+            core.status.replay.speed = speeds[i-1];
+            break;
+        }
     }
-    if (core.status.replay.speed<0.3) core.status.replay.speed=0.3;
     core.drawTip("x"+core.status.replay.speed+"倍");
 }
 
@@ -1202,9 +1225,10 @@ control.prototype.isReplaying = function () {
 }
 
 ////// 回放 //////
-control.prototype.replay = function () {
+control.prototype.replay = function (force) {
     if (!core.isPlaying() || !core.isReplaying()
-        || core.status.replay.pausing || core.status.replay.animate || core.status.event.id) return;
+         || core.status.replay.animate || core.status.event.id) return;
+    if (core.status.replay.pausing && !force) return;
     if (core.status.replay.toReplay.length==0)
         return this._replay_finished();
     this._replay_save();
@@ -1275,6 +1299,7 @@ control.prototype._replay_save = function () {
 }
 
 control.prototype._replay_error = function (action) {
+    core.ui.closePanel();
     core.status.replay.replaying = false;
     var len = core.status.replay.toReplay.length;
     var prevList = core.status.replay.totalList.slice(-len - 11, -len - 1);
@@ -1396,14 +1421,13 @@ control.prototype._replayAction_shop = function (action) {
         return true;
     }
     var choices = shop.choices;
-    var topIndex = core.__HALF_SIZE__ - parseInt(choices.length / 2);
     core.status.event.selection = parseInt(selections.shift());
     core.events.openShop(shopId, false);
+    var topIndex = core.__HALF_SIZE__ - parseInt(choices.length / 2) + (core.status.event.ui.offset || 0);
     var shopInterval = setInterval(function () {
         if (!core.actions._clickShop(core.__HALF_SIZE__, topIndex+core.status.event.selection)) {
             clearInterval(shopInterval);
-            core.stopReplay();
-            core.drawTip("录像文件出错");
+            core.control._replay_error(action);
             return;
         }
         if (selections.length==0) {
@@ -1466,15 +1490,21 @@ control.prototype._replayAction_key = function (action) {
 
 ////// 自动存档 //////
 control.prototype.autosave = function (removeLast) {
-    if (core.status.event.id!=null) return;
     var x=null;
-    if (removeLast) x=core.status.route.pop();
-    core.status.route.push("turn:"+core.getHeroLoc('direction'));
+    if (removeLast) {
+        x=core.status.route.pop();
+        core.status.route.push("turn:"+core.getHeroLoc('direction'));
+    }
+    if (core.status.event.id == 'action') // 事件中的自动存档
+        core.setFlag("__events__", core.clone(core.status.event.data));
     core.saves.autosave.data = core.saveData();
     core.saves.autosave.updated = true;
     core.saves.ids[0] = true;
-    core.status.route.pop();
-    if (x) core.status.route.push(x);
+    core.removeFlag("__events__");
+    if (removeLast) {
+        core.status.route.pop();
+        if (x) core.status.route.push(x);
+    }
 }
 
 /////// 实际进行自动存档 //////
@@ -1490,8 +1520,9 @@ control.prototype.checkAutosave = function () {
 control.prototype.doSL = function (id, type) {
     switch (type) {
         case 'save': this._doSL_save(id); break;
-        case 'load': this._doSL_load(id); break;
-        case 'replayLoad': this._doSL_replayLoad(id); break;
+        case 'load': this._doSL_load(id, this._doSL_load_afterGet); break;
+        case 'replayLoad': this._doSL_load(id, this._doSL_replayLoad_afterGet); break;
+        case 'replayRemain': this._doSL_load(id, this._doSL_replayRemain_afterGet); break;
     }
 }
 
@@ -1520,14 +1551,14 @@ control.prototype._doSL_save = function (id) {
     return;
 }
 
-control.prototype._doSL_load = function (id) {
+control.prototype._doSL_load = function (id, callback) {
     if (id == 'autoSave' && core.saves.autosave.data != null) {
-        this._doSL_load_afterGet(id, core.clone(core.saves.autosave.data));
+        callback(id, core.clone(core.saves.autosave.data))
     }
     else {
         core.getLocalForage(id=='autoSave'?id:"save"+id, null, function(data) {
             if (id == 'autoSave') core.saves.autosave.data = core.clone(data);
-            core.control._doSL_load_afterGet(id, data);
+            callback(id, data);
         }, function(err) {
             main.log(err);
             alert("无效的存档");
@@ -1557,22 +1588,6 @@ control.prototype._doSL_load_afterGet = function (id, data) {
             core.setLocalStorage('saveIndex', core.saves.saveIndex);
         }
     });
-
-}
-
-control.prototype._doSL_replayLoad = function (id) {
-    if (id == 'autoSave' && core.saves.autosave.data != null) {
-        this._doSL_replayLoad_afterGet(core.clone(core.saves.autosave.data));
-    }
-    else{
-        core.getLocalForage(id=='autoSave'?id:"save"+id, null, function(data) {
-            if (id == 'autoSave') core.saves.autosave.data = core.clone(data);
-            core.control._doSL_replayLoad_afterGet(id, data);
-        }, function(err) {
-            main.log(err);
-            alert("无效的存档");
-        })
-    }
 }
 
 control.prototype._doSL_replayLoad_afterGet = function (id, data) {
@@ -1589,6 +1604,34 @@ control.prototype._doSL_replayLoad_afterGet = function (id, data) {
         core.drawTip("回退到存档节点");
     });
 
+}
+
+control.prototype._doSL_replayRemain_afterGet = function (id, data) {
+    if (!data) return core.drawTip("无效的存档");
+
+    var route = core.decodeRoute(data.route);
+    if (core.status.tempRoute) {
+        var remainRoute = core.subarray(route, core.status.tempRoute);
+        if (remainRoute == null)
+            return alert("无法接续播放录像！\n该存档必须是前一个选择的存档的后续内容。");
+        delete core.status.tempRoute;
+        core.ui.closePanel();
+        core.startReplay(remainRoute);
+        core.drawTip("接续播放录像");
+        return;
+    }
+    else if (data.floorId != core.status.floorId || data.hero.loc.x != core.getHeroLoc('x') || data.hero.loc.y != core.getHeroLoc('y'))
+        return alert("楼层或坐标不一致！");
+
+    core.status.tempRoute = route;
+    core.ui.closePanel();
+    core.drawText("\t[步骤2]请选择第二个存档。\n\r[yellow]该存档必须是前一个存档的后续。\r\n将尝试播放到此存档。", function () {
+        core.status.event.id = 'replayRemain';
+        core.lockControl();
+        var saveIndex = core.saves.saveIndex;
+        var page = parseInt((saveIndex - 1) / 5), offset = saveIndex - 5 * page;
+        core.ui.drawSLPanel(10 * page + offset);
+    });
 }
 
 ////// 同步存档到服务器 //////
@@ -1834,8 +1877,8 @@ control.prototype.getStatus = function (name) {
 ////// 从status中获得属性，如果不存在则从勇士属性中获取 //////
 control.prototype.getStatusOrDefault = function (status, name) {
     if (status && name in status)
-        return status[name];
-    return this.getStatus(name);
+        return Math.floor(status[name]);
+    return Math.floor(this.getStatus(name));
 }
 
 ////// 获得勇士实际属性（增幅后的） //////
@@ -1845,7 +1888,7 @@ control.prototype.getRealStatus = function (name) {
 
 ////// 从status中获得实际属性（增幅后的），如果不存在则从勇士属性中获取 //////
 control.prototype.getRealStatusOrDefault = function (status, name) {
-    return this.getStatusOrDefault(status, name) * this.getBuff(name);
+    return Math.floor(this.getStatusOrDefault(status, name) * this.getBuff(name));
 }
 
 ////// 设置某个属性的增幅值 //////
@@ -1877,6 +1920,15 @@ control.prototype.getHeroLoc = function (name) {
     if (!core.status.hero) return;
     if (name == null) return core.status.hero.loc;
     return core.status.hero.loc[name];
+}
+
+////// 获得某个属性的中文名 //////
+control.prototype.getStatusName = function (name) {
+    var map = {
+        name: "名称", lv: "等级", hpmax: "生命上限", hp: "生命", manamax: "魔力上限", mana: "魔力",
+        atk: "攻击", def: "防御", mdef: "魔防", money: "金币", exp: "经验", experience: "经验", steps: "步数"
+    };
+    return map[name] || name;
 }
 
 ////// 获得某个等级的名称 //////
@@ -1934,6 +1986,10 @@ control.prototype.debug = function() {
 }
 
 // ------ 天气，色调，BGM ------ //
+
+control.prototype.getMappedName = function (name) {
+    return (main.nameMap || {})[name] || name;
+}
 
 ////// 更改天气效果 //////
 control.prototype.setWeather = function (type, level) {
@@ -2017,6 +2073,7 @@ control.prototype.setCurtain = function(color, time, callback) {
 }
 
 control.prototype._setCurtain_animate = function (nowColor, color, time, callback) {
+    time /= Math.max(core.status.replay.speed, 1)
     var per_time = 10, step = parseInt(time / per_time);
     var animate = setInterval(function() {
         nowColor = [
@@ -2057,6 +2114,7 @@ control.prototype.screenFlash = function (color, time, times, callback) {
 
 ////// 播放背景音乐 //////
 control.prototype.playBgm = function (bgm, startTime) {
+    bgm = core.getMappedName(bgm);
     if (main.mode!='play' || !core.material.bgms[bgm]) return;
     // 如果不允许播放
     if (!core.musicStatus.bgmStatus) {
@@ -2083,8 +2141,6 @@ control.prototype.playBgm = function (bgm, startTime) {
 }
 
 control.prototype._playBgm_play = function (bgm, startTime) {
-    // 缓存BGM
-    core.loader.loadBgm(bgm);
     // 如果当前正在播放，且和本BGM相同，直接忽略
     if (core.musicStatus.playingBgm == bgm && !core.material.bgms[core.musicStatus.playingBgm].paused) {
         return;
@@ -2093,6 +2149,8 @@ control.prototype._playBgm_play = function (bgm, startTime) {
     if (core.musicStatus.playingBgm) {
         core.material.bgms[core.musicStatus.playingBgm].pause();
     }
+    // 缓存BGM
+    core.loader.loadBgm(bgm);
     // 播放当前BGM
     core.material.bgms[bgm].volume = core.musicStatus.volume;
     core.material.bgms[bgm].currentTime = startTime || 0;
@@ -2121,7 +2179,7 @@ control.prototype.pauseBgm = function () {
 control.prototype.resumeBgm = function () {
     if (main.mode!='play')return;
     try {
-        core.playBgm(core.musicStatus.playingBgm || core.musicStatus.lastBgm);
+        core.playBgm(core.musicStatus.playingBgm || core.musicStatus.lastBgm || main.startBgm);
     }
     catch (e) {
         console.log("无法恢复BGM");
@@ -2151,6 +2209,7 @@ control.prototype.triggerBgm = function () {
 
 ////// 播放音频 //////
 control.prototype.playSound = function (sound) {
+    sound = core.getMappedName(sound);
     if (main.mode!='play' || !core.musicStatus.soundStatus || !core.material.sounds[sound]) return;
     try {
         if (core.musicStatus.audioContext != null) {
@@ -2287,14 +2346,15 @@ control.prototype.updateHeroIcon = function (name) {
 
     var image = core.material.images.hero;
     // 全身图
-    var height = core.material.icons.hero.height;
-    var ratio = 32 / height, width = 32 * ratio, left = 16-width/2;
+    var w = core.material.icons.hero.width || 32;
+    var h = core.material.icons.hero.height || 48;
+    var ratio = Math.max(w / h, 1), width = 32 * ratio, left = 16 - width/2;
 
     var canvas = document.createElement("canvas");
     var context = canvas.getContext("2d");
     canvas.width = 32;
     canvas.height = 32;
-    context.drawImage(image, 0, 0, 32, height, left, 0, width, 32);
+    context.drawImage(image, 0, 0, w, h, left, 0, width, 32);
 
     core.statusBar.image.name.src = canvas.toDataURL("image/png");
 }
@@ -2637,7 +2697,7 @@ control.prototype._resize_toolBar = function (obj) {
 }
 
 control.prototype._resize_tools = function (obj) {
-    var toolsHeight = 32 * core.domStyle.scale * (core.domStyle.isVertical ? 0.95 : 1);
+    var toolsHeight = 32 * core.domStyle.scale * (core.domStyle.isVertical && !obj.is15x15 ? 0.95 : 1);
     var toolsMarginLeft;
     if (core.domStyle.isVertical)
         toolsMarginLeft = (core.__HALF_SIZE__ - 3) * 3 * core.domStyle.scale;

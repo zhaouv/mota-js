@@ -71,7 +71,7 @@ actions.prototype._init = function () {
  * 返回：如果func返回true，则不会再继续执行其他的交互函数；否则会继续执行其他的交互函数。
  */
 actions.prototype.registerAction = function (action, name, func, priority) {
-    if (!name || !func || !(func instanceof Function))
+    if (!name || !func)
         return;
     priority = priority || 0;
     if (!this.actions[action]) {
@@ -99,8 +99,14 @@ actions.prototype.doRegisteredAction = function (action) {
     var actions = this.actions[action];
     if (!actions) return false;
     for (var i = 0; i < actions.length; ++i) {
-        if (core.doFunc.apply(core, [actions[i].func, this].concat(Array.prototype.slice.call(arguments, 1))))
-            return true;
+        try {
+            if (core.doFunc.apply(core, [actions[i].func, this].concat(Array.prototype.slice.call(arguments, 1))))
+                return true;
+        }
+        catch (e) {
+            main.log(e);
+            main.log("ERROR in actions["+actions[i].name+"].");
+        }
     }
     return false;
 }
@@ -156,19 +162,21 @@ actions.prototype._sys_onkeyUp_replay = function (e) {
             core.triggerReplay();
         else if (e.keyCode == 65) // A
             core.rewindReplay();
-        else if (e.keyCode == 83)
+        else if (e.keyCode == 83) // S
             core.saveReplay();
-        else if (e.keyCode == 67)
+        else if (e.keyCode == 67) // C
             core.bookReplay();
-        else if (e.keyCode == 33 || e.keyCode == 34)
+        else if (e.keyCode == 33 || e.keyCode == 34) // PgUp/PgDn
             core.viewMapReplay();
-        else if (e.keyCode >= 49 && e.keyCode <= 51)
+        else if (e.keyCode == 78) // N
+            core.stepReplay();
+        else if (e.keyCode >= 49 && e.keyCode <= 51) // 1-3
             core.setReplaySpeed(e.keyCode - 48);
-        else if (e.keyCode == 52)
+        else if (e.keyCode == 52) // 4
             core.setReplaySpeed(6);
-        else if (e.keyCode == 53)
+        else if (e.keyCode == 53) // 5
             core.setReplaySpeed(12);
-        else if (e.keyCode == 54)
+        else if (e.keyCode == 54) // 6
             core.setReplaySpeed(24);
         return true;
     }
@@ -239,9 +247,12 @@ actions.prototype._sys_keyDown_lockControl = function (keyCode) {
         case 'save':
         case 'load':
         case 'replayLoad':
+        case 'replayRemain':
             this._keyDownSL(keyCode);
             break;
         case 'shop':
+            this._keyDownShop(keyCode);
+            break;
         case 'selectShop':
         case 'switchs':
         case 'settings':
@@ -340,6 +351,7 @@ actions.prototype._sys_keyUp_lockControl = function (keyCode, altKey) {
         case 'save':
         case 'load':
         case 'replayLoad':
+        case 'replayRemain':
             this._keyUpSL(keyCode);
             break;
         case 'keyBoard':
@@ -606,6 +618,7 @@ actions.prototype._sys_onclick_lockControl = function (x, y) {
         case 'save':
         case 'load':
         case 'replayLoad':
+        case 'replayRemain':
             this._clickSL(x, y);
             break;
         case 'confirmBox':
@@ -744,10 +757,21 @@ actions.prototype._sys_longClick_lockControl = function (x, y) {
     }
     // 长按楼传器的箭头可以快速翻页
     if (core.status.event.id == 'fly') {
-        if ((x == 10 || x == 11) && (y == 5 || y == 9)) {
+        if ((x == this.SIZE-2 || x == this.SIZE-3) && (y == this.HSIZE - 1 || y == this.HSIZE+3)) {
             this._clickFly(x, y);
             return true;
         }
+    }
+    // 长按SL上下页快速翻页
+    if (["save","load","replayLoad","replayRemain"].indexOf(core.status.event.id) >= 0) {
+        if ([this.HSIZE-2, this.HSIZE-3, this.HSIZE+2, this.HSIZE+3].indexOf(x) >= 0 && y == this.LAST) {
+            this._clickSL(x, y);
+            return true;
+        }
+    }
+    // 长按商店连续购买
+    if (core.status.event.id == 'shop' && x >= this.CHOICES_LEFT && x <= this.CHOICES_RIGHT) {
+        return this._clickShop(x, y);
     }
     // 长按可以跳过等待事件
     if (core.status.event.id == 'action' && core.status.event.data.type == 'sleep'
@@ -777,7 +801,7 @@ actions.prototype._sys_longClick = function (x, y, fromEvent) {
 
 // 数字键快速选择选项
 actions.prototype._selectChoices = function (length, keycode, callback) {
-    var topIndex = this.HSIZE - parseInt((length - 1) / 2);
+    var topIndex = this.HSIZE - parseInt((length - 1) / 2) + (core.status.event.ui.offset || 0);
     if (keycode == 13 || keycode == 32 || keycode == 67) {
         callback.apply(this, [this.HSIZE, topIndex + core.status.event.selection]);
     }
@@ -883,7 +907,7 @@ actions.prototype._clickAction = function (x, y) {
         var choices = data.choices;
         if (choices.length == 0) return;
         if (x >= this.CHOICES_LEFT && x <= this.CHOICES_RIGHT) {
-            var topIndex = this.HSIZE - parseInt((choices.length - 1) / 2);
+            var topIndex = this.HSIZE - parseInt((choices.length - 1) / 2) + (core.status.event.ui.offset || 0);
             if (y >= topIndex && y < topIndex + choices.length) {
                 // 选择
                 core.status.route.push("choices:" + (y - topIndex));
@@ -900,7 +924,7 @@ actions.prototype._clickAction = function (x, y) {
             core.insertAction(core.status.event.ui.yes);
             core.doAction();
         }
-        if ((x == this.HSIZE+2 || x == this.HSIZE+1) && y == this.HSIZE+1) {
+        else if ((x == this.HSIZE+2 || x == this.HSIZE+1) && y == this.HSIZE+1) {
             core.status.route.push("choices:1");
             core.insertAction(core.status.event.ui.no);
             core.doAction();
@@ -984,10 +1008,17 @@ actions.prototype._clickBook = function (x, y) {
     // 怪物信息
     var data = core.status.event.data;
     if (data != null && y < this.LAST) {
-        var page = parseInt(data / this.HSIZE);
-        var index = this.HSIZE * page + parseInt(y / 2);
-        core.ui.drawBook(index);
-        core.ui.drawBookDetail(index);
+        var pageinfo = core.ui._drawBook_pageinfo();
+        var per_page = pageinfo.per_page, page = parseInt(data / per_page);
+        var u = this.LAST / per_page;
+        for (var i = 0; i < per_page; ++i) {
+            if (y >= u*i && y < u*(i+1)) {
+                var index = per_page * page + i;
+                core.ui.drawBook(index);
+                core.ui.drawBookDetail(index);
+                break;
+            }
+        }
         return;
     }
     return;
@@ -1020,7 +1051,7 @@ actions.prototype._keyUpBook = function (keycode) {
     if (keycode == 13 || keycode == 32 || keycode == 67) {
         var data = core.status.event.data;
         if (data != null) {
-            this._clickBook(this.HSIZE, 2 * (data % this.HSIZE));
+            core.ui.drawBookDetail(data);
         }
         return;
     }
@@ -1207,7 +1238,7 @@ actions.prototype._clickShop = function (x, y) {
     var shop = core.status.event.data.shop;
     var choices = shop.choices;
     if (x >= this.CHOICES_LEFT && x <= this.CHOICES_RIGHT) {
-        var topIndex = this.HSIZE - parseInt(choices.length / 2);
+        var topIndex = this.HSIZE - parseInt(choices.length / 2) + (core.status.event.ui.offset || 0);
         if (y >= topIndex && y < topIndex + choices.length) {
             return core.events._useShop(shop, y - topIndex);
         }
@@ -1220,13 +1251,25 @@ actions.prototype._clickShop = function (x, y) {
     return true;
 }
 
+actions.prototype._keyDownShop = function (keycode) {
+    // 商店界面长按空格连续购买
+    if (keycode == 32) {
+        this._selectChoices(core.status.event.data.shop.choices.length + 1, keycode, this._clickShop);
+        return;
+    }
+    this._keyDownChoices(keycode);
+}
+
 ////// 商店界面时，放开某个键的操作 //////
 actions.prototype._keyUpShop = function (keycode) {
     if (keycode == 27 || keycode == 88) {
         core.events._exitShop();
         return;
     }
-    this._selectChoices(core.status.event.data.shop.choices.length + 1, keycode, this._clickShop);
+    if (keycode != 32) {
+        this._selectChoices(core.status.event.data.shop.choices.length + 1, keycode, this._clickShop);
+        return;
+    }
     return;
 }
 
@@ -1237,7 +1280,7 @@ actions.prototype._clickQuickShop = function (x, y) {
     });
 
     if (x >= this.CHOICES_LEFT && x <= this.CHOICES_RIGHT) {
-        var topIndex = this.HSIZE - parseInt(keys.length / 2);
+        var topIndex = this.HSIZE - parseInt(keys.length / 2) + (core.status.event.ui.offset || 0);
         if (y >= topIndex && y < topIndex + keys.length) {
             var reason = core.events.canUseQuickShop(keys[y - topIndex]);
             if (!core.flags.enableDisabledShop && reason) {
@@ -1637,6 +1680,7 @@ actions.prototype._clickSL = function (x, y) {
         if (core.events.recoverEvents(core.status.event.interval))
             return;
         core.ui.closePanel();
+        delete core.status.tempRoute;
         if (!core.isPlaying())
             core.showStartAnimate(true);
         return;
@@ -1830,7 +1874,7 @@ actions.prototype._keyUpSL = function (keycode) {
 actions.prototype._clickSwitchs = function (x, y) {
     if (x < this.CHOICES_LEFT || x > this.CHOICES_RIGHT) return;
     var choices = core.status.event.ui.choices;
-    var topIndex = this.HSIZE - parseInt((choices.length - 1) / 2);
+    var topIndex = this.HSIZE - parseInt((choices.length - 1) / 2) + (core.status.event.ui.offset || 0);
     if (y >= topIndex && y < topIndex + choices.length) {
         var selection = y - topIndex;
         core.status.event.selection = selection;
@@ -1840,18 +1884,20 @@ actions.prototype._clickSwitchs = function (x, y) {
             case 1:
                 return this._clickSwitchs_sound();
             case 2:
-                return this._clickSwitchs_displayEnemyDamage();
+                return this._clickSwitchs_moveSpeed();
             case 3:
-                return this._clickSwitchs_displayCritical();
+                return this._clickSwitchs_displayEnemyDamage();
             case 4:
-                return this._clickSwitchs_displayExtraDamage();
+                return this._clickSwitchs_displayCritical();
             case 5:
-                return this._clickSwitchs_localForage();
+                return this._clickSwitchs_displayExtraDamage();
             case 6:
-                return this._clickSwitchs_clickMove();
+                return this._clickSwitchs_localForage();
             case 7:
-                return this._clickSwitchs_ExtendKeyboard();
+                return this._clickSwitchs_clickMove();
             case 8:
+                return this._clickSwitchs_ExtendKeyboard();
+            case 9:
                 core.status.event.selection = 0;
                 core.ui.drawSettings();
                 break;
@@ -1868,6 +1914,16 @@ actions.prototype._clickSwitchs_sound = function () {
     core.musicStatus.soundStatus = !core.musicStatus.soundStatus;
     core.setLocalStorage('soundStatus', core.musicStatus.soundStatus);
     core.ui.drawSwitchs();
+}
+
+actions.prototype._clickSwitchs_moveSpeed = function () {
+    core.myprompt("请输入行走速度（每走一步的时间，单位毫秒，默认100）", core.values.moveSpeed, function (value) {
+        value = parseInt(value) || core.values.moveSpeed;
+        value = core.clamp(value, 10, 500);
+        core.values.moveSpeed = value;
+        core.setLocalStorage("moveSpeed", value);
+        core.ui.drawSwitchs();
+    });
 }
 
 actions.prototype._clickSwitchs_displayEnemyDamage = function () {
@@ -1927,7 +1983,7 @@ actions.prototype._keyUpSwitchs = function (keycode) {
 actions.prototype._clickSettings = function (x, y) {
     if (x < this.CHOICES_LEFT || x > this.CHOICES_RIGHT) return;
     var choices = core.status.event.ui.choices;
-    var topIndex = this.HSIZE - parseInt((choices.length - 1) / 2);
+    var topIndex = this.HSIZE - parseInt((choices.length - 1) / 2) + (core.status.event.ui.offset || 0);
     if (y >= topIndex && y < topIndex + choices.length) {
         var selection = y - topIndex;
         core.status.event.selection = selection;
@@ -1978,7 +2034,7 @@ actions.prototype._keyUpSettings = function (keycode) {
 actions.prototype._clickSyncSave = function (x, y) {
     if (x < this.CHOICES_LEFT || x > this.CHOICES_RIGHT) return;
     var choices = core.status.event.ui.choices;
-    var topIndex = this.HSIZE - parseInt((choices.length - 1) / 2);
+    var topIndex = this.HSIZE - parseInt((choices.length - 1) / 2) + (core.status.event.ui.offset || 0);
     if (y >= topIndex && y < topIndex + choices.length) {
         var selection = y - topIndex;
         core.status.event.selection = selection;
@@ -1999,12 +2055,10 @@ actions.prototype._clickSyncSave = function (x, y) {
             case 4:
                 return this._clickSyncSave_replay();
             case 5:
-                return this._clickSyncSave_download();
-            case 6:
                 core.status.event.selection = 0;
                 core.ui.drawStorageRemove();
                 break;
-            case 7:
+            case 6:
                 core.status.event.selection = 4;
                 core.ui.drawSettings();
                 break;
@@ -2033,19 +2087,6 @@ actions.prototype._clickSyncSave_replay = function () {
     }
 }
 
-actions.prototype._clickSyncSave_download = function () {
-    if (core.hasFlag('debug')) {
-        core.drawText("\t[系统提示]调试模式下无法下载录像");
-        return;
-    }
-    core.download(core.firstData.name + "_" + core.formatDate2() + ".h5route", JSON.stringify({
-        'name': core.firstData.name,
-        'hard': core.status.hard,
-        'seed': core.getFlag('__seed__'),
-        'route': core.encodeRoute(core.status.route)
-    }));
-}
-
 ////// 同步存档界面时，放开某个键的操作 //////
 actions.prototype._keyUpSyncSave = function (keycode) {
     if (keycode == 27 || keycode == 88) {
@@ -2061,7 +2102,7 @@ actions.prototype._clickSyncSelect = function (x, y) {
     if (x < this.CHOICES_LEFT || x > this.CHOICES_RIGHT) return;
     var choices = core.status.event.ui.choices;
 
-    var topIndex = this.HSIZE - parseInt((choices.length - 1) / 2);
+    var topIndex = this.HSIZE - parseInt((choices.length - 1) / 2) + (core.status.event.ui.offset || 0);
     if (y >= topIndex && y < topIndex + choices.length) {
         var selection = y - topIndex;
         core.status.event.selection = selection;
@@ -2095,7 +2136,7 @@ actions.prototype._clickLocalSaveSelect = function (x, y) {
     if (x < this.CHOICES_LEFT || x > this.CHOICES_RIGHT) return;
     var choices = core.status.event.ui.choices;
 
-    var topIndex = this.HSIZE - parseInt((choices.length - 1) / 2);
+    var topIndex = this.HSIZE - parseInt((choices.length - 1) / 2) + (core.status.event.ui.offset || 0);
 
     if (y >= topIndex && y < topIndex + choices.length) {
         var selection = y - topIndex;
@@ -2135,7 +2176,7 @@ actions.prototype._clickStorageRemove = function (x, y) {
     if (x < this.CHOICES_LEFT || x > this.CHOICES_RIGHT) return;
     var choices = core.status.event.ui.choices;
 
-    var topIndex = this.HSIZE - parseInt((choices.length - 1) / 2);
+    var topIndex = this.HSIZE - parseInt((choices.length - 1) / 2) + (core.status.event.ui.offset || 0);
 
     if (y >= topIndex && y < topIndex + choices.length) {
         var selection = y - topIndex;
@@ -2224,7 +2265,7 @@ actions.prototype._clickReplay = function (x, y) {
     if (x < this.CHOICES_LEFT || x > this.CHOICES_RIGHT) return;
     var choices = core.status.event.ui.choices;
 
-    var topIndex = this.HSIZE - parseInt((choices.length - 1) / 2);
+    var topIndex = this.HSIZE - parseInt((choices.length - 1) / 2) + (core.status.event.ui.offset || 0);
 
     if (y >= topIndex && y < topIndex + choices.length) {
         var selection = y - topIndex;
@@ -2232,9 +2273,10 @@ actions.prototype._clickReplay = function (x, y) {
         switch (selection) {
             case 0: return this._clickReplay_fromBeginning();
             case 1: return this._clickReplay_fromLoad();
-            case 2: return core.chooseReplayFile();
-            case 3: return this._clickReplay_download();
-            case 4: return core.ui.closePanel();
+            case 2: return this._clickReplay_replayRemain();
+            case 3: return core.chooseReplayFile();
+            case 4: return this._clickReplay_download();
+            case 5: return core.ui.closePanel();
         }
     }
 }
@@ -2251,6 +2293,21 @@ actions.prototype._clickReplay_fromLoad = function () {
     var saveIndex = core.saves.saveIndex;
     var page = parseInt((saveIndex - 1) / 5), offset = saveIndex - 5 * page;
     core.ui.drawSLPanel(10 * page + offset);
+}
+
+actions.prototype._clickReplay_replayRemain = function () {
+    core.closePanel();
+    core.drawText([
+        "\t[接续播放录像]该功能允许你播放\r[yellow]两个存档之间的录像\r，常常用于\r[yellow]区域优化\r。\n" +
+        "例如，有若干个区，已经全部通关；之后重打一区并进行了优化，则可以对剩余区域直接播放录像而无需全部重打。",
+        "\t[步骤1]请选择一个存档。\n\r[yellow]该存档的坐标必须和当前勇士坐标完全相同。\r\n将尝试从此处开始回放。",
+    ], function () {
+        core.status.event.id = 'replayRemain';
+        core.lockControl();
+        var saveIndex = core.saves.saveIndex;
+        var page = parseInt((saveIndex - 1) / 5), offset = saveIndex - 5 * page;
+        core.ui.drawSLPanel(10 * page + offset);
+    });
 }
 
 actions.prototype._clickReplay_download = function () {
@@ -2278,7 +2335,7 @@ actions.prototype._clickGameInfo = function (x, y) {
     if (x < this.CHOICES_LEFT || x > this.CHOICES_RIGHT) return;
     var choices = core.status.event.ui.choices;
 
-    var topIndex = this.HSIZE - parseInt((choices.length - 1) / 2);
+    var topIndex = this.HSIZE - parseInt((choices.length - 1) / 2) + (core.status.event.ui.offset || 0);
 
     if (y >= topIndex && y < topIndex + choices.length) {
         var selection = y - topIndex;

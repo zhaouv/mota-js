@@ -63,10 +63,11 @@ utils.prototype.replaceText = function (text, need, times) {
 utils.prototype.calValue = function (value, prefix, need, times) {
     if (!core.isset(value)) return null;
     if (typeof value === 'string') {
-        value = value.replace(/status:([\w\d_]+)/g, "core.getStatus('$1')");
-        value = value.replace(/item:([\w\d_]+)/g, "core.itemCount('$1')");
-        value = value.replace(/flag:([\w\d_]+)/g, "core.getFlag('$1', 0)");
-        value = value.replace(/switch:([\w\d_]+)/g, "core.getFlag('" + (prefix || ":f@x@y") + "@$1', 0)");
+        value = value.replace(/status:([a-zA-Z0-9_]+)/g, "core.getStatus('$1')");
+        value = value.replace(/item:([a-zA-Z0-9_]+)/g, "core.itemCount('$1')");
+        value = value.replace(/flag:([a-zA-Z0-9_\u4E00-\u9FCC]+)/g, "core.getFlag('$1', 0)");
+        value = value.replace(/switch:([a-zA-Z0-9_]+)/g, "core.getFlag('" + (prefix || ":f@x@y") + "@$1', 0)");
+        value = value.replace(/global:([a-zA-Z0-9_\u4E00-\u9FCC]+)/g, "core.getGlobal('$1', 0)");
         return eval(value);
     }
     if (value instanceof Function) {
@@ -246,8 +247,33 @@ utils.prototype.removeLocalForage = function (key, successCallback, errorCallbac
     })
 }
 
+utils.prototype.setGlobal = function (key, value) {
+    if (core.isReplaying()) return;
+    core.setLocalStorage(key, value);
+}
+
+utils.prototype.getGlobal = function (key, defaultValue) {
+    var value;
+    if (core.isReplaying()) {
+        // 不考虑key不一致的情况
+        var action = core.status.replay.toReplay.shift();
+        if (action.indexOf("input2:") == 0) {
+            value = JSON.parse(core.decodeBase64(action.substring(7)));
+        }
+        else {
+            core.control._replay_error(action);
+            return core.getLocalStorage(key, defaultValue);
+        }
+    }
+    else {
+        value = core.getLocalStorage(key, defaultValue);
+    }
+    core.status.route.push("input2:" + core.encodeBase64(JSON.stringify(value)));
+    return value;
+}
+
 ////// 深拷贝一个对象 //////
-utils.prototype.clone = function (data) {
+utils.prototype.clone = function (data, filter, recursion) {
     if (!core.isset(data)) return null;
     // date
     if (data instanceof Date) {
@@ -258,10 +284,9 @@ utils.prototype.clone = function (data) {
     // array
     if (data instanceof Array) {
         var copy = [];
-        // for (var i=0;i<data.length;i++) {
         for (var i in data) {
-            // copy.push(core.clone(data[i]));
-            copy[i] = core.clone(data[i]);
+            if (!filter || filter(i, data[i]))
+                copy[i] = core.clone(data[i], recursion?filter:null, recursion);
         }
         return copy;
     }
@@ -273,8 +298,8 @@ utils.prototype.clone = function (data) {
     if (data instanceof Object) {
         var copy = {};
         for (var i in data) {
-            if (data.hasOwnProperty(i))
-                copy[i] = core.clone(data[i]);
+            if (data.hasOwnProperty(i) && (!filter || filter(i, data[i])))
+                copy[i] = core.clone(data[i], recursion?filter:null, recursion);
         }
         return copy;
     }
@@ -283,8 +308,10 @@ utils.prototype.clone = function (data) {
 
 ////// 裁剪图片 //////
 utils.prototype.splitImage = function (image, width, height) {
-    if (typeof image == "string")
+    if (typeof image == "string") {
+        image = core.getMappedName(image);
         image = core.material.images.images[image];
+    }
     if (!image) return [];
     width = width || 32;
     height = height || width;
@@ -624,6 +651,12 @@ utils.prototype.reverseDirection = function (direction) {
     return {"left":"right","right":"left","down":"up","up":"down"}[direction] || direction;
 }
 
+utils.prototype.matchWildcard = function (pattern, string) {
+    return new RegExp('^' + pattern.split(/\*+/).map(function (s) {
+        return s.replace(/[|\\{}()[\]^$+*?.]/g, '\\$&');
+    }).join('.*') + '$').test(string);
+}
+
 ////// Base64加密 //////
 utils.prototype.encodeBase64 = function (str) {
     return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, function (match, p1) {
@@ -679,9 +712,8 @@ utils.prototype.rand2 = function (num) {
             value = parseInt(action.substring(7));
         }
         else {
-            core.stopReplay();
-            core.drawTip("录像文件出错");
-            return;
+            core.control._replay_error(action);
+            return 0;
         }
     }
     else {
@@ -999,6 +1031,7 @@ utils.prototype.consoleOpened = function () {
     if (!core.flags.checkConsole) return false;
     if (window.Firebug && window.Firebug.chrome && window.Firebug.chrome.isInitialized)
         return true;
+    if (!core.platform.isPC) return false;
     var threshold = 160;
     var zoom = Math.min(window.outerWidth / window.innerWidth, window.outerHeight / window.innerHeight);
     return window.outerWidth - zoom * window.innerWidth > threshold

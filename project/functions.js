@@ -9,7 +9,9 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 	// 这一步会清空状态栏和全部画布内容，并删除所有动态创建的画布
 	core.clearStatus();
 	// 初始化status
-	core.status = core.clone(core.initStatus);
+	core.status = core.clone(core.initStatus, function (name) {
+		return name != 'hero' && name != 'maps';
+	});
 	core.status.played = true;
 	// 初始化人物，图标，统计信息
 	core.status.hero = core.clone(hero);
@@ -22,7 +24,7 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 	core.status.hard = hard || "";
 	// 初始化地图
 	core.status.floorId = floorId;
-	core.status.maps = core.clone(maps);
+	core.status.maps = maps;
 	// 初始化怪物和道具
 	core.material.enemys = core.enemys.getEnemys();
 	core.material.items = core.items.getItems();
@@ -463,7 +465,7 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 		[12, "中毒", "战斗后，勇士陷入中毒状态，每一步损失生命" + core.values.poisonDamage + "点"],
 		[13, "衰弱", "战斗后，勇士陷入衰弱状态，攻防暂时下降" + (core.values.weakValue >= 1 ? core.values.weakValue + "点" : parseInt(core.values.weakValue * 100) + "%")],
 		[14, "诅咒", "战斗后，勇士陷入诅咒状态，战斗无法获得金币和经验"],
-		[15, "领域", function (enemy) { return "经过怪物周围" + (enemy.range || 1) + "格时自动减生命" + (enemy.value || 0) + "点"; }],
+		[15, "领域", function (enemy) { return "经过怪物周围" + (enemy.zoneSquare ? "九宫格" : "十字") + "范围内" + (enemy.range || 1) + "格时自动减生命" + (enemy.value || 0) + "点"; }],
 		[16, "夹击", "经过两只相同的怪物中间，勇士生命值变成一半"],
 		[17, "仇恨", "战斗前，怪物附加之前积累的仇恨值作为伤害" + (core.flags.hatredDecrease ? "；战斗后，释放一半的仇恨值" : "") + "。（每杀死一个怪物获得" + (core.values.hatred || 0) + "点仇恨值）"],
 		[18, "阻击", function (enemy) { return "经过怪物的十字领域时自动减生命" + (enemy.value || 0) + "点，同时怪物后退一格"; }],
@@ -522,6 +524,8 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 	var guards = [];
 	// 检查光环缓存
 	var index = x != null && y != null ? (x + "," + y) : "floor";
+	if (!core.status.checkBlock) core.status.checkBlock = {};
+	if (!core.status.checkBlock.cache) core.status.checkBlock.cache = {};
 	var cache = core.status.checkBlock.cache[index];
 	if (!cache) {
 		// 没有该点的缓存，则遍历每个图块
@@ -553,7 +557,6 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 			}
 		});
 
-		// 放入缓存中
 		core.status.checkBlock.cache[index] = { "hp_buff": hp_buff, "atk_buff": atk_buff, "def_buff": def_buff, "guards": guards };
 	} else {
 		// 直接使用缓存数据
@@ -967,8 +970,10 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 	core.events.setVolume(core.getFlag("__volume__", 1), 0);
 	// 加载勇士图标
 	var icon = core.getFlag("heroIcon", "hero.png");
+	icon = core.getMappedName(icon);
 	if (core.material.images.images[icon]) {
 		core.material.images.hero.src = core.material.images.images[icon].src;
+		core.material.icons.hero.width = core.material.images.images[icon].width / 4;
 		core.material.icons.hero.height = core.material.images.images[icon].height / 4;
 	}
 	// 刷新怪物数据
@@ -977,7 +982,12 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 	// TODO：增加自己的一些读档处理
 
 	// 切换到对应的楼层
-	core.changeFloor(data.floorId, null, data.hero.loc, 0, callback, true);
+	core.changeFloor(data.floorId, null, data.hero.loc, 0, function () {
+		// TODO：可以在这里设置读档后播放BGM
+		// if (core.getFlag("bgm", 0)==1) core.playBgm("bgm.mp3");
+
+		if (callback) callback();
+	}, true);
 },
         "updateStatusBar": function () {
 	// 更新状态栏
@@ -1202,10 +1212,16 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 				}
 
 				if (enemyId != null) {
-					var leftHp = core.status.hero.hp - (damage[x + "," + y] || 0);
+					var leftHp = core.status.hero.hp - (damage[loc] || 0);
 					if (leftHp > 1) {
 						// 上整/下整
-						var value = Math.floor((leftHp + (core.flags.betweenAttackCeil ? 0 : 1)) / 2);
+						var value = Math.floor((leftHp + (core.flags.betweenAttackCeil ? 1 : 0)) / 2);
+						// 是否不超过怪物伤害值
+						if (core.flags.betweenAttackMax) {
+							var enemyDamage = core.getDamage(enemyId, x, y, floorId);
+							if (enemyDamage != null && enemyDamage < value)
+								value = enemyDamage;
+						}
 						damage[loc] = (damage[loc] || 0) + value;
 						type[loc] = "夹击伤害";
 					}
@@ -1219,7 +1235,7 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 		type: type,
 		snipe: snipe,
 		ambush: ambush,
-		cache: {}
+		cache: {} // clear cache
 	};
 },
         "moveOneStep": function (x, y) {
