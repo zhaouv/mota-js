@@ -1,3 +1,5 @@
+/// <reference path="../runtime.d.ts" />
+
 /**
  * 初始化 start
  */
@@ -16,17 +18,15 @@ function core() {
         'ground': null,
         'items': {},
         'enemys': {},
-        'icons': {}
+        'icons': {},
     }
     this.timeout = {
-        'tipTimeout': null,
         'turnHeroTimeout': null,
         'onDownTimeout': null,
         'sleepTimeout': null,
     }
     this.interval = {
         'heroMoveInterval': null,
-        "tipAnimate": null,
         'onDownInterval': null,
     }
     this.animateFrame = {
@@ -47,6 +47,7 @@ function core() {
             'data': null,
             'fog': null,
         },
+        "tip": null,
         "asyncId": {}
     }
     this.musicStatus = {
@@ -54,10 +55,12 @@ function core() {
         'bgmStatus': false, // 是否播放BGM
         'soundStatus': true, // 是否播放SE
         'playingBgm': null, // 正在播放的BGM
+        'pauseTime': 0, // 上次暂停的时间
         'lastBgm': null, // 上次播放的bgm
         'gainNode': null,
         'playingSounds': {}, // 正在播放的SE
-        'volume': 1.0, // 音量
+        'userVolume': 1.0, // 用户音量
+        'designVolume': 1.0, //设计音量
         'cachedBgms': [], // 缓存BGM内容
         'cachedBgmCount': 4, // 缓存的bgm数量
     }
@@ -93,7 +96,6 @@ function core() {
         height: this.__SIZE__,
         tempCanvas: null, // A temp canvas for drawing
     }
-    this.paint = {};
     this.saves = {
         "saveIndex": null,
         "ids": {},
@@ -101,6 +103,9 @@ function core() {
             "data": null,
             "time": 0,
             "updated": false,
+            "storage": true, // 是否把自动存档写入文件a
+            "max": 20, // 自动存档最大回退数
+            "now": 0,
         },
         "favorite": [],
         "favoriteName": {}
@@ -111,6 +116,7 @@ function core() {
 
         // 勇士属性
         'hero': {},
+        'heroCenter': {'px': null, 'py': null},
 
         // 当前地图
         'floorId': null,
@@ -170,6 +176,7 @@ function core() {
             'ui': null,
             'interval': null,
         },
+        'autoEvents': [],
         'textAttribute': {
             'position': "center",
             "offset": 0,
@@ -183,9 +190,9 @@ function core() {
         },
         "globalAttribute": {
             'equipName': main.equipName || [],
-            "statusLeftBackground": main.statusLeftBackground || "url(project/images/ground.png) repeat",
-            "statusTopBackground": main.statusTopBackground || "url(project/images/ground.png) repeat",
-            "toolsBackground": main.toolsBackground || "url(project/images/ground.png) repeat",
+            "statusLeftBackground": main.statusLeftBackground || "url(project/materials/ground.png) repeat",
+            "statusTopBackground": main.statusTopBackground || "url(project/materials/ground.png) repeat",
+            "toolsBackground": main.toolsBackground || "url(project/materials/ground.png) repeat",
             "borderColor": main.borderColor || "white",
             "statusBarColor": main.statusBarColor || "white",
             "hardLabelColor": main.hardLabelColor || "red",
@@ -221,7 +228,9 @@ core.prototype.init = function (coreData, callback) {
     this._initPlugins();
 
     core.loader._load(function () {
-        core._afterLoadResources(callback);
+        core.extensions._load(function () {
+            core._afterLoadResources(callback);
+        });
     });
 }
 
@@ -230,29 +239,59 @@ core.prototype._init_flags = function () {
     core.values = core.clone(core.data.values);
     core.firstData = core.clone(core.data.firstData);
     this._init_sys_flags();
+    
+    // 让你总是拼错！
+    window.on = true;
+    window.off = false;
 
-    core.dom.versionLabel.innerHTML = core.firstData.version;
-    core.dom.logoLabel.innerHTML = core.firstData.title;
+    core.dom.versionLabel.innerText = core.firstData.version;
+    core.dom.logoLabel.innerText = core.firstData.title;
     document.title = core.firstData.title + " - HTML5魔塔";
-    document.getElementById("startLogo").innerHTML = core.firstData.title;
+    document.getElementById("startLogo").innerText = core.firstData.title;
     (core.firstData.shops||[]).forEach(function (t) { core.initStatus.shops[t.id] = t; });
+    // 初始化自动事件
+    for (var floorId in core.floors) {
+        var autoEvents = core.floors[floorId].autoEvent || {};
+        for (var loc in autoEvents) {
+            var locs = loc.split(","), x = parseInt(locs[0]), y = parseInt(locs[1]);
+            for (var index in autoEvents[loc]) {
+                var autoEvent = core.clone(autoEvents[loc][index]);
+                if (autoEvent && autoEvent.condition && autoEvent.data) {
+                    autoEvent.floorId = floorId;
+                    autoEvent.x = x;
+                    autoEvent.y = y;
+                    autoEvent.index = index;
+                    autoEvent.symbol = floorId + "@" + x + "@" + y + "@" + index;
+                    autoEvent.condition = core.replaceValue(autoEvent.condition);
+                    autoEvent.data = core.precompile(autoEvent.data);
+                    core.initStatus.autoEvents.push(autoEvent);
+                }
+            }
+        }
+    }
+    core.initStatus.autoEvents.sort(function (e1, e2) {
+        if (e1.priority != e2.priority) return e2.priority - e1.priority;
+        if (e1.floorId != e2.floorId) return core.floorIds.indexOf(e1.floorId) - core.floorIds.indexOf(e2.floorId);
+        if (e1.x != e2.x) return e1.x - e2.x;
+        if (e1.y != e2.y) return e1.y - e2.y;
+        return e1.index - e2.index;
+    })
+
     core.maps._setFloorSize();
     // 初始化怪物、道具等
     core.material.enemys = core.enemys.getEnemys();
     core.material.items = core.items.getItems();
-    core.items._resetItems();
     core.material.icons = core.icons.getIcons();
 }
 
 core.prototype._init_sys_flags = function () {
-    if (!core.flags.enableExperience) core.flags.enableLevelUp = false;
-    if (!core.flags.enableLevelUp) core.flags.levelUpLeftMode = false;
     if (core.flags.equipboxButton) core.flags.equipment = true;
     core.flags.displayEnemyDamage = core.getLocalStorage('enemyDamage', core.flags.displayEnemyDamage);
     core.flags.displayCritical = core.getLocalStorage('critical', core.flags.displayCritical);
     core.flags.displayExtraDamage = core.getLocalStorage('extraDamage', core.flags.displayExtraDamage);
     // 行走速度
-    core.values.moveSpeed = core.getLocalStorage('moveSpeed', core.values.moveSpeed);
+    core.values.moveSpeed = core.getLocalStorage('moveSpeed', 100);
+    core.values.floorChangeTime = core.getLocalStorage('floorChangeTime', 500);
 }
 
 core.prototype._init_platform = function () {
@@ -269,6 +308,8 @@ core.prototype._init_platform = function () {
     }
     core.musicStatus.bgmStatus = core.getLocalStorage('bgmStatus', true);
     core.musicStatus.soundStatus = core.getLocalStorage('soundStatus', true);
+    //新增 userVolume 默认值1.0
+    core.musicStatus.userVolume = core.getLocalStorage('userVolume', 1.0);
     ["Android", "iPhone", "SymbianOS", "Windows Phone", "iPad", "iPod"].forEach(function (t) {
         if (navigator.userAgent.indexOf(t) >= 0) {
             if (t == 'iPhone' || t == 'iPad' || t == 'iPod') core.platform.isIOS = true;
@@ -333,8 +374,8 @@ core.prototype._init_others = function () {
     core.material.groundCanvas.canvas.width = core.material.groundCanvas.canvas.height = 32;
     core.material.groundPattern = core.material.groundCanvas.createPattern(core.material.groundCanvas.canvas, 'repeat');
     core.bigmap.tempCanvas = document.createElement('canvas').getContext('2d');
-    core.loadImage('fog', function (name, img) { core.animateFrame.weather.fog = img; });
-    core.loadImage('keyboard', function (name, img) {core.material.images.keyboard = img; });
+    core.loadImage("materials", 'fog', function (name, img) { core.animateFrame.weather.fog = img; });
+    core.loadImage("materials", 'keyboard', function (name, img) {core.material.images.keyboard = img; });
     // 记录存档编号
     core.saves.saveIndex = core.getLocalStorage('saveIndex', 1);
     core.control.getSaveIndexes(function (indexes) { core.saves.ids = indexes; });

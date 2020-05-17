@@ -7,7 +7,7 @@
 .leftTab {
     overflow: auto;
     position: absolute;
-    height: 630px;
+    bottom: 0;
 }
 
 .leftTab > * {
@@ -121,6 +121,7 @@
     display: block;
     width: 100%;
     overflow: auto;
+    word-break: break-all;
 }
 
 .etable table th {
@@ -129,7 +130,7 @@
 
 .etable table th,
 .etable table td {
-    padding: 6px 13px;
+    padding: 5px;
     border: 1px solid #dfe2e5;
 }
 
@@ -157,14 +158,19 @@
 }
 
 .etable tr > :nth-child(3) {
-    width: 60%
+    width: 35%;
+}
+
+.etable tr > :nth-child(4) {
+    width: 25%;
+    padding: 0;
 }
 
 .etable table {
     overflow: visible;
 }
 
-.etable tr:not(:first-child) > :last-child:hover {
+.etable tr:not(:first-child) > :nth-child(3):hover {
     border: 1px solid rgb(87, 198, 232);
     box-shadow: 0px 0px 3px rgb(87, 198, 232);
 }
@@ -175,12 +181,15 @@
     box-shadow: 0px 0px 3px rgb(87, 232, 198);
 }
 
-.etable tr:not(:first-child) > :last-child {
+.etable tr:not(:first-child) > :nth-child(3) {
     margin: 0;
     padding: 0;
     height: 100%;
-    width: 100%;
     position: relative;
+}
+
+.etable tr > :nth-child(4) {
+    text-align: center;
 }
 
 div.etableInputDiv {
@@ -192,6 +201,12 @@ div.etableInputDiv {
     right: 0;
 }
 
+div.checkboxSet {
+    position: relative !important;
+    max-height: 250px;
+    overflow: auto;
+}
+
 .etableInputDiv > * {
     margin: 0;
     padding: 0;
@@ -201,11 +216,7 @@ div.etableInputDiv {
     border: none;
 }
 
-.etableInputDiv input[type="text"] {
-
-}
-
-.etableInputDiv input[type="checkbox"] {
+.etableInputDiv .checkbox {
     width: 16px;
     height: 16px;
     position: absolute;
@@ -215,8 +226,10 @@ div.etableInputDiv {
     margin-top: -8px;
 }
 
-.etableInputDiv select {
-
+.etableInputDiv .checkboxSetMember {
+    width: 16px;
+    height: 16px;
+    display: inline-block;
 }
 
 .etableInputDiv textarea {

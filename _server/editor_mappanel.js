@@ -45,9 +45,10 @@ editor_mappanel_wrapper = function (editor) {
      * 双击地图可以选中素材
      */
     editor.uifunctions.map_doubleClick = function (e) {
+        if (editor.uivalues.bindSpecialDoor.loc != null) return;
         var loc = editor.uifunctions.eToLoc(e);
         var pos = editor.uifunctions.locToPos(loc, true);
-        editor.setSelectBoxFromInfo(editor[editor.layerMod][pos.y][pos.x]);
+        editor.setSelectBoxFromInfo(editor[editor.layerMod][pos.y][pos.x], true);
         return;
     }
 
@@ -68,6 +69,7 @@ editor_mappanel_wrapper = function (editor) {
 
     /**
      * editor.dom.eui.onmousedown
+     * + 绑定机关门事件的选择怪物
      * + 右键进入菜单
      * + 非绘图时选中
      * + 绘图时画个矩形在那个位置
@@ -75,6 +77,18 @@ editor_mappanel_wrapper = function (editor) {
     editor.uifunctions.map_ondown = function (e) {
         var loc = editor.uifunctions.eToLoc(e);
         var pos = editor.uifunctions.locToPos(loc, true);
+        if (editor.uivalues.bindSpecialDoor.loc != null) {
+            var x = editor.pos.x, y = editor.pos.y, id = (editor.map[y][x] || {}).id;
+            // 检测是否是怪物
+            if (id && editor.game.getEnemy(id)) {
+                var locstr = x + "," + y, index = editor.uivalues.bindSpecialDoor.enemys.indexOf(locstr);
+                if (index >= 0) editor.uivalues.bindSpecialDoor.enemys.splice(index, 1);
+                else editor.uivalues.bindSpecialDoor.enemys.push(locstr);
+                editor.drawEventBlock();
+                editor.uifunctions._extraEvent_bindSpecialDoor_doAction();
+            }
+            return false;
+        }
         if (e.button == 2) {
             editor.uifunctions.showMidMenu(e.clientX, e.clientY);
             return false;
@@ -98,7 +112,7 @@ editor_mappanel_wrapper = function (editor) {
         editor.dom.euiCtx.clearRect(0, 0, core.__PIXELS__, core.__PIXELS__);
         editor.uivalues.stepPostfix = [];
         editor.uivalues.stepPostfix.push(pos);
-        editor.uifunctions.fillPos(pos);
+        if (editor.brushMod == 'line') editor.uifunctions.fillPos(pos);
         return false;
     }
 
@@ -154,8 +168,21 @@ editor_mappanel_wrapper = function (editor) {
         if (pos) {
             pos.x += pos0.x;
             pos.y += pos0.y;
+            if (editor.brushMod == 'line') editor.uifunctions.fillPos(pos);
+            else {
+                var x0 = editor.uivalues.stepPostfix[0].x;
+                var y0 = editor.uivalues.stepPostfix[0].y;
+                var x1 = pos.x;
+                var y1 = pos.y;
+                if (x0 > x1) { x0 ^= x1; x1 ^= x0; x0 ^= x1; }//swap
+                if (y0 > y1) { y0 ^= y1; y1 ^= y0; y0 ^= y1; }//swap
+                // draw rect
+                editor.dom.euiCtx.clearRect(0, 0, editor.dom.euiCtx.canvas.width, editor.dom.euiCtx.canvas.height);
+                editor.dom.euiCtx.fillStyle = 'rgba(0, 127, 255, 0.4)';
+                editor.dom.euiCtx.fillRect(32 * x0 - core.bigmap.offsetX, 32 * y0 - core.bigmap.offsetY,
+                    32 * (x1 - x0) + 32, 32 * (y1 - y0) + 32);
+            }
             editor.uivalues.stepPostfix.push(pos);
-            editor.uifunctions.fillPos(pos);
         }
         return false;
     }
@@ -179,7 +206,7 @@ editor_mappanel_wrapper = function (editor) {
         }
         editor.uivalues.holdingPath = 0;
         if (editor.uivalues.stepPostfix && editor.uivalues.stepPostfix.length) {
-            editor.uivalues.preMapData = JSON.parse(JSON.stringify({ map: editor.map, fgmap: editor.fgmap, bgmap: editor.bgmap }));
+            editor.savePreMap();
             if (editor.brushMod !== 'line') {
                 var x0 = editor.uivalues.stepPostfix[0].x;
                 var y0 = editor.uivalues.stepPostfix[0].y;
@@ -194,11 +221,20 @@ editor_mappanel_wrapper = function (editor) {
                     }
                 }
             }
-            editor.uivalues.currDrawData.pos = JSON.parse(JSON.stringify(editor.uivalues.stepPostfix));
-            editor.uivalues.currDrawData.info = JSON.parse(JSON.stringify(editor.info));
-            editor.uivalues.reDo = null;
-            // console.log(editor.uivalues.stepPostfix);
-            if (editor.brushMod === 'tileset' && core.tilesets.indexOf(editor.info.images) !== -1) {
+            var useBrushMode = editor.brushMod == 'tileset';
+            if (editor.uivalues.stepPostfix.length == 1 && (editor.uivalues.tileSize[0] > 1 || editor.uivalues.tileSize[1] > 1)) {
+                useBrushMode = true;
+                var x0 = editor.uivalues.stepPostfix[0].x;
+                var y0 = editor.uivalues.stepPostfix[0].y;
+                editor.uivalues.stepPostfix = [];
+                for (var jj = y0; jj < y0 + editor.uivalues.tileSize[1]; ++jj) {
+                    for (var ii = x0; ii < x0 + editor.uivalues.tileSize[0]; ++ii) {
+                        if (jj >= editor[editor.layerMod].length || ii >= editor[editor.layerMod][0].length) continue;
+                        editor.uivalues.stepPostfix.push({ x: ii, y: jj });
+                    }
+                }
+            }
+            if (useBrushMode && core.tilesets.indexOf(editor.info.images) !== -1) {
                 var imgWidth = ~~(core.material.images.tilesets[editor.info.images].width / 32);
                 var x0 = editor.uivalues.stepPostfix[0].x;
                 var y0 = editor.uivalues.stepPostfix[0].y;
@@ -211,16 +247,51 @@ editor_mappanel_wrapper = function (editor) {
                     editor[editor.layerMod][editor.uivalues.stepPostfix[ii].y][editor.uivalues.stepPostfix[ii].x] = editor.ids[editor.indexs[idnum + editor.uivalues.stepPostfix[ii].x - x0]];
                 }
             } else {
+                // 检测是否是填充模式
+                if (editor.uivalues.stepPostfix.length == 1 && editor.brushMod == 'fill') {
+                    editor.uivalues.stepPostfix = editor.uifunctions._fillMode_bfs(editor[editor.layerMod], editor.uivalues.stepPostfix[0].x, editor.uivalues.stepPostfix[0].y,
+                        editor[editor.layerMod][0].length, editor[editor.layerMod].length);
+                } 
                 for (var ii = 0; ii < editor.uivalues.stepPostfix.length; ii++)
                     editor[editor.layerMod][editor.uivalues.stepPostfix[ii].y][editor.uivalues.stepPostfix[ii].x] = editor.info;
             }
             // console.log(editor.map);
+            if (editor.info.y != null) {
+                editor.uivalues.lastUsed = [editor.info].concat(editor.uivalues.lastUsed.filter(function (e) { return e.id != editor.info.id}));
+                editor.config.set("lastUsed", editor.uivalues.lastUsed);
+            }
             editor.updateMap();
             editor.uivalues.holdingPath = 0;
             editor.uivalues.stepPostfix = [];
             editor.dom.euiCtx.clearRect(0, 0, core.__PIXELS__, core.__PIXELS__);
         }
         return false;
+    }
+
+    /**
+     * bfs找寻和某点相连的全部相同图块坐标
+     */
+    editor.uifunctions._fillMode_bfs = function (array, x, y, maxWidth, maxHeight) {
+        var _getNumber = function (x, y) {
+            if (x<0 || y<0 || x>=maxWidth || y>=maxHeight) return null;
+            return array[y][x].idnum || array[y][x] || 0;
+        }
+        var number = _getNumber(x, y) || 0;
+        var visited = {}, result = [];
+        var list = [{x:x, y:y}];
+        while (list.length != 0) {
+            var next = list.shift(), key = next.x+","+next.y;
+            if (visited[key]) continue;
+            visited[key] = true;
+            result.push(next);
+            [[-1,0],[1,0],[0,-1],[0,1]].forEach(function (dir) {
+                var nx = next.x + dir[0], ny = next.y + dir[1];
+                if (_getNumber(nx, ny) == number) {
+                    list.push({x: nx, y: ny});
+                }
+            });
+        }
+        return result;
     }
 
     /**
@@ -271,19 +342,37 @@ editor_mappanel_wrapper = function (editor) {
 
         // 检测是否是上下楼
         var thisevent = editor.map[editor.pos.y][editor.pos.x];
-        if (thisevent.id == 'upFloor') {
-            editor.dom.addFloorEvent.style.display = 'block';
-            editor.dom.addFloorEvent.children[0].innerHTML = '绑定上楼事件';
+        var extraEvent = editor.dom.extraEvent, parent = extraEvent.parentElement;
+        if (thisevent == 0) {
+            parent.removeChild(extraEvent);
+            parent.appendChild(extraEvent);
+            editor.dom.extraEvent.style.display = 'block';
+            editor.dom.extraEvent.children[0].innerHTML = '绑定出生点为此点';
+        } else if (thisevent.id == 'upFloor') {
+            parent.removeChild(extraEvent);
+            parent.insertBefore(extraEvent, parent.firstChild);
+            editor.dom.extraEvent.style.display = 'block';
+            editor.dom.extraEvent.children[0].innerHTML = '绑定上楼事件';
         }
         else if (thisevent.id == 'downFloor') {
-            editor.dom.addFloorEvent.style.display = 'block';
-            editor.dom.addFloorEvent.children[0].innerHTML = '绑定下楼事件';
+            parent.removeChild(extraEvent);
+            parent.insertBefore(extraEvent, parent.firstChild);
+            editor.dom.extraEvent.style.display = 'block';
+            editor.dom.extraEvent.children[0].innerHTML = '绑定下楼事件';
         }
         else if (['leftPortal', 'rightPortal', 'downPortal', 'upPortal'].indexOf(thisevent.id) >= 0) {
-            editor.dom.addFloorEvent.style.display = 'block';
-            editor.dom.addFloorEvent.children[0].innerHTML = '绑定楼传事件';
+            parent.removeChild(extraEvent);
+            parent.insertBefore(extraEvent, parent.firstChild);
+            editor.dom.extraEvent.style.display = 'block';
+            editor.dom.extraEvent.children[0].innerHTML = '绑定楼传事件';
         }
-        else editor.dom.addFloorEvent.style.display = 'none';
+        else if (thisevent.id == 'specialDoor') {
+            parent.removeChild(extraEvent);
+            parent.insertBefore(extraEvent, parent.firstChild);
+            editor.dom.extraEvent.style.display = 'block';
+            editor.dom.extraEvent.children[0].innerHTML = '绑定机关门事件';
+        } 
+        else editor.dom.extraEvent.style.display = 'none';
 
         editor.dom.chooseThis.children[0].innerHTML = '选中此点' + '(' + editor.pos.x + ',' + editor.pos.y + ')'
         editor.dom.copyLoc.children[0].innerHTML = '复制事件' + locStr + '到此处';
@@ -305,13 +394,45 @@ editor_mappanel_wrapper = function (editor) {
     }
 
     /**
-     * editor.dom.addFloorEvent.onmousedown
-     * 菜单 添加上下楼事件
+     * editor.dom.extraEvent.onmousedown
+     * 菜单 附加点操作
      */
-    editor.addFloorEvent_click = function (e) {
+    editor.uifunctions.extraEvent_click = function (e) {
         editor.uifunctions.hideMidMenu();
         e.stopPropagation();
+
         var thisevent = editor.map[editor.pos.y][editor.pos.x];
+        return editor.uifunctions._extraEvent_bindStartPoint(thisevent)
+            || editor.uifunctions._extraEvent_bindStair(thisevent)
+            || editor.uifunctions._extraEvent_bindSpecialDoor(thisevent);
+    }
+
+    /**
+     * 绑定该空地点为起始点
+     */
+    editor.uifunctions._extraEvent_bindStartPoint = function (thisevent) {
+        if (thisevent != 0) return false;
+        editor.mode.onmode('tower');
+        editor.mode.addAction(["change", "['firstData']['floorId']", editor.currentFloorId]);
+        editor.mode.addAction(["change", "['firstData']['hero']['loc']['x']", editor.pos.x]);
+        editor.mode.addAction(["change", "['firstData']['hero']['loc']['y']", editor.pos.y]);
+        editor.mode.onmode('save', function () {
+            core.firstData.floorId = editor.currentFloorId;
+            core.firstData.hero.loc.x = editor.pos.x;
+            core.firstData.hero.loc.y = editor.pos.y;
+            editor.drawPosSelection();
+            editor.drawEventBlock();
+            editor.mode.tower();
+            printf('绑定初始点成功');
+        });
+    }
+
+    /**
+     * 绑定该楼梯的楼传事件
+     */
+    editor.uifunctions._extraEvent_bindStair = function (thisevent) {
+        if (['upFloor', 'downFloor', 'leftPortal', 'rightPortal', 'upPortal', 'downPortal'].indexOf(thisevent.id) < 0)
+            return false;
         var loc = editor.pos.x + "," + editor.pos.y;
         if (thisevent.id == 'upFloor') {
             editor.currentFloorData.changeFloor[loc] = { "floorId": ":next", "stair": "downFloor" };
@@ -331,9 +452,73 @@ editor_mappanel_wrapper = function (editor) {
                 throw (err)
             }
             editor.drawPosSelection();
+            editor.drawEventBlock();
             editor_mode.showMode('loc');
             printf('添加楼梯事件成功');
         });
+        return true;
+    }
+
+    /**
+     * 绑定该机关门的事件
+     */
+    editor.uifunctions._extraEvent_bindSpecialDoor = function (thisevent) {
+        if (thisevent.id != 'specialDoor') return false;
+        var number = parseInt(prompt("请输入该机关门的怪物数量", "0"))|| 0;
+        if (number <= 0) return true;
+        editor.uivalues.bindSpecialDoor.n = number;
+        editor.uivalues.bindSpecialDoor.loc = editor.pos.x + ',' + editor.pos.y;
+        editor.uivalues.bindSpecialDoor.enemys = [];
+        printf("请点击选择" + number + "个怪物；切换楼层或刷新页面取消操作。");
+    }
+
+    /**
+     * 确定绑定该机关门的事件
+     * cancel：是否取消此模式
+     */
+    editor.uifunctions._extraEvent_bindSpecialDoor_doAction = function (cancel) {
+        var bindSpecialDoor = editor.uivalues.bindSpecialDoor;
+        if (cancel) {
+            bindSpecialDoor.loc = null;
+            bindSpecialDoor.enemys = [];
+            bindSpecialDoor.n = 0;
+            editor.drawEventBlock();
+            printf("");
+            return;
+        }
+        if (bindSpecialDoor.loc == null || bindSpecialDoor.enemys.length != bindSpecialDoor.n) return;
+        // 添加机关门自动事件
+        var doorFlag = "flag:door_" + editor.currentFloorId + "_" + bindSpecialDoor.loc.replace(',', '_');
+        editor.currentFloorData.autoEvent[bindSpecialDoor.loc] = {
+            '0': {
+                "condition": doorFlag + "==" + bindSpecialDoor.n,
+                "currentFloor": true,
+                "priority": 0,
+                "delayExecute": false,
+                "multiExecute": false,
+                "data": [
+                    {"type": "openDoor"}
+                ]
+            }
+        };
+        bindSpecialDoor.enemys.forEach(function (loc) {
+            editor.currentFloorData.afterBattle[loc] = [
+                {"type": "setValue", "name": doorFlag, "operator": "+=", "value": "1"}
+            ]
+        });
+        editor.file.saveFloorFile(function (err) {
+            if (err) {
+                printe(err);
+                throw (err)
+            }
+            editor.drawEventBlock();
+            editor.drawPosSelection();
+            editor_mode.showMode('loc');
+            printf('绑定机关门事件成功');
+        });
+        bindSpecialDoor.loc = null;
+        bindSpecialDoor.enemys = [];
+        bindSpecialDoor.n = 0;
     }
 
     /**
@@ -360,7 +545,7 @@ editor_mappanel_wrapper = function (editor) {
         editor.uifunctions.hideMidMenu();
         e.stopPropagation();
         var thisevent = editor[editor.layerMod][editor.pos.y][editor.pos.x];
-        editor.setSelectBoxFromInfo(thisevent);
+        editor.setSelectBoxFromInfo(thisevent, true);
     }
 
     /**
@@ -370,8 +555,7 @@ editor_mappanel_wrapper = function (editor) {
     editor.uifunctions.copyLoc_click = function (e) {
         editor.uifunctions.hideMidMenu();
         e.stopPropagation();
-        editor.uivalues.preMapData = null;
-        editor.uivalues.reDo = null;
+        editor.savePreMap();
         editor_mode.onmode('');
         var now = editor.pos, last = editor.uivalues.lastRightButtonPos[1];
         if (now.x == last.x && now.y == last.y) return;
@@ -394,8 +578,7 @@ editor_mappanel_wrapper = function (editor) {
     editor.uifunctions.moveLoc_click = function (e) {
         editor.uifunctions.hideMidMenu();
         e.stopPropagation();
-        editor.uivalues.preMapData = null;
-        editor.uivalues.reDo = null;
+        editor.savePreMap();
         editor_mode.onmode('');
         editor.exchangePos(editor.pos, editor.uivalues.lastRightButtonPos[1]);
     }
@@ -406,7 +589,6 @@ editor_mappanel_wrapper = function (editor) {
      */
     editor.uifunctions.clearEvent_click = function (e) {
         e.stopPropagation();
-        editor.uivalues.reDo = null;
         editor.clearPos(false);
     }
 
@@ -416,8 +598,17 @@ editor_mappanel_wrapper = function (editor) {
      */
     editor.uifunctions.clearLoc_click = function (e) {
         e.stopPropagation();
-        editor.uivalues.reDo = null;
         editor.clearPos(true);
+    }
+
+    /**
+     * editor.dom.lockMode.onchange
+     * 点击【】
+     */
+    editor.uifunctions.lockMode_onchange = function () {
+        tip.msgs[11] = String('锁定模式开启下将不再点击空白处自动保存，请谨慎操作。');
+        tip.whichShow(12);
+        editor.uivalues.lockMode = editor.dom.lockMode.checked;
     }
 
     /**
@@ -426,6 +617,11 @@ editor_mappanel_wrapper = function (editor) {
      */
     editor.uifunctions.brushMod_onchange = function () {
         editor.brushMod = editor.dom.brushMod.value;
+        if (editor.brushMod == 'fill') {
+            tip.isSelectedBlock(false);
+            tip.msgs[11] = String('填充模式下，将会用选中的素材替换所有和目标点联通的相同素材');
+            tip.whichShow(12);
+        }
     }
 
     /**
@@ -441,11 +637,22 @@ editor_mappanel_wrapper = function (editor) {
      * 切换画笔模式
      */
     editor.uifunctions.brushMod3_onchange = function () {
+        if (!editor.config.get('alertTileMode') &&
+            !confirm("从V2.6.6开始，tileset贴图模式已被废弃。\n请右键额外素材，并输入所需要绘制的宽高，然后单击地图以绘制一个区域。\n\n点取消将不再显示此提示。")) {
+            editor.config.set('alertTileMode', true);
+        }
         // tip.showHelp(5)
         tip.isSelectedBlock(false)
         tip.msgs[11] = String('tileset贴图模式下可以按选中tileset素材，并在地图上拖动来一次绘制一个区域');
         tip.whichShow(12);
         editor.brushMod = editor.dom.brushMod3.value;
+    }
+
+    editor.uifunctions.brushMod4_onchange = function () {
+        tip.isSelectedBlock(false);
+        tip.msgs[11] = String('填充模式下，将会用选中的素材替换所有和目标点联通的相同素材');
+        tip.whichShow(12);
+        editor.brushMod = editor.dom.brushMod4.value;
     }
 
     /**
@@ -564,7 +771,27 @@ editor_mappanel_wrapper = function (editor) {
         saveFloor.onclick = editor_mode.saveFloor;
     }
 
+    editor.uifunctions.lastUsed_click = function (e) {
+        if (editor.isMobile) return;
 
+        var scrollLeft = document.documentElement.scrollLeft || document.body.scrollLeft
+        var scrollTop = document.documentElement.scrollTop || document.body.scrollTop
+        var px = scrollLeft + e.clientX - editor.dom.mid2.offsetLeft - editor.dom.lastUsedDiv.offsetLeft,
+            py = scrollTop + e.clientY - editor.dom.mid2.offsetTop - editor.dom.lastUsedDiv.offsetTop;
+        var x = parseInt(px / 32), y = parseInt(py / 32);
+        var index = x + core.__SIZE__ * y;
+        if (index >= editor.uivalues.lastUsed.length) return;
+        editor.setSelectBoxFromInfo(editor.uivalues.lastUsed[index]);
+        return;
+    }
+
+    editor.uifunctions.clearLastUsedBtn_click = function () {
+        if (editor.isMobile) return;
+
+        editor.uivalues.lastUsed = [];
+        editor.config.set('lastUsed', []);
+        editor.updateLastUsedMap();
+    }
 
     /////////////////////////////////////////////////////////////////////////////
 
@@ -627,6 +854,21 @@ editor_mappanel_wrapper = function (editor) {
             if (callback) callback();
         });
     }
+
+    editor.constructor.prototype.savePreMap = function () {
+        var dt = {
+            map: editor.map,
+            fgmap: editor.fgmap,
+            bgmap: editor.bgmap,
+        };
+        if (editor.uivalues.preMapData.length == 0
+            || !core.same(editor.uivalues.preMapData[editor.uivalues.preMapData.length - 1], dt)) {
+            editor.uivalues.preMapData.push(core.clone(dt));
+            if (editor.uivalues.preMapData.length > editor.uivalues.preMapMax) {
+                editor.uivalues.preMapData.shift();
+            }
+        }
+    }
     
     editor.constructor.prototype.moveBgFg = function (startPos, endPos, name, callback) {
         if (!startPos || !endPos || ["bgmap","fgmap"].indexOf(name)<0) return;
@@ -668,7 +910,7 @@ editor_mappanel_wrapper = function (editor) {
         var fields = Object.keys(editor.file.comment._data.floors._data.loc._data);
         pos = pos || editor.pos;
         editor.uifunctions.hideMidMenu();
-        editor.uivalues.preMapData = null;
+        editor.savePreMap();
         editor.info = 0;
         editor_mode.onmode('');
         if (clearPos)
@@ -687,9 +929,6 @@ editor_mappanel_wrapper = function (editor) {
             if (callback) callback();
         });
     }
-
-
-
 
 
 

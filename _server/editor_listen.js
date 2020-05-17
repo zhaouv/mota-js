@@ -15,17 +15,18 @@ editor_listen_wrapper = function (editor) {
 
         editor.dom.mid.onmousewheel = editor.uifunctions.map_mousewheel
 
-        editor.uivalues.shortcut = core.getLocalStorage('shortcut', { 48: 0, 49: 0, 50: 0, 51: 0, 52: 0, 53: 0, 54: 0, 55: 0, 56: 0, 57: 0 });
+        editor.uivalues.shortcut = editor.config.get('shortcut', { 48: 0, 49: 0, 50: 0, 51: 0, 52: 0, 53: 0, 54: 0, 55: 0, 56: 0, 57: 0 });
         editor.dom.body.onkeydown = editor.uifunctions.body_shortcut
 
         editor.uivalues.scrollBarHeight = editor.uifunctions.getScrollBarHeight();
         editor.dom.iconExpandBtn.style.display = 'block';
-        editor.dom.iconExpandBtn.innerText = editor.uivalues.folded ? "展开" : "折叠";
+        editor.dom.iconExpandBtn.innerText = editor.uivalues.folded ? "展开素材区" : "折叠素材区";
         editor.dom.iconExpandBtn.onclick = editor.uifunctions.fold_material_click
 
         editor.dom.iconLib.onmousedown = editor.uifunctions.material_ondown
+        editor.dom.iconLib.oncontextmenu = function (e) { e.preventDefault() }
 
-        editor.dom.addFloorEvent.onmousedown = editor.addFloorEvent_click
+        editor.dom.extraEvent.onmousedown = editor.uifunctions.extraEvent_click
         editor.dom.chooseThis.onmousedown = editor.uifunctions.chooseThis_click
         editor.dom.chooseInRight.onmousedown = editor.uifunctions.chooseInRight_click
         editor.dom.copyLoc.onmousedown = editor.uifunctions.copyLoc_click
@@ -33,9 +34,14 @@ editor_listen_wrapper = function (editor) {
         editor.dom.clearEvent.onmousedown = editor.uifunctions.clearEvent_click
         editor.dom.clearLoc.onmousedown = editor.uifunctions.clearLoc_click
 
+        editor.dom.lastUsed.onmousedown = editor.uifunctions.lastUsed_click;
+        editor.dom.clearLastUsedBtn.onclick = editor.uifunctions.clearLastUsedBtn_click;
+        editor.dom.lockMode.onchange = editor.uifunctions.lockMode_onchange;
+
         editor.dom.brushMod.onchange = editor.uifunctions.brushMod_onchange
         if (editor.dom.brushMod2) editor.dom.brushMod2.onchange = editor.uifunctions.brushMod2_onchange;
         if (editor.dom.brushMod3) editor.dom.brushMod3.onchange = editor.uifunctions.brushMod3_onchange;
+        if (editor.dom.brushMod4) editor.dom.brushMod4.onchange = editor.uifunctions.brushMod4_onchange;
 
         editor.dom.layerMod.onchange = editor.uifunctions.layerMod_onchange
         if (editor.dom.layerMod2) editor.dom.layerMod2.onchange = editor.uifunctions.layerMod2_onchange;
@@ -50,13 +56,13 @@ editor_listen_wrapper = function (editor) {
         var mobileview = document.getElementById('mobileview');
         var mid = document.getElementById('mid');
         var right = document.getElementById('right');
-        var mobileeditdata = document.getElementById('mobileeditdata');
+        // var mobileeditdata = document.getElementById('mobileeditdata');
 
 
         editor.showdataarea = function (callShowMode) {
             mid.style = 'z-index:-1;opacity: 0;';
             right.style = 'z-index:-1;opacity: 0;';
-            mobileeditdata.style = '';
+            // mobileeditdata.style = '';
             if (callShowMode) editor.mode.showMode(editor.dom.editModeSelect.value);
             editor.uifunctions.hideMidMenu();
         }
@@ -66,17 +72,17 @@ editor_listen_wrapper = function (editor) {
         mobileview.children[1].onclick = function () {
             mid.style = '';
             right.style = 'z-index:-1;opacity: 0;';
-            mobileeditdata.style = 'z-index:-1;opacity: 0;';
+            // mobileeditdata.style = 'z-index:-1;opacity: 0;';
             editor.lastClickId = '';
         }
         mobileview.children[3].onclick = function () {
             mid.style = 'z-index:-1;opacity: 0;';
             right.style = '';
-            mobileeditdata.style = 'z-index:-1;opacity: 0;';
+            // mobileeditdata.style = 'z-index:-1;opacity: 0;';
             editor.lastClickId = '';
         }
 
-
+        /*
         var gettrbyid = function () {
             if (!editor.lastClickId) return false;
             thisTr = document.getElementById(editor.lastClickId);
@@ -100,6 +106,7 @@ editor_listen_wrapper = function (editor) {
             if (!info) return;
             printf(info[0].children[1].getAttribute('title'))
         }
+        */
 
         //=====
 
@@ -132,6 +139,7 @@ editor_listen_wrapper = function (editor) {
 
         editor.uifunctions.newIdIdnum_func()
         editor.uifunctions.changeId_func()
+        editor.uifunctions.copyPasteEnemyItem_func();
 
         editor.uifunctions.selectFloor_func()
         editor.uifunctions.saveFloor_func()
@@ -141,6 +149,7 @@ editor_listen_wrapper = function (editor) {
         editor.uifunctions.createNewMaps_func()
 
         editor.uifunctions.changeFloorId_func()
+        editor.uifunctions.changeFloorSize_func()
 
         editor.uifunctions.fixCtx_func()
 

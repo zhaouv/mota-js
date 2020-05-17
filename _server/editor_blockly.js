@@ -38,18 +38,23 @@ editor_blockly = function () {
       },'autoEvent'),
       MotaActionBlocks['changeFloor_m'].xmlText(),
       MotaActionFunctions.actionParser.parse([{
-        "id": "moneyShop1",
-        "name": "贪婪之神", 
-        "icon": "blueShop",
-        "textInList": "1F金币商店", 
-        "use": "money",
-        "need": "20+10*times*(times+1)",  
-        "text": "勇敢的武士啊，给我\\\${need}金币就可以：", 
+        "id": "shop1",
+        "text": "\t[贪婪之神,blueShop]勇敢的武士啊, 给我\${20+2*flag:shop1}金币就可以：", 
+        "textInList": "1F金币商店",  
         "choices": [ 
-          {"text": "生命+800", "effect": "status:hp+=800"},
-          {"text": "攻击+4", "effect": "status:atk+=4"},
-          {"text": "防御+4", "effect": "status:def+=4"},
-          {"text": "魔防+10", "effect": "status:mdef+=10"}
+          {"text": "生命+800", "need": "status:money>=20+2*flag:shop1", "action": [
+            {"type": "comment", "text": "新版商店中需要手动扣减金币和增加访问次数"},
+            {"type": "setValue", "name": "status:money", "operator": "-=", "value": "20+2*flag:shop1"},
+            {"type": "setValue", "name": "flag:shop1", "operator": "+=", "value": "1"},
+            {"type": "setValue", "name": "status:hp", "operator": "+=", "value": "800"}
+          ]}
+        ]
+      },{
+        "id": "itemShop",
+        "item": true,
+        "textInList": "道具商店",
+        "choices": [
+          {"id": "yellowKey", "number": 10, "money": 10}
         ]
       },{
         "id": "keyShop1",
@@ -64,6 +69,7 @@ editor_blockly = function () {
       MotaActionBlocks['eachArrive_m'].xmlText(),
       MotaActionBlocks['level_m'].xmlText(),
       MotaActionBlocks['commonEvent_m'].xmlText(),
+      MotaActionBlocks['item_m'].xmlText(),
     ],
     '显示文字':[
       MotaActionBlocks['text_0_s'].xmlText(),
@@ -77,29 +83,23 @@ editor_blockly = function () {
       MotaActionBlocks['hideImage_s'].xmlText(),
       MotaActionBlocks['showTextImage_s'].xmlText(),
       MotaActionBlocks['moveImage_s'].xmlText(),
-      MotaActionBlocks['showGif_0_s'].xmlText(),
-      MotaActionBlocks['showGif_1_s'].xmlText(),
+      MotaActionBlocks['showGif_s'].xmlText(),
       MotaActionBlocks['tip_s'].xmlText(),
       MotaActionBlocks['win_s'].xmlText(),
       MotaActionBlocks['lose_s'].xmlText(),
       MotaActionBlocks['restart_s'].xmlText(),
       MotaActionBlocks['confirm_s'].xmlText(),
       MotaActionBlocks['choices_s'].xmlText([
-        '选择剑或者盾','流浪者','man',MotaActionBlocks['choicesContext'].xmlText([
+        '选择剑或者盾','流浪者','man',0,MotaActionBlocks['choicesContext'].xmlText([
           '剑','','',null,'',MotaActionFunctions.actionParser.parseList([{"type": "openDoor", "loc": [3,3]}]),
-          MotaActionBlocks['choicesContext'].xmlText([
-            '盾','','',null,'',MotaActionFunctions.actionParser.parseList([{"type": "openDoor", "loc": [9,3]}]),
-          ])
         ])
       ]),
     ],
     '数据相关':[
       MotaActionBlocks['setValue_s'].xmlText([
-        MotaActionBlocks['idString_1_e'].xmlText(['status','hp'])
+        MotaActionBlocks['idIdList_e'].xmlText(['status','生命']), '=', '', false
       ]),
-      MotaActionBlocks['addValue_s'].xmlText([
-        MotaActionBlocks['idString_1_e'].xmlText(['status','hp'])
-      ]),
+      MotaActionBlocks['setEnemy_s'].xmlText(),
       MotaActionBlocks['setFloor_s'].xmlText(),
       MotaActionBlocks['setGlobalAttribute_s'].xmlText(),
       MotaActionBlocks['setGlobalValue_s'].xmlText(),
@@ -107,14 +107,15 @@ editor_blockly = function () {
       MotaActionBlocks['input_s'].xmlText(),
       MotaActionBlocks['input2_s'].xmlText(),
       MotaActionBlocks['update_s'].xmlText(),
-      MotaActionBlocks['updateEnemys_s'].xmlText(),
+      MotaActionBlocks['moveAction_s'].xmlText(),
       MotaActionBlocks['moveHero_s'].xmlText(),
       MotaActionBlocks['jumpHero_s'].xmlText(),
       MotaActionBlocks['changeFloor_s'].xmlText(),
-      MotaActionBlocks['changePos_0_s'].xmlText(),
-      MotaActionBlocks['changePos_1_s'].xmlText(),
+      MotaActionBlocks['changePos_s'].xmlText(),
       MotaActionBlocks['battle_s'].xmlText(),
       MotaActionBlocks['useItem_s'].xmlText(),
+      MotaActionBlocks['loadEquip_s'].xmlText(),
+      MotaActionBlocks['unloadEquip_s'].xmlText(),
       MotaActionBlocks['openShop_s'].xmlText(),
       MotaActionBlocks['disableShop_s'].xmlText(),
       MotaActionBlocks['setHeroIcon_s'].xmlText(),
@@ -128,6 +129,7 @@ editor_blockly = function () {
       MotaActionBlocks['show_s'].xmlText(),
       MotaActionBlocks['hide_s'].xmlText(),
       MotaActionBlocks['setBlock_s'].xmlText(),
+      MotaActionBlocks['turnBlock_s'].xmlText(),
       MotaActionBlocks['move_s'].xmlText(),
       MotaActionBlocks['jump_s'].xmlText(),
       MotaActionBlocks['showBgFgMap_s'].xmlText(),
@@ -137,18 +139,18 @@ editor_blockly = function () {
       MotaActionBlocks['hideFloorImg_s'].xmlText(),
     ],
     '事件控制':[
-      MotaActionBlocks['if_s'].xmlText(),
       MotaActionBlocks['if_1_s'].xmlText(),
+      MotaActionBlocks['if_s'].xmlText(),
       MotaActionFunctions.actionParser.parseList({"type": "switch", "condition": "判别值", "caseList": [
         {"action": [{"type": "comment", "text": "当判别值是值的场合执行此事件"}]},
-        {"action": [], "nobreak": true},
         {"case": "default", "action": [{"type": "comment", "text": "当没有符合的值的场合执行default事件"}]},
       ]}),
+      MotaActionFunctions.actionParser.parseList({"type": "for", "name": "temp:A", "from": "0", "to": "12", "step": "1", "data": []}),
+      MotaActionFunctions.actionParser.parseList({"type": "forEach", "name": "temp:A", "list": ["status:atk","status:def"], "data": []}),
       MotaActionBlocks['while_s'].xmlText(),
       MotaActionBlocks['dowhile_s'].xmlText(),
       MotaActionBlocks['break_s'].xmlText(),
       MotaActionBlocks['continue_s'].xmlText(),
-      MotaActionBlocks['revisit_s'].xmlText(),
       MotaActionBlocks['exit_s'].xmlText(),
       MotaActionBlocks['trigger_s'].xmlText(),
       MotaActionBlocks['insert_1_s'].xmlText(),
@@ -156,7 +158,10 @@ editor_blockly = function () {
     ],
     '特效/声音':[
       MotaActionBlocks['sleep_s'].xmlText(),
-      MotaActionBlocks['wait_s'].xmlText(),
+      MotaActionFunctions.actionParser.parseList({"type": "wait", "timeout": 0, "data": [
+        {"case": "keyboard", "keycode": "13,32", "action": [{"type": "comment", "text": "当按下回车(keycode=13)或空格(keycode=32)时执行此事件"}]},
+        {"case": "mouse", "px": [0,32], "py": [0,32], "action": [{"type": "comment", "text": "当点击地图左上角时执行此事件"}]},
+      ]}),
       MotaActionBlocks['waitAsync_s'].xmlText(),
       MotaActionBlocks['vibrate_s'].xmlText(),
       MotaActionBlocks['animate_s'].xmlText(),
@@ -212,18 +217,20 @@ editor_blockly = function () {
     ],
     '值块':[
       MotaActionBlocks['setValue_s'].xmlText([
-        MotaActionBlocks['idString_1_e'].xmlText(['status','hp'])
-      ]),
-      MotaActionBlocks['addValue_s'].xmlText([
-        MotaActionBlocks['idString_1_e'].xmlText(['status','hp'])
+        MotaActionBlocks['idIdList_e'].xmlText(['status','生命']), '=', '', false
       ]),
       MotaActionBlocks['expression_arithmetic_0'].xmlText(),
-      MotaActionBlocks['evFlag_e'].xmlText(),
+      MotaActionBlocks['idFlag_e'].xmlText(),
+      MotaActionBlocks['idTemp_e'].xmlText(),
       MotaActionBlocks['negate_e'].xmlText(),
       MotaActionBlocks['bool_e'].xmlText(),
       MotaActionBlocks['idString_e'].xmlText(),
-      MotaActionBlocks['idString_1_e'].xmlText(),
-      MotaActionBlocks['idString_2_e'].xmlText(),
+      MotaActionBlocks['idIdList_e'].xmlText(),
+      MotaActionBlocks['idFixedList_e'].xmlText(),
+      MotaActionBlocks['enemyattr_e'].xmlText(),
+      MotaActionBlocks['blockId_e'].xmlText(),
+      MotaActionBlocks['blockCls_e'].xmlText(),
+      MotaActionBlocks['equip_e'].xmlText(),
       MotaActionBlocks['evalString_e'].xmlText(),
     ],
     '常见事件模板':[
@@ -236,30 +243,30 @@ editor_blockly = function () {
       }),
       '<label text="商店购买属性/钥匙"></label>',
       MotaActionFunctions.actionParser.parse([
-        {"type": "choices", "text": "\\t[老人,man]少年，你需要钥匙吗？\\n我这里有大把的！",
-        "choices": [
-            {"text": "黄钥匙（\\\${9+flag:shop_times}金币）", "color": [255,255,0,1], "action": [
-                {"type": "if", "condition": "status:money>=9+flag:shop_times",
-                    "true": [
-                        {"type": "addValue", "name": "status:money", "value": "-(9+flag:shop_times)"},
-                        {"type": "addValue", "name": "item:yellowKey", "value": "1"},
-                    ],
-                    "false": [
-                        "\\t[老人,man]你的金钱不足！",
-                        {"type": "revisit"}
-                    ]
-                }
-            ]},
-            {"text": "蓝钥匙（\\\${18+2*flag:shop_times}金币）", "color": [0,0,255,1], "action": [
-            ]},
-            {"text": "离开", "action": [
-                {"type": "exit"}
-            ]}
-        ]
-    },
-    {"type": "addValue", "name": "flag:shop_times", "value": "1"},
-    {"type": "revisit"}
-      ], 'event'),  
+        {"type": "while", "condition": "true", "data": [
+          {"type": "choices", "text": "\\t[老人,man]少年，你需要钥匙吗？\\n我这里有大把的！",
+          "choices": [
+              {"text": "黄钥匙（\\\${9+flag:shop_times}金币）", "color": [255,255,0,1], "action": [
+                  {"type": "if", "condition": "status:money>=9+flag:shop_times",
+                      "true": [
+                          {"type": "setValue", "name": "status:money", "operator": "-=", "value": "9+flag:shop_times"},
+                          {"type": "setValue", "name": "item:yellowKey", "operator": "+=", "value": "1"},
+                      ],
+                      "false": [
+                          "\\t[老人,man]你的金钱不足！",
+                          {"type": "continue"}
+                      ]
+                  }
+              ]},
+              {"text": "蓝钥匙（\\\${18+2*flag:shop_times}金币）", "color": [0,0,255,1], "action": [
+              ]},
+              {"text": "离开", "action": [
+                  {"type": "break"}
+              ]}
+          ]
+        },
+        {"type": "setValue", "name": "flag:shop_times", "operator": "+=", "value": "1"}
+      ]}], 'event'),  
       '<label text="战前剧情"></label>',
       MotaActionFunctions.actionParser.parse({ 
         "trigger": "action", 
@@ -280,7 +287,7 @@ editor_blockly = function () {
       ],'afterBattle'),
       '<label text="打怪开门"></label>',
       MotaActionFunctions.actionParser.parse([
-        {"type": "addValue", "name": "flag:__door__", "value": "1"},
+        {"type": "setValue", "name": "flag:__door__", "operator": "+=", "value": "1"},
         {"type": "if", "condition": "flag:__door__==2", 
           "true": [
             {"type": "openDoor", "loc": [10,5]}
@@ -300,7 +307,7 @@ editor_blockly = function () {
           {"type": "if", "condition": "flag:hasSuperPotion", 
             "true": [], 
             "false": [
-              {"type":"setValue", "name":"status:hp", "value":"status:hp*2"}, 
+              {"type":"setValue", "name":"status:hp", "operator": "*=", "value": "2"}, 
               {"type":"setBlock", "number": 1}, 
               {"type":"setValue", "name":"flag:hasSuperPotion", "value": "true"} 
             ]
@@ -403,7 +410,7 @@ function omitedcheckUpdateFunction(event) {
     }
   }
   try {
-    var code = Blockly.JavaScript.workspaceToCode(workspace).replace(/\\\\(i|c|d|e)/g, '\\\\\\\\$1');
+    var code = Blockly.JavaScript.workspaceToCode(workspace).replace(/\\\\(i|c|d|e|z)/g, '\\\\\\\\$1');
     codeAreaHL.setValue(code);
   } catch (error) {
     codeAreaHL.setValue(String(error));
@@ -477,6 +484,17 @@ function omitedcheckUpdateFunction(event) {
 `;
 /////////////////initscript end  /////////////////////////////
 
+    editor.uivalues.disableBlocklyReplace = editor.config.get("disableBlocklyReplace", false);
+    var replaceCheckbox = document.getElementById('blocklyReplace');
+    replaceCheckbox.checked = !editor.uivalues.disableBlocklyReplace;
+
+    editor_blockly.triggerReplace = function () {
+        editor.uivalues.disableBlocklyReplace = !replaceCheckbox.checked;
+        editor.config.set("disableBlocklyReplace", !replaceCheckbox.checked);
+        if (MotaActionFunctions) MotaActionFunctions.disableReplace = !replaceCheckbox.checked;
+        alert("已" + (replaceCheckbox.checked ? "开启" : "关闭") + "中文变量名替换！\n关闭并重开事件编辑器以生效。");
+    }
+
     var input_ = '';
     editor_blockly.runOne = function () {
         //var printf = console.log;
@@ -506,6 +524,7 @@ function omitedcheckUpdateFunction(event) {
         }
         input_ = xhr.responseText;
         editor_blockly.runOne();
+        MotaActionFunctions.disableReplace = editor.uivalues.disableBlocklyReplace;
     }
     xhr.open('GET', '_server/MotaAction.g4', true);
     xhr.send(null);
@@ -546,7 +565,7 @@ function omitedcheckUpdateFunction(event) {
         MotaActionFunctions.parse(
             eval('obj=' + codeAreaHL.getValue().replace(/[<>&]/g, function (c) {
                 return {'<': '&lt;', '>': '&gt;', '&': '&amp;'}[c];
-            }).replace(/\\(r|f|i|c|d|e)/g,'\\\\$1')),
+            }).replace(/\\(r|f|i|c|d|e|z)/g,'\\\\$1')),
             document.getElementById('entryType').value
         );
     }
@@ -620,24 +639,66 @@ function omitedcheckUpdateFunction(event) {
             return;
         }
         var code = Blockly.JavaScript.workspaceToCode(editor_blockly.workspace);
-        code = code.replace(/\\(i|c|d|e)/g, '\\\\$1');
+        code = code.replace(/\\(i|c|d|e|z)/g, '\\\\$1');
         eval('var obj=' + code);
+        if (this.checkAsync(obj) && confirm("警告！存在不等待执行完毕的事件但却没有用【等待所有异步事件处理完毕】来等待" +
+            "它们执行完毕，这样可能会导致录像检测系统出问题。\n你要返回修改么？")) return;
         setvalue(JSON.stringify(obj));
+    }
+
+    // 检查"不等待处理完毕"
+    editor_blockly.checkAsync = function (obj) {
+        if (!(obj instanceof Array)) return false;
+        var hasAsync = false;
+        for (var i = 0; i < obj.length; ++i) {
+            var one = obj[i];
+            if (one.type == 'if' && (this.checkAsync(one['true']) || this.checkAsync(one['false'])))
+                return true;
+            if ((one.type == 'while' || one.type == 'dowhile') && this.checkAsync(one.data))
+                return true;
+            if (one.type == 'if' && (this.checkAsync(one.yes) || this.checkAsync(one.no)))
+                return true;
+            if (one.type == 'choices') {
+                var list = one.choices;
+                if (list instanceof Array) {
+                    for (var j = 0; j < list.length; j++) {
+                        if (this.checkAsync(list[j].action)) return true;
+                    }
+                }
+            }
+            if (one.type == 'switch') {
+                var list = one.caseList;
+                if (list instanceof Array) {
+                    for (var j = 0; j < list.length; j++) {
+                        if (this.checkAsync(list[j].action)) return true;
+                    }
+                }
+            }
+            if (one.async && one.type != 'animate' && one.type != 'function') hasAsync = true;
+            if (one.type == 'waitAsync') hasAsync = false;
+        }
+        return hasAsync;
     }
 
     var previewBlock = function (b) {
         var types = [
             "previewUI_s", "clearMap_s", "clearMap_1_s", "setAttribute_s", "fillText_s",
-            "fillBoldText_s", "drawTextContent_s", "fillRect_s", "strokeRect_s", "drawLine_s",
+            "fillBoldText_s", "fillRect_s", "strokeRect_s", "drawLine_s",
             "drawArrow_s", "fillPolygon_s", "strokePolygon_s", "fillCircle_s", "strokeCircle_s",
-            "drawImage_s", "drawImage_1_s", "drawIcon_s", "drawBackground_s", "drawSelector_s", "drawSelector_1_s"
+            "drawImage_s", "drawImage_1_s", "drawIcon_s", "drawBackground_s", "drawSelector_s", "drawSelector_1_s",
+            "waitContext_2"
         ];
         if (b && types.indexOf(b.type)>=0) {
             try {
-                var code = "[" + Blockly.JavaScript.blockToCode(b).replace(/\\(i|c|d|e)/g, '\\\\$1') + "]";
+                var code = "[" + Blockly.JavaScript.blockToCode(b).replace(/\\(i|c|d|e|z)/g, '\\\\$1') + "]";
                 eval("var obj="+code);
-                // console.log(obj);
-                if (obj.length > 0 && b.type.startsWith(obj[0].type)) {
+                if (obj.length > 0 && b.type == 'waitContext_2') {
+                    var dt = obj[0];
+                    editor.uievent.previewUI([{"type": "fillRect", "x": dt.px[0], "y": dt.py[0],
+                        "width": "(" + dt.px[1] + ")-(" + dt.px[0] + ")", "height": "(" + dt.py[1] + ")-(" + dt.py[0] + ")",
+                        "style": "rgba(255,0,0,0.5)"}])
+                }
+                else if (obj.length > 0 && b.type.startsWith(obj[0].type)) {
                     if (b.type == 'previewUI_s')
                         editor.uievent.previewUI(obj[0].action);
                     else editor.uievent.previewUI([obj[0]]);
@@ -667,7 +728,7 @@ function omitedcheckUpdateFunction(event) {
             'choices_s': 'EvalString_0',
             'showTextImage_s': 'EvalString_0',
             'function_s': 'RawEvalString_0',
-            'shopsub': 'EvalString_3',
+            'shopsub': 'EvalString_1',
             'confirm_s': 'EvalString_0',
             'drawTextContent_s': 'EvalString_0',
         }
@@ -690,12 +751,12 @@ function omitedcheckUpdateFunction(event) {
         'hide_s',
         'setValue_s',
         'if_s',
+        'while_s',
         'battle_s',
         'openDoor_s',
         'choices_s',
         'setText_s',
         'exit_s',
-        'revisit_s',
         'sleep_s',
         'setBlock_s',
         'insert_1_s'
@@ -767,19 +828,20 @@ function omitedcheckUpdateFunction(event) {
     var selectPointBlocks = {
         "changeFloor_m": ["Number_0", "Number_1", "IdString_0", true],
         "jumpHero_s": ["PosString_0", "PosString_1"],
-        "changeFloor_s": ["PosString_0", "PosString_1", "IdString_0", true],
-        "changePos_0_s": ["PosString_0", "PosString_1"],
+        "changeFloor_s": ["Number_0", "Number_1", "IdString_0", true],
+        "changePos_s": ["PosString_0", "PosString_1"],
         "battle_1_s": ["PosString_0", "PosString_1"],
         "openDoor_s": ["PosString_0", "PosString_1", "IdString_0"],
         "closeDoor_s": ["PosString_0", "PosString_1"],
         "show_s": ["EvalString_0", "EvalString_1", "IdString_0"],
         "hide_s": ["EvalString_0", "EvalString_1", "IdString_0"],
         "setBlock_s": ["EvalString_1", "EvalString_2", "IdString_0"],
+        "turnBlock_s": ["EvalString_1", "EvalString_2", "IdString_0"],
         "move_s": ["PosString_0", "PosString_1"],
         "jump_s": ["PosString_2", "PosString_3"], // 跳跃暂时只考虑终点
         "showBgFgMap_s": ["EvalString_0", "EvalString_1", "IdString_0"],
         "hideBgFgMap_s": ["EvalString_0", "EvalString_1", "IdString_0"],
-        "setBgFgBlock_s": ["PosString_0", "PosString_1", "IdString_0"],
+        "setBgFgBlock_s": ["EvalString_1", "EvalString_2", "IdString_0"],
         "showFloorImg_s": ["EvalString_0", "EvalString_1", "IdString_0"],
         "hideFloorImg_s": ["EvalString_0", "EvalString_1", "IdString_0"],
         "trigger_s": ["PosString_0", "PosString_1"],
@@ -815,35 +877,72 @@ function omitedcheckUpdateFunction(event) {
                 block.setFieldValue(xv+"", arr[0]);
                 block.setFieldValue(yv+"", arr[1]);
             }
-            if (block.type == 'changeFloor_m') {
+            if (block.type == 'changeFloor_m' || block.type == 'changeFloor_s') {
                 block.setFieldValue("floorId", "Floor_List_0");
                 block.setFieldValue("loc", "Stair_List_0");
             }
         });
     }
 
-    editor_blockly.getAutoCompletions = function (content) {
+    editor_blockly.getAutoCompletions = function (content, type, name) {
         // --- content为当前框中输入内容；将返回一个列表，为后续所有可补全内容
 
-        // 检查 flag:xxx，item:xxx和flag:xxx
-        var index = content.lastIndexOf(":");
+        // console.log(type, name);
+
+        // 检查 status:xxx，item:xxx和flag:xxx
+        var index = Math.max(content.lastIndexOf(":"), content.lastIndexOf("："));
         if (index >= 0) {
+            var ch = content.charAt(index);
             var before = content.substring(0, index), token = content.substring(index+1);
             if (/^[a-zA-Z0-9_\u4E00-\u9FCC]*$/.test(token)) {
-                if (before.endsWith("status")) {
-                    return Object.keys(core.status.hero).filter(function (one) {
+                if (before.endsWith("状态") || (ch == ':' && before.endsWith("status"))) {
+                    var list = Object.keys(core.status.hero);
+                    if (before.endsWith("状态") && MotaActionFunctions) {
+                        list = MotaActionFunctions.pattern.replaceStatusList.map(function (v) {
+                            return v[1];
+                        }).concat(list);
+                    }
+                    return list.filter(function (one) {
                         return one != token && one.startsWith(token);
                     }).sort();
                 }
-                else if (before.endsWith("item")) {
-                    return Object.keys(core.material.items).filter(function (one) {
+                else if (before.endsWith("物品") || (ch == ':' && before.endsWith("item"))) {
+                    var list = Object.keys(core.material.items);
+                    if (before.endsWith("物品") && MotaActionFunctions) {
+                        list = MotaActionFunctions.pattern.replaceItemList.map(function (v) {
+                            return v[1];
+                        }).concat(list);
+                    }
+                    return list.filter(function (one) {
                         return one != token && one.startsWith(token);
                     }).sort();
                 }
-                else if (before.endsWith("flag")) {
+                else if (before.endsWith("变量") || (ch == ':' && before.endsWith("flag"))) {
                     return Object.keys(editor.used_flags || {}).filter(function (one) {
                         return one != token && one.startsWith(token);
                     }).sort();
+                } else if (before.endsWith("怪物") || (ch == ':' && before.endsWith("enemy"))) {
+                    return Object.keys(core.material.enemys).filter(function (one) {
+                        return one != token && one.startsWith(token);
+                    })
+                } else {
+                    var index2 = Math.max(content.lastIndexOf(":", index-1), content.lastIndexOf("：", index-1));
+                    var ch2 = content.charAt(index2);
+                    if (index2 >= 0) {
+                        before = content.substring(0, index2);
+                        if (before.endsWith("怪物") || (ch == ':' && ch2 == ':' && before.endsWith("enemy"))) {
+                            var list = ["name", "hp", "atk", "def", "money", "exp", "point", "special"];
+                            if (before.endsWith("怪物") && MotaActionFunctions) {
+                                list = MotaActionFunctions.pattern.replaceEnemyList.map(function (v) {
+                                    return v[1];
+                                }).concat(list);
+                            }
+                            return list.filter(function (one) {
+                                return one != token && one.startsWith(token);
+                            })
+                        }
+                    }
+
                 }
             }
         }
@@ -869,6 +968,124 @@ function omitedcheckUpdateFunction(event) {
                     }).sort();
                 }
             }
+        }
+
+        // 提供 flags.xxx 补全
+        index = content.lastIndexOf("flags.");
+        if (index >= 0) {
+            var token = content.substring(index+6);
+            return Object.keys(editor.used_flags || {}).filter(function (one) {
+                return one != token && one.startsWith(token)
+                    && /^[a-zA-Z_]\w*$/.test(one);
+            }).sort();
+        }
+
+        var allIds = core.getAllIconIds();
+        var allIconIds = allIds.concat(Object.keys(core.statusBar.icons).filter(function (x) {
+          return core.statusBar.icons[x] instanceof Image;
+        }));
+        var allImages = Object.keys(core.material.images.images);
+        var allEnemys = Object.keys(core.material.enemys);
+        var allItems = Object.keys(core.material.items);
+        var allAnimates = Object.keys(core.material.animates);
+        var allBgms = Object.keys(core.material.bgms);
+        var allSounds = Object.keys(core.material.sounds);
+        var allShops = Object.keys(core.status.shops);
+        var allFloorIds = core.floorIds;
+        var allColors = ["aqua（青色）", "black（黑色）", "blue（蓝色）", "fuchsia（品红色）", "gray（灰色）", "green（深绿色）", "lime（绿色）",
+                         "maroon（深红色）", "navy（深蓝色）", "gold（金色）",  "olive（黄褐色）", "orange（橙色）", "purple（品红色）", 
+                         "red（红色）", "silver（淡灰色）", "teal（深青色）", "white（白色）", "yellow（黄色）"];
+        var filter = function (list, content) {
+          return list.filter(function (one) {
+            return one != content && one.startsWith(content);
+          }).sort();
+        }
+
+        // 对任意图块提供补全
+        if ((type == 'text_1_s' && name == 'EvalString_1') || (type == 'autoText_s' && name == 'EvalString_1')
+          || (type == 'choices_s' && name == 'IdString_0') || (type == 'choicesContext' && name == 'IdString_0')
+          || (type == 'closeDoor_s' && name == 'IdString_0') || (type == 'setBlock_s' && name == 'EvalString_0')
+          || (type == 'setBgFgBlock_s' && name == 'EvalString_0') || (type == 'drawIcon_s' && name == 'IdString_0')
+          || (type == 'shopsub' && name == 'IdString_1') || (type == 'shopChoices' && name == 'IdString_0')) {
+          return filter(allIds, content);
+        }
+
+        // 对怪物ID提供补全
+        if ((type == 'enemyattr_e' || type == 'battle_s' || type == 'setEnemy_s') && name == 'IdString_0') {
+          return filter(allEnemys, content);
+        }
+
+        // 对道具ID进行补全
+        if ((type == 'useItem_s' || type == 'loadEquip_s') && name == 'IdString_0') {
+          return filter(allItems, content);
+        }
+
+        // 对图片名进行补全
+        if ((type == 'showImage_s' || type == 'showImage_1_s' || type == 'showGif_s' || type == 'setHeroIcon_s'
+          || type == 'follow_s' || type == 'unfollow_s' || type == 'drawImage_s' || type == 'drawImage_1_s') && name == 'EvalString_0') {
+          return filter(allImages, content);
+        }
+
+        // 对动画进行补全
+        if (type == 'animate_s' && name == 'IdString_0') {
+          return filter(allAnimates, content);
+        }
+
+        // 对音乐进行补全
+        if ((type == 'playBgm_s' || type == 'loadBgm_s' || type == 'freeBgm_s') && name == 'EvalString_0') {
+          return filter(allBgms, content);
+        }
+
+        // 对音效进行补全
+        if (type == 'playSound_s' && name == 'EvalString_0') {
+          return filter(allSounds, content);
+        }
+
+        // 对全局商店进行补全
+        if ((type == 'openShop_s' || type == 'disableShop_s') && name == 'IdString_0') {
+          return filter(allShops, content);
+        }
+
+        // 对楼层名进行补全
+        if ((type == 'setFloor_s' || type == 'show_s' || type == 'hide_s' || type == 'insert_2_s'
+          || type == 'setBlock_s' || type == 'turnBlock_s' || type == 'showFloorImg_s' || type == 'hideFloorImg_s'
+          || type == 'showBgFgMap_s' || type == 'hideBgFgMap_s' || type == 'setBgFgBlock_s'
+          || type == 'openDoor_s' || type == 'changeFloor_m') && name == "IdString_0") {
+          return filter(allFloorIds, content);
+        }
+
+        // 对\f进行自动补全
+        index = Math.max(content.lastIndexOf("\f["), content.lastIndexOf("\\f["));
+        if (index >= 0) {
+          if (content.charAt(index) == '\\') index++;
+          var after = content.substring(index + 2);
+          if (after.indexOf(",") < 0 && after.indexOf("]") < 0) {
+            return filter(allImages, after);
+          }
+        }
+
+        // 对\\i进行补全
+        index = content.lastIndexOf("\\i[");
+        if (index >= 0) {
+          var after = content.substring(index + 3);
+          if (after.indexOf("]") < 0) {
+            return filter(allIconIds, after);
+          }
+        }
+
+        // 对\r进行补全
+        index = Math.max(content.lastIndexOf("\r["), content.lastIndexOf("\\r["));
+        if (index >= 0) {
+          if (content.charAt(index) == '\\') index++;
+          var after = content.substring(index + 2);
+          if (after.indexOf("]") < 0) {
+            return filter(allColors, after);
+          }
+        }
+
+        // 对\进行补全！
+        if (content.charAt(content.length - 1) == '\\') {
+          return ["n（换行）", "f（立绘）", "r（变色）", "i（图标）", "z（暂停打字）", "t（标题图标）", "b（对话框）", "c（字体大小）", "d（粗体）", "e（斜体）"];
         }
 
         return [];
@@ -973,11 +1190,13 @@ Blockly.FieldTextInput.prototype.showInlineEditor_ = function(quietInput) {
 
         // --- awesomplete
         var awesomplete = new Awesomplete(htmlInput, {
-            minChars: 4,
+            minChars: 1,
             maxItems: 12,
             autoFirst: true,
             replace: function (text) {
                 text = text.toString();
+                var index = text.indexOf("（");
+                if (index >= 0) text = text.substring(0, index);
                 var value = this.input.value, index = this.input.selectionEnd;
                 if (index == null) index = value.length;
                 if (index < awesomplete.prefix.length) index = awesomplete.prefix.length;
@@ -1018,7 +1237,7 @@ Blockly.FieldTextInput.prototype.showInlineEditor_ = function(quietInput) {
             if (index == null) index = value.length;
             value = value.substring(0, index);
             // cal prefix
-            awesomplete.prefix = "";
+            awesomplete.prefix = value;
             for (var i = index - 1; i>=0; i--) {
                 var c = value.charAt(i);
                 if (!/^[a-zA-Z0-9_\u4E00-\u9FCC]$/.test(c)) {
@@ -1027,7 +1246,8 @@ Blockly.FieldTextInput.prototype.showInlineEditor_ = function(quietInput) {
                 }
             }
 
-            var list = editor_blockly.getAutoCompletions(value);
+            var list = editor_blockly.getAutoCompletions(value, pb.type, self.name);
+
             awesomplete.list = list;
             awesomplete.ul.style.marginLeft = getCaretCoordinates(htmlInput, htmlInput.selectionStart).left -
                 htmlInput.scrollLeft - 20 + "px";

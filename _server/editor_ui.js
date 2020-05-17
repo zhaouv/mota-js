@@ -1,5 +1,183 @@
 editor_ui_wrapper = function (editor) {
 
+    // 由于历史遗留原因, 以下变量作为全局变量使用
+    // printf printe tip
+    window.printf = function (str_, type) {
+        selectBox.isSelected(false);
+        if (!type) {
+            tip.whichShow(11);
+        } else {
+            tip.whichShow(12);
+        }
+        setTimeout(function () {
+            if (!type) {
+                tip.msgs[11] = String(str_);
+                tip.whichShow(12);
+            } else {
+                tip.msgs[10] = String(str_);
+                tip.whichShow(11);
+            }
+        }, 1);
+    }
+    window.printe = function (str_) {
+        printf(str_, 'error')
+    }
+    window.tip=document.getElementById('tip')
+    tip.showHelp = function(value) {
+        var tips = [
+            '表格的文本域可以双击进行编辑',
+            '双击地图可以选中素材，右键可以弹出菜单',
+            '双击事件编辑器的图块可以进行长文本编辑/脚本编辑/地图选点/UI绘制预览等操作',
+            'ESC或点击空白处可以自动保存当前修改',
+            'H键可以打开操作帮助哦',
+            'tileset贴图模式可以在地图上拖动来一次绘制一个区域；右键额外素材也可以绑定宽高',
+            '可以拖动地图上的图块和事件，或按Ctrl+C, Ctrl+X和Ctrl+V进行复制，剪切和粘贴，Delete删除',
+            'Alt+数字键保存图块，数字键读取保存的图块',
+        ];
+        if (value == null) value = Math.floor(Math.random() * tips.length);
+        printf('tips: ' + tips[value])
+    }
+    tip._infos= {}
+    tip.infos=function(value){
+        if(value!=null){
+            var val=value
+            var oldval=tip._infos
+    
+            tip.isClearBlock(false);
+            tip.isAirwall(false);
+            if (typeof(val) != 'undefined') {
+                if (val == 0) {
+                    tip.isClearBlock(true);
+                    return;
+                }
+                if ('id' in val) {
+                    if (val.idnum == 17) {
+                        tip.isAirwall(true);
+                        return;
+                    }
+                    tip.hasId = true;
+                } else {
+                    tip.hasId = false;
+                }
+                tip.isAutotile = false;
+                if (val.images == "autotile" && tip.hasId) tip.isAutotile = true;
+                document.getElementById('isAirwall-else').innerHTML=(tip.hasId?`<p>图块编号：<span class="infoText">${ value['idnum'] }</span></p>
+                <p>图块ID：<span class="infoText">${ value['id'] }</span></p>`:`
+                <p class="warnText">该图块无对应的数字或ID存在，请先前往icons.js和maps.js中进行定义！</p>`)+`
+                <p>图块所在素材：<span class="infoText">${ value['images'] + (tip.isAutotile ? '( '+value['id']+' )' : '') }</span>
+                </p>
+                <p>图块索引：<span class="infoText">${ value['y'] }</span></p>`
+            }
+    
+            tip._infos=value
+        }
+        return tip._infos
+    }
+    tip.hasId= true
+    tip.isAutotile= false
+    tip._isSelectedBlock= false
+    tip.isSelectedBlock=function(value){
+        if(value!=null){
+            var dshow=document.getElementById('isSelectedBlock-if')
+            var dhide=document.getElementById('isSelectedBlock-else')
+            if(!value){
+                var dtemp=dshow
+                dshow=dhide
+                dhide=dtemp
+            }
+            dshow.style.display=''
+            dhide.style.display='none'
+            tip._isSelectedBlock=value
+        }
+        return tip._isSelectedBlock
+    }
+    tip._isClearBlock= false
+    tip.isClearBlock=function(value){
+        if(value!=null){
+            var dshow=document.getElementById('isClearBlock-if')
+            var dhide=document.getElementById('isClearBlock-else')
+            if(!value){
+                var dtemp=dshow
+                dshow=dhide
+                dhide=dtemp
+            }
+            dshow.style.display=''
+            dhide.style.display='none'
+            tip._isClearBlock=value
+        }
+        return tip._isClearBlock
+    }
+    tip._isAirwall= false
+    tip.isAirwall=function(value){
+        if(value!=null){
+            var dshow=document.getElementById('isAirwall-if')
+            var dhide=document.getElementById('isAirwall-else')
+            if(!value){
+                var dtemp=dshow
+                dshow=dhide
+                dhide=dtemp
+            }
+            dshow.style.display=''
+            dhide.style.display='none'
+            tip._isAirwall=value
+        }
+        return tip._isAirwall
+    }
+    tip.geneMapSuccess= false
+    tip.timer= null
+    tip.msgs= [ //分别编号1,2,3,4,5,6,7,8,9,10；奇数警告，偶数成功
+        "当前未选择任何图块，请先在右边选择要画的图块!",
+        "生成地图成功！可点击复制按钮复制地图数组到剪切板",
+        "生成失败! 地图中有未定义的图块，建议先用其他有效图块覆盖或点击清除地图！",
+        "地图清除成功!",
+        "复制失败！",
+        "复制成功！可直接粘贴到楼层文件的地图数组中。",
+        "复制失败！当前还没有数据",
+        "修改成功！可点击复制按钮复制地图数组到剪切板",
+        "选择背景图片失败！文件名格式错误或图片不存在！",
+        "更新背景图片成功！",
+        "11:警告",
+        "12:成功"
+    ]
+    tip._mapMsg= ''
+    tip.mapMsg=function(value){
+        if(value!=null){
+            document.getElementById('whichShow-if').innerText=value
+            tip._mapMsg=value
+        }
+        return tip._mapMsg
+    }
+    tip._whichShow= 0
+    tip.whichShow=function(value){
+        if(value!=null){
+    
+            var dshow=document.getElementById('whichShow-if')
+            var dhide=null
+            if(!value){
+                var dtemp=dshow
+                dshow=dhide
+                dhide=dtemp
+            }
+            if(dshow)dshow.style.display=''
+            if(dhide)dhide.style.display='none'
+    
+            if(dshow)dshow.setAttribute('class',(value%2) ? 'warnText' : 'successText')
+    
+            tip.mapMsg('');
+            tip.msgs[4] = "复制失败！" + editTip.err;
+            clearTimeout(tip.timer);
+            if (value) {
+                tip.mapMsg(tip.msgs[value - 1]);
+                tip.timer = setTimeout(function () {
+                    if (!(value % 2))
+                    value = 0;
+                }, 5000); //5秒后自动清除success，warn不清除
+            }
+            tip._whichShow=value
+        }
+        return tip._whichShow
+    }
+
 
     /**
      * 根据鼠标点击, 得到从元素向上到body的所有id
@@ -42,14 +220,14 @@ editor_ui_wrapper = function (editor) {
         var clickpath = editor.uifunctions.getClickpath(e);
 
         var unselect = true;
-        for (var ii = 0, thisId; thisId = ['edit', 'tip', 'brushMod', 'brushMod2', 'brushMod3', 'layerMod', 'layerMod2', 'layerMod3', 'viewportButtons'][ii]; ii++) {
+        for (var ii = 0, thisId; thisId = ['edit', 'tip', 'brushMod', 'brushMod2', 'brushMod3', 'brushMode4', 'layerMod', 'layerMod2', 'layerMod3', 'viewportButtons'][ii]; ii++) {
             if (clickpath.indexOf(thisId) !== -1) {
                 unselect = false;
                 break;
             }
         }
-        if (unselect) {
-            if (clickpath.indexOf('eui') === -1) {
+        if (unselect && !editor.uivalues.lockMode) {
+            if (clickpath.indexOf('eui') === -1 && clickpath.indexOf('lastUsed') === -1) {
                 if (selectBox.isSelected()) {
                     editor_mode.onmode('');
                     editor.file.saveFloorFile(function (err) {
@@ -81,14 +259,14 @@ editor_ui_wrapper = function (editor) {
     editor.uifunctions.body_shortcut = function (e) {
 
         // UI预览 & 地图选点
-        if (uievent && uievent.isOpen) {
+        if (editor.uievent && editor.uievent.isOpen) {
             e.preventDefault();
-            if (e.keyCode == 27) uievent.close();
-            else if (e.keyCode == 13) uievent.confirm();
-            else if (e.keyCode == 87) uievent.move(0, -1)
-            else if (e.keyCode == 65) uievent.move(-1, 0)
-            else if (e.keyCode == 83) uievent.move(0, 1);
-            else if (e.keyCode == 68) uievent.move(1, 0);
+            if (e.keyCode == 27) editor.uievent.close();
+            else if (e.keyCode == 13) editor.uievent.confirm();
+            else if (e.keyCode == 87) editor.uievent.move(0, -1)
+            else if (e.keyCode == 65) editor.uievent.move(-1, 0)
+            else if (e.keyCode == 83) editor.uievent.move(0, 1);
+            else if (e.keyCode == 68) editor.uievent.move(1, 0);
             return;
         }
 
@@ -111,34 +289,6 @@ editor_ui_wrapper = function (editor) {
         if (editor_multi.id != "" || editor_blockly.id != "")
             return;
 
-        // 禁止快捷键的默认行为
-        if (e.ctrlKey && [89, 90, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57].indexOf(e.keyCode) !== -1)
-            e.preventDefault();
-        if (e.altKey && [48, 49, 50, 51, 52, 53, 54, 55, 56, 57].indexOf(e.keyCode) !== -1)
-            e.preventDefault();
-        //Ctrl+z 撤销上一步undo
-        if (e.keyCode == 90 && e.ctrlKey && editor.uivalues.preMapData && editor.uivalues.currDrawData.pos.length && selectBox.isSelected()) {
-            editor.map = JSON.parse(JSON.stringify(editor.uivalues.preMapData.map));
-            editor.fgmap = JSON.parse(JSON.stringify(editor.uivalues.preMapData.fgmap));
-            editor.bgmap = JSON.parse(JSON.stringify(editor.uivalues.preMapData.bgmap));
-            editor.updateMap();
-            editor.uivalues.reDo = JSON.parse(JSON.stringify(editor.uivalues.currDrawData));
-            editor.uivalues.currDrawData = { pos: [], info: {} };
-            editor.uivalues.preMapData = null;
-            return;
-        }
-        //Ctrl+y 重做一步redo
-        if (e.keyCode == 89 && e.ctrlKey && editor.uivalues.reDo && editor.uivalues.reDo.pos.length && selectBox.isSelected()) {
-            editor.uivalues.preMapData = JSON.parse(JSON.stringify({ map: editor.map, fgmap: editor.fgmap, bgmap: editor.bgmap }));
-            for (var j = 0; j < editor.uivalues.reDo.pos.length; j++)
-                editor.map[editor.uivalues.reDo.pos[j].y][editor.uivalues.reDo.pos[j].x] = JSON.parse(JSON.stringify(editor.uivalues.reDo.info));
-
-            editor.updateMap();
-            editor.uivalues.currDrawData = JSON.parse(JSON.stringify(editor.uivalues.reDo));
-            editor.uivalues.reDo = null;
-            return;
-        }
-
         // PGUP和PGDOWN切换楼层
         if (e.keyCode == 33 || e.keyCode == 34) {
             e.preventDefault();
@@ -153,22 +303,40 @@ editor_ui_wrapper = function (editor) {
             }
             return;
         }
-        //ctrl + 0~9 切换到快捷图块
-        if (e.ctrlKey && [48, 49, 50, 51, 52, 53, 54, 55, 56, 57].indexOf(e.keyCode) !== -1) {
-            editor.setSelectBoxFromInfo(JSON.parse(JSON.stringify(editor.uivalues.shortcut[e.keyCode] || 0)));
-            return;
-        }
-        //alt + 0~9 改变快捷图块
-        if (e.altKey && [48, 49, 50, 51, 52, 53, 54, 55, 56, 57].indexOf(e.keyCode) !== -1) {
-            var infoToSave = JSON.stringify(editor.info || 0);
-            if (infoToSave == JSON.stringify({})) return;
-            editor.uivalues.shortcut[e.keyCode] = JSON.parse(infoToSave);
-            printf('已保存该快捷图块, ctrl + ' + (e.keyCode - 48) + ' 使用.')
-            core.setLocalStorage('shortcut', editor.uivalues.shortcut);
-            return;
-        }
+
         var focusElement = document.activeElement;
-        if (!focusElement || focusElement.tagName.toLowerCase() == 'body') {
+        if (!focusElement || focusElement.tagName.toLowerCase() == 'body'
+            || focusElement.id == 'selectFloor') {
+
+            //Ctrl+z 撤销上一步undo
+            if (e.keyCode == 90 && e.ctrlKey) {
+                e.preventDefault();
+                if (editor.uivalues.preMapData.length > 0) {
+                    var data = editor.uivalues.preMapData.pop();
+                    editor.map = JSON.parse(JSON.stringify(data.map));
+                    editor.fgmap = JSON.parse(JSON.stringify(data.fgmap));
+                    editor.bgmap = JSON.parse(JSON.stringify(data.bgmap));
+                    editor.updateMap();
+                    editor.uivalues.postMapData.push(data);
+                    printf("已撤销此操作，你可能需要重新保存地图。");
+                }
+                return;
+            }
+            //Ctrl+y 重做一步redo
+            if (e.keyCode == 89 && e.ctrlKey) {
+                e.preventDefault();
+                if (editor.uivalues.postMapData.length > 0) {
+                    var data = editor.uivalues.postMapData.pop();
+                    editor.map = JSON.parse(JSON.stringify(data.map));
+                    editor.fgmap = JSON.parse(JSON.stringify(data.fgmap));
+                    editor.bgmap = JSON.parse(JSON.stringify(data.bgmap));
+                    editor.updateMap();
+                    editor.uivalues.preMapData.push(data);
+                    printf("已重做此操作，你可能需要重新保存地图。");
+                }
+                return;
+            }
+
             // Ctrl+C, Ctrl+X, Ctrl+V
             if (e.ctrlKey && e.keyCode == 67 && !selectBox.isSelected()) {
                 e.preventDefault();
@@ -223,6 +391,20 @@ editor_ui_wrapper = function (editor) {
                 editor.info = {};
                 return;
             }
+            //alt + 0~9 改变快捷图块
+            if (e.altKey && [48, 49, 50, 51, 52, 53, 54, 55, 56, 57].indexOf(e.keyCode) !== -1) {
+                var infoToSave = JSON.stringify(editor.info || 0);
+                if (infoToSave == JSON.stringify({})) return;
+                editor.uivalues.shortcut[e.keyCode] = JSON.parse(infoToSave);
+                printf('已保存该快捷图块, 数字键 ' + (e.keyCode - 48) + ' 使用.')
+                editor.config.set('shortcut', editor.uivalues.shortcut);
+                return;
+            }
+            //ctrl + 0~9 切换到快捷图块
+            if ([48, 49, 50, 51, 52, 53, 54, 55, 56, 57].indexOf(e.keyCode) !== -1) {
+                editor.setSelectBoxFromInfo(JSON.parse(JSON.stringify(editor.uivalues.shortcut[e.keyCode] || 0)));
+                return;
+            }
             switch (e.keyCode) {
                 // WASD
                 case 87: editor.moveViewport(0, -1); break;
@@ -256,7 +438,7 @@ editor_ui_wrapper = function (editor) {
             "双击地图：选中对应点的素材\n" +
             "右键地图：弹出菜单栏\n" +
             "Alt+0~9：保存当前使用的图块\n" +
-            "Ctrl+0~9：选中保存的图块\n" +
+            "0~9：选中保存的图块\n" +
             "Ctrl+Z / Ctrl+Y：撤销/重做上次绘制\n" +
             "Ctrl+S：事件与脚本编辑器的保存并退出\n" +
             "双击事件编辑器：长文本编辑/脚本编辑/地图选点/UI绘制预览"
@@ -283,16 +465,10 @@ editor_ui_wrapper = function (editor) {
     uievent.elements.selectPointBox = document.getElementById('selectPointBox');
     uievent.elements.body = document.getElementById('uieventBody');
     uievent.elements.selectPointButtons = document.getElementById('selectPointButtons');
-
-    uievent.confirm = function () {
-        var callback = uievent.values.callback, floorId = uievent.values.floorId,
-            x = uievent.values.x, y = uievent.values.y;
-        uievent.close();
-        if (callback) {
-            callback(floorId, x, y);
-        }
-    }
-    uievent.elements.yes.onclick = uievent.confirm;
+    uievent.elements.canvas = document.getElementById('uievent');
+    uievent.elements.usedFlags = document.getElementById('uieventUsedFlags');
+    uievent.elements.usedFlagList = document.getElementById('uieventUsedFlagList');
+    uievent.elements.materialList = document.getElementById('uieventMaterialList');
 
     uievent.close = function () {
         uievent.isOpen = false;
@@ -336,7 +512,12 @@ editor_ui_wrapper = function (editor) {
         uievent.elements.title.innerText = 'UI绘制预览';
         uievent.elements.selectBackground.style.display = 'inline';
         uievent.elements.selectBackground.value = 'thumbnail';
+        uievent.elements.selectFloor.style.display = 'none';
         uievent.elements.selectPointBox.style.display = 'none';
+        uievent.elements.canvas.style.display = 'block';
+        uievent.elements.usedFlags.style.display = 'none';
+        uievent.elements.usedFlagList.style.display = 'none';
+        uievent.elements.body.style.overflow = "hidden";
 
         uievent.values.list = list;
         uievent.drawPreviewUI();
@@ -344,7 +525,6 @@ editor_ui_wrapper = function (editor) {
 
     uievent.selectPoint = function (floorId, x, y, hideFloor, callback) {
         uievent.values.hideFloor = hideFloor;
-        uievent.values.callback = callback;
         uievent.values.size = editor.isMobile ? window.innerWidth / core.__SIZE__ : 32;
         uievent.elements.selectPointBox.style.width = (uievent.values.size - 6) + "px";
         uievent.elements.selectPointBox.style.height = (uievent.values.size - 6) + "px";
@@ -355,8 +535,20 @@ editor_ui_wrapper = function (editor) {
         uievent.elements.selectPoint.style.display = 'block';
         uievent.elements.yes.style.display = 'inline';
         uievent.elements.selectBackground.style.display = 'none';
-        uievent.elements.selectFloor.style.display = hideFloor ? 'none' : 'inline';
+        // uievent.elements.selectFloor.style.display = hideFloor ? 'none' : 'inline';
+        uievent.elements.selectFloor.style.display = 'inline';
         uievent.elements.selectPointBox.style.display = 'block';
+        uievent.elements.canvas.style.display = 'block';
+        uievent.elements.usedFlags.style.display = 'none';
+        uievent.elements.usedFlagList.style.display = 'none';
+        uievent.elements.body.style.overflow = "hidden";
+        uievent.elements.yes.onclick = function () {
+            var floorId = uievent.values.floorId, x = uievent.values.x, y = uievent.values.y;
+            uievent.close();
+            if (callback) {
+                callback(floorId, x, y);
+            }
+        }
 
         // Append children
         var floors = "";
@@ -452,7 +644,8 @@ editor_ui_wrapper = function (editor) {
     })();
 
     uievent.elements.div.onmousewheel = function (e) {
-        if (uievent.mode != 'selectPoint' || uievent.values.hideFloor) return;
+        // if (uievent.mode != 'selectPoint' || uievent.values.hideFloor) return;
+        if (uievent.mode != 'selectPoint') return;
         var index = core.floorIds.indexOf(uievent.values.floorId);
         try {
             if (e.wheelDelta)
@@ -462,6 +655,186 @@ editor_ui_wrapper = function (editor) {
         } catch (ee) { main.log(ee); }
         index = core.clamp(index, 0, core.floorIds.length - 1);
         uievent.setPoint(core.floorIds[index]);
+    }
+
+    // ------ 搜索变量出现的位置，也放在uievent好了 ------ //
+
+    uievent.searchUsedFlags = function () {
+        uievent.isOpen = true;
+        uievent.elements.div.style.display = 'block';
+        uievent.mode = 'searchUsedFlags';
+        uievent.elements.selectPoint.style.display = 'none';
+        uievent.elements.yes.style.display = 'none';
+        uievent.elements.title.innerText = '搜索变量';
+        uievent.elements.selectBackground.style.display = 'none';
+        uievent.elements.selectFloor.style.display = 'none';
+        uievent.elements.selectPointBox.style.display = 'none';
+        uievent.elements.canvas.style.display = 'none';
+        uievent.elements.usedFlags.style.display = 'inline';
+        uievent.elements.usedFlagList.style.display = 'block';
+        uievent.elements.body.style.overflow = "auto";
+
+        // build flags
+        var html = "";
+        Object.keys(editor.used_flags).sort().forEach(function (v) {
+            v = "flag:" + v;
+            html += "<option value='" + v + "'>" + v + "</option>";
+        });
+        uievent.elements.usedFlags.innerHTML = html;
+
+        uievent.doSearchUsedFlags();
+    }
+
+    uievent.doSearchUsedFlags = function () {
+        var flag = uievent.elements.usedFlags.value;
+
+        var html = "<p style='margin-left: 10px'>该变量出现的所有位置如下：</p><ul>";
+        var list = uievent._searchUsedFlags(flag);
+        list.forEach(function (v) {
+            var x = "<li>";
+            if (v[0] != null) x += v[0] + "层 ";
+            else x += "公共事件 ";
+            x += v[1];
+            if (v[2] != null) x += " 的 (" + v[2] + ") 点";
+            x += "</li>";
+            html += x;
+        });
+        html += "</ul>";
+        uievent.elements.usedFlagList.innerHTML = html;
+    }
+
+    var hasUsedFlags = function (obj, flag) {
+        if (obj == null) return false;
+        if (typeof obj != 'string') return hasUsedFlags(JSON.stringify(obj), flag);
+
+        var index = -1, length = flag.length;
+        while (true) {
+            index = obj.indexOf(flag, index + 1);
+            if (index < 0) return false;
+            if (!/^[a-zA-Z0-9_\u4E00-\u9FCC]$/.test(obj.charAt(index + length))) return true;
+        }
+    }
+
+    uievent._searchUsedFlags = function (flag) {
+        var list = [];
+        var events = ["events", "autoEvent", "changeFloor", "afterBattle", "afterGetItem", "afterOpenDoor"]
+        for (var floorId in core.floors) {
+            var floor = core.floors[floorId];
+            if (hasUsedFlags(floor.firstArrive, flag)) list.push([floorId, "firstArrive"]);
+            if (hasUsedFlags(floor.eachArrive, flag)) list.push([floorId, "eachArrive"]);
+            events.forEach(function (e) {
+                if (floor[e]) {
+                    for (var loc in floor[e]) {
+                        if (hasUsedFlags(floor[e][loc], flag)) {
+                            list.push([floorId, e, loc]);
+                        }
+                    }
+                }
+            });
+        }
+        // 公共事件
+        if (core.events.commonEvent) {
+            for (var name in core.events.commonEvent) {
+                if (hasUsedFlags(core.events.commonEvent[name], flag))
+                    list.push([null, name]);
+            }
+        }
+        return list;
+    }
+
+    // ------ 素材选择框 ------ //
+    uievent.selectMaterial = function (value, title, directory, transform, callback) {
+        fs.readdir(directory, function (err, data) {
+            if (err) {
+                printe(directory + '不存在！');
+                throw (directory + '不存在！');
+            }
+            if (!(data instanceof Array)) {
+                printe('没有可显示的内容')
+                return;
+            }
+            value = value || [];
+            data = (transform ? data.map(transform) : data).filter(function (one) {return one;}).sort();
+
+            uievent.isOpen = true;
+            uievent.elements.div.style.display = 'block';
+            uievent.mode = 'selectMaterial';
+            uievent.elements.selectPoint.style.display = 'none';
+            uievent.elements.yes.style.display = 'block';
+            uievent.elements.title.innerText = title;
+            uievent.elements.selectBackground.style.display = 'none';
+            uievent.elements.selectFloor.style.display = 'none';
+            uievent.elements.selectPointBox.style.display = 'none';
+            uievent.elements.canvas.style.display = 'none';
+            uievent.elements.usedFlags.style.display = 'none';
+            uievent.elements.usedFlagList.style.display = 'none';
+            uievent.elements.materialList.style.display = 'block';
+            uievent.elements.body.style.overflow = "auto";
+
+            uievent.elements.yes.onclick = function () {
+                var list = Array.from(document.getElementsByClassName('materialCheckbox')).filter(function (one) {
+                    return one.checked;
+                }).map(function (one) {return one.getAttribute('key'); });
+                uievent.close();
+                if (callback) callback(list);
+            }
+
+            // 显示每一项内容
+            var html = "<p style='margin-left: 10px; line-height: 25px'>";
+            html += "<button onclick='editor.uievent._selectAllMaterial(true)'>全选</button>"+
+                    "<button style='margin-left: 10px' onclick='editor.uievent._selectAllMaterial(false)'>全不选</button><br/>";
+            data.forEach(function (one) {
+                html += `<input type="checkbox" key="${one}" class="materialCheckbox" ${value.indexOf(one) >= 0? 'checked' : ''} /> ${one}`;
+                // 预览图片
+                if (one.endsWith('.png') || one.endsWith('.jpg') || one.endsWith('.jpeg') || one.endsWith('.gif')) {
+                    html += "<button onclick='editor.uievent._previewMaterialImage(this)' style='margin-left: 10px'>预览</button>";
+                    html += '<br style="display:none"/><img key="'+directory+one+'" style="display:none; max-width: 100%"/>';
+                }
+                // 试听音频
+                if (one.endsWith('.mp3') || one.endsWith('.wmv') || one.endsWith('.ogg') || one.endsWith('.wav')) {
+                    html += "<button onclick='editor.uievent._previewMaterialAudio(this)' style='margin-left: 10px'>试听</button>";
+                    html += '<br style="display:none"/><audio controls preload="none" src="'+directory+one+'" style="display:none; max-width: 100%"></audio>';
+                }
+                html += '<br/>';
+            });
+            html += "</p>";
+            uievent.elements.materialList.innerHTML = html;
+        });
+    }
+
+    uievent._selectAllMaterial = function (checked) {
+        Array.from(document.getElementsByClassName('materialCheckbox')).forEach(function (one) {
+            one.checked = checked;
+        })
+    }
+
+    uievent._previewMaterialImage = function (button) {
+        var br = button.nextElementSibling;
+        var img = br.nextElementSibling;
+        if (br.style.display == 'none') {
+            button.innerText = '折叠';
+            br.style.display = 'block';
+            img.style.display = 'block';
+            img.src = img.getAttribute('key');
+        } else {
+            button.innerText = '预览';
+            br.style.display = 'none';
+            img.style.display = 'none';
+        }
+    }
+
+    uievent._previewMaterialAudio = function (button) {
+        var br = button.nextElementSibling;
+        var audio = br.nextElementSibling;
+        if (br.style.display == 'none') {
+            button.innerText = '折叠';
+            br.style.display = 'block';
+            audio.style.display = 'block';
+        } else {
+            button.innerText = '试听';
+            br.style.display = 'none';
+            audio.style.display = 'none';
+        }
     }
 
     editor.constructor.prototype.uievent=uievent;

@@ -8,6 +8,7 @@ function editor() {
         body:document.body,
         eui:document.getElementById('eui'),
         euiCtx:document.getElementById('eui').getContext('2d'),
+        efgCtx:document.getElementById('efg').getContext('2d'),
         mid:document.getElementById('mid'),
         mapEdit:document.getElementById('mapEdit'),
         selectFloor:document.getElementById('selectFloor'),
@@ -15,7 +16,7 @@ function editor() {
         dataSelection : document.getElementById('dataSelection'),
         iconLib:document.getElementById('iconLib'),
         midMenu:document.getElementById('midMenu'),
-        addFloorEvent :document.getElementById('addFloorEvent'),
+        extraEvent: document.getElementById('extraEvent'),
         chooseThis : document.getElementById('chooseThis'),
         chooseInRight : document.getElementById('chooseInRight'),
         copyLoc : document.getElementById('copyLoc'),
@@ -25,27 +26,39 @@ function editor() {
         brushMod:document.getElementById('brushMod'),
         brushMod2:document.getElementById('brushMod2'),
         brushMod3:document.getElementById('brushMod3'),
+        brushMod4:document.getElementById('brushMod4'),
         bgc : document.getElementById('bg'),
+        bgCtx : document.getElementById('bg').getContext('2d'),
         fgc : document.getElementById('fg'),
-        evc : document.getElementById('event'), 
+        fgCtx : document.getElementById('fg').getContext('2d'),
+        evc : document.getElementById('event'),
+        evCtx : document.getElementById('event').getContext('2d'),
         ev2c : document.getElementById('event2'),
+        ev2Ctx : document.getElementById('event2').getContext('2d'),
         layerMod:document.getElementById('layerMod'),
         layerMod2:document.getElementById('layerMod2'),
         layerMod3:document.getElementById('layerMod3'),
         viewportButtons:document.getElementById('viewportButtons'),
         appendPicCanvas : document.getElementById('appendPicCanvas'),
-        bg : document.getElementById('appendPicCanvas').children[0],
-        source : document.getElementById('appendPicCanvas').children[1],
-        picClick : document.getElementById('appendPicCanvas').children[2],
-        sprite : document.getElementById('appendPicCanvas').children[3],
-        sourceCtx:document.getElementById('appendPicCanvas').children[1].getContext('2d'),
-        spriteCtx:document.getElementById('appendPicCanvas').children[3].getContext('2d'),
+        appendBgCtx : document.getElementById('appendPicCanvas').children[0].getContext('2d'),
+        appendSource : document.getElementById('appendPicCanvas').children[1],
+        appendPicClick : document.getElementById('appendPicCanvas').children[2],
+        appendSprite : document.getElementById('appendPicCanvas').children[3],
+        appendSourceCtx:document.getElementById('appendPicCanvas').children[1].getContext('2d'),
+        appendSpriteCtx:document.getElementById('appendPicCanvas').children[3].getContext('2d'),
         appendPicSelection : document.getElementById('appendPicSelection'),
         selectAppend : document.getElementById('selectAppend'),
         selectFileBtn :document.getElementById('selectFileBtn'),
         changeFloorId :document.getElementById('changeFloorId'),
+        changeFloorSize: document.getElementById('changeFloorSize'),
         left1 : document.getElementById('left1'),
         editModeSelect :document.getElementById('editModeSelect'),
+        mid2 : document.getElementById('mid2'),
+        clearLastUsedBtn: document.getElementById('clearLastUsedBtn'),
+        lastUsedDiv: document.getElementById('lastUsedDiv'),
+        lastUsed: document.getElementById('lastUsed'),
+        lastUsedCtx: document.getElementById('lastUsed').getContext('2d'),
+        lockMode: document.getElementById('lockMode'),
     };
 
     this.uivalues={
@@ -56,12 +69,9 @@ function editor() {
         startPos:null,
         endPos:null,
         // 撤销/恢复
-        currDrawData : {
-            pos: [],
-            info: {}
-        },
-        reDo : null,
-        preMapData : null,
+        preMapData : [],
+        preMapMax: 10,
+        postMapData: [],
         //
         shortcut:{},
         copyedInfo : null,
@@ -74,7 +84,28 @@ function editor() {
         lastCopyedInfo : [null, null],
         //
         ratio : 1,
+        // blockly转义
+        disableBlocklyReplace: false,
 
+        // 绑定机关门事件相关
+        bindSpecialDoor: {
+            loc: null,
+            n: -1,
+            enemys: []
+        },
+
+        // 复制怪物或道具属性
+        copyEnemyItem : {
+            type: null,
+            data: {}
+        },
+
+        // tile
+        tileSize: [1,1],
+        lockMode: false,
+
+        // 最近使用的图块
+        lastUsed: [],
     };
 
     window.onerror = function (msg, url, lineNo, columnNo, error) {
@@ -120,20 +151,23 @@ editor.prototype.init = function (callback) {
     var useCompress = main.useCompress;
     main.useCompress = false;
     editor.airwallImg = new Image();
-    editor.airwallImg.src = './project/images/airwall.png';
+    editor.airwallImg.src = './project/materials/airwall.png';
 
     main.init('editor', function () {
-        editor_util_wrapper(editor);
-        editor_game_wrapper(editor, main, core);
-        editor_file_wrapper(editor);
-        editor_table_wrapper(editor);
-        editor_ui_wrapper(editor);
-        editor_mappanel_wrapper(editor);
-        editor_datapanel_wrapper(editor);
-        editor_materialpanel_wrapper(editor);
-        editor_listen_wrapper(editor);
-        editor.printe=printe;
-        afterMainInit();
+        editor.config = new editor_config();
+        editor.config.load(function() {
+            editor_util_wrapper(editor);
+            editor_game_wrapper(editor, main, core);
+            editor_file_wrapper(editor);
+            editor_table_wrapper(editor);
+            editor_ui_wrapper(editor);
+            editor_mappanel_wrapper(editor);
+            editor_datapanel_wrapper(editor);
+            editor_materialpanel_wrapper(editor);
+            editor_listen_wrapper(editor);
+            editor.printe=printe;
+            afterMainInit();
+        })
     });
 
     var afterMainInit = function () {
@@ -146,10 +180,11 @@ editor.prototype.init = function (callback) {
             editor_mode = editor_mode(editor);
             editor.mode = editor_mode;
             core.resetGame(core.firstData.hero, null, core.firstData.floorId, core.clone(core.initStatus.maps));
-            core.changeFloor(core.status.floorId, null, core.firstData.hero.loc, null, function () {
+            var lastFloorId = editor.config.get('editorLastFloorId', core.status.floorId);
+            if (core.floorIds.indexOf(lastFloorId) < 0) lastFloorId = core.status.floorId;
+            core.changeFloor(lastFloorId, null, core.firstData.hero.loc, null, function () {
                 afterCoreReset();
             }, true);
-            core.events.setInitData(null);
         });
     }
 
@@ -181,6 +216,11 @@ editor.prototype.init = function (callback) {
         for (var floorId in editor.main.floors) {
             editor.addUsedFlags(JSON.stringify(editor.main.floors[floorId]));
         }
+        if (events_c12a15a8_c380_4b28_8144_256cba95f760.commonEvent) {
+            for (var name in events_c12a15a8_c380_4b28_8144_256cba95f760.commonEvent) {
+                editor.addUsedFlags(JSON.stringify(events_c12a15a8_c380_4b28_8144_256cba95f760.commonEvent[name]));
+            }
+        }
 
         if (editor.useCompress == null) editor.useCompress = useCompress;
         if (Boolean(callback)) callback();
@@ -191,9 +231,9 @@ editor.prototype.init = function (callback) {
 }
 
 editor.prototype.mapInit = function () {
-    var ec = document.getElementById('event').getContext('2d');
+    var ec = editor.dom.evCtx;
     ec.clearRect(0, 0, core.bigmap.width*32, core.bigmap.height*32);
-    document.getElementById('event2').getContext('2d').clearRect(0, 0, core.bigmap.width*32, core.bigmap.height*32);
+    editor.dom.ev2Ctx.clearRect(0, 0, core.bigmap.width*32, core.bigmap.height*32);
     editor.map = [];
     var sy=editor.currentFloorData.map.length,sx=editor.currentFloorData.map[0].length;
     for (var y = 0; y < sy; y++) {
@@ -226,7 +266,9 @@ editor.prototype.changeFloor = function (floorId, callback) {
         });
         editor.currentFloorData[name]=mapArray;
     }
-    editor.uivalues.preMapData = null;
+    editor.uivalues.preMapData = [];
+    editor.uivalues.postMapData = [];
+    editor.uifunctions._extraEvent_bindSpecialDoor_doAction(true);
     core.changeFloor(floorId, null, {"x": 0, "y": 0, "direction": "up"}, null, function () {
         editor.game.fetchMapFromCore();
         editor.updateMap();
@@ -237,24 +279,40 @@ editor.prototype.changeFloor = function (floorId, callback) {
         var loc = editor.viewportLoc[floorId] || [], x = loc[0] || 0, y = loc[1] || 0;
         editor.setViewport(x, y);
 
-        if (callback) callback();
+        editor.config.set('editorLastFloorId', floorId, function() {
+            if (callback) callback();
+        });  
     });
 }
 
 /////////// 游戏绘图相关 ///////////
 
 editor.prototype.drawEventBlock = function () {
-    var fg=document.getElementById('efg').getContext('2d');
+    var fg=editor.dom.efgCtx;
 
     fg.clearRect(0, 0, core.__PIXELS__, core.__PIXELS__);
+    var firstData = editor.game.getFirstData();
     for (var i=0;i<core.__SIZE__;i++) {
         for (var j=0;j<core.__SIZE__;j++) {
             var color=[];
             var loc=(i+core.bigmap.offsetX/32)+","+(j+core.bigmap.offsetY/32);
+            if (editor.currentFloorId == firstData.floorId
+                && loc == firstData.hero.loc.x + "," + firstData.hero.loc.y) {
+                fg.textAlign = 'center';
+                editor.game.doCoreFunc('fillBoldText', fg, 'S',
+                    32 * i + 16, 32 * j + 28, '#FFFFFF', null, 'bold 30px Verdana');
+            }
             if (editor.currentFloorData.events[loc])
                 color.push('#FF0000');
-            if (editor.currentFloorData.autoEvent[loc])
-                color.push('#FFA500');
+            if (editor.currentFloorData.autoEvent[loc]) {
+                var x = editor.currentFloorData.autoEvent[loc];
+                for (var index in x) {
+                    if (x[index] && x[index].data) {
+                        color.push('#FFA500');
+                        break;
+                    }
+                }
+            }
             if (editor.currentFloorData.afterBattle[loc])
                 color.push('#FFFF00');
             if (editor.currentFloorData.changeFloor[loc])
@@ -269,13 +327,19 @@ editor.prototype.drawEventBlock = function () {
                 fg.fillStyle = cc;
                 fg.fillRect(32*i+8*kk, 32*j+32-8, 8, 8);
             }
+            var index = editor.uivalues.bindSpecialDoor.enemys.indexOf(loc);
+            if (index >= 0) {
+                fg.textAlign = 'right';
+                editor.game.doCoreFunc("fillBoldText", fg, index + 1,
+                    32 * i + 28, 32 * j + 15, '#FF7F00', null, '14px Verdana');
+            }
         }
     }
 }
 
 editor.prototype.drawPosSelection = function () {
     this.drawEventBlock();
-    var fg=document.getElementById('efg').getContext('2d');
+    var fg=editor.dom.efgCtx;
     fg.strokeStyle = 'rgba(255,255,255,0.7)';
     fg.lineWidth = 4;
     fg.strokeRect(32*editor.pos.x - core.bigmap.offsetX + 4, 32*editor.pos.y - core.bigmap.offsetY + 4, 24, 24);
@@ -327,20 +391,45 @@ editor.prototype.updateMap = function () {
         //ctx.drawImage(core.material.images[tileInfo.images], 0, tileInfo.y*32, 32, 32, x*32, y*32, 32, 32);
     }
     // 绘制地图 start
-    var eventCtx = document.getElementById('event').getContext("2d");
-    var fgCtx = document.getElementById('fg').getContext("2d");
-    var bgCtx = document.getElementById('bg').getContext("2d");
-    for (var y = 0; y < editor.map.length; y++)
+    for (var y = 0; y < editor.map.length; y++) {
         for (var x = 0; x < editor.map[0].length; x++) {
             var tileInfo = editor.map[y][x];
-            drawTile(eventCtx, x, y, tileInfo);
+            drawTile(editor.dom.evCtx, x, y, tileInfo);
             tileInfo = editor.fgmap[y][x];
-            drawTile(fgCtx, x, y, tileInfo);
+            drawTile(editor.dom.fgCtx, x, y, tileInfo);
             tileInfo = editor.bgmap[y][x];
-            drawTile(bgCtx, x, y, tileInfo);
+            drawTile(editor.dom.bgCtx, x, y, tileInfo);
         }
+    }
     // 绘制地图 end
-    
+
+    this.updateLastUsedMap();
+}
+
+editor.prototype.updateLastUsedMap = function () {
+    // 绘制最近使用事件
+    var ctx = editor.dom.lastUsedCtx;
+    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    ctx.strokeStyle = 'rgba(255,128,0,0.85)';
+    ctx.lineWidth = 4;
+    for (var i = 0; i < editor.uivalues.lastUsed.length; ++i) {
+        try {
+            var x = i % core.__SIZE__, y = parseInt(i / core.__SIZE__);
+            var info = editor.uivalues.lastUsed[i];
+            if (!info || !info.images) continue;
+            if (info.isTile && core.material.images.tilesets[info.images]) {
+                ctx.drawImage(core.material.images.tilesets[info.images], 32 * info.x, 32 * info.y, 32, 32, x*32, y*32, 32, 32);
+            } else if (info.images == 'autotile' && core.material.images.autotile[info.id]) {
+                ctx.drawImage(core.material.images.autotile[info.id], 0, 0, 32, 32, x * 32, y * 32, 32, 32);
+            } else {
+                var per_height = info.images.endsWith('48') ? 48 : 32;
+                ctx.drawImage(core.material.images[info.images], 0, info.y * per_height, 32, per_height, x * 32, y * 32, 32, 32);
+            }
+            if (selectBox.isSelected() && editor.info.id == info.id) {
+                ctx.strokeRect(32 * x + 2, 32 * y + 2, 28, 28);
+            }
+        } catch (e) {}
+    }
 }
 
 editor.prototype.setViewport=function (x, y) {
@@ -365,10 +454,11 @@ editor.prototype.drawInitData = function (icons) {
     var maxHeight = 700;
     var sumWidth = 0;
     editor.widthsX = {};
-    editor.uivalues.folded = core.getLocalStorage('folded', false);
+    editor.uivalues.folded = editor.config.get('folded', false);
     // editor.uivalues.folded = true;
-    editor.uivalues.foldPerCol = 50;
+    editor.uivalues.foldPerCol = editor.config.get('foldPerCol', 50);
     // var imgNames = Object.keys(images);  //还是固定顺序吧；
+    editor.uivalues.lastUsed = editor.config.get("lastUsed", []);
     var imgNames = ["terrains", "animates", "enemys", "enemy48", "items", "npcs", "npc48", "autotile"];
 
     for (var ii = 0; ii < imgNames.length; ii++) {
@@ -541,7 +631,7 @@ editor.prototype.buildMark = function(){
     }
 }
 
-editor.prototype.setSelectBoxFromInfo=function(thisevent){
+editor.prototype.setSelectBoxFromInfo=function(thisevent, scrollTo){
     var pos={x: 0, y: 0, images: "terrains"};
     var ysize = 32;
     if(thisevent==0){
@@ -558,10 +648,17 @@ editor.prototype.setSelectBoxFromInfo=function(thisevent){
         }
         if(pos.x == 0) pos.y+=2;
     }
+    if (!editor.isMobile && scrollTo) {
+        editor.dom.iconLib.scrollLeft = pos.x * 32 - editor.dom.iconLib.offsetWidth / 2;
+        editor.dom.iconLib.scrollTop = pos.y * ysize - editor.dom.iconLib.offsetHeight / 2;
+    }
     editor.dom.dataSelection.style.left = pos.x * 32 + 'px';
     editor.dom.dataSelection.style.top = pos.y * ysize + 'px';
     editor.dom.dataSelection.style.height = ysize - 6 + 'px';
-    setTimeout(function(){selectBox.isSelected(true);});
+    setTimeout(function(){
+        selectBox.isSelected(true);
+        editor.updateLastUsedMap();
+    });
     editor.info = JSON.parse(JSON.stringify(thisevent));
     tip.infos(JSON.parse(JSON.stringify(thisevent)));
     editor.pos=pos;
@@ -573,6 +670,16 @@ editor.prototype.addUsedFlags = function (s) {
     s.replace(/flag:([a-zA-Z0-9_\u4E00-\u9FCC]+)/g, function (s0, s1) {
         editor.used_flags[s1] = true; return s0;
     });
+    s.replace(/flags\.([a-zA-Z_]\w*)/g, function (s0, s1) {
+        editor.used_flags[s1] = true; return s0;
+    });
+    if (window.flags) {
+        for (var s in editor.used_flags) {
+            if (!(s in window.flags)) {
+                window.flags[s] = null;
+            }
+        }
+    }
 }
 
 editor.prototype.listen = function () {
