@@ -1122,11 +1122,14 @@ events.prototype.__precompile_getArray = function () {
         "setValue", "setEnemy", "setFloor", "setGlobalValue",
     ];
     var uievents = [
-        "clearMap", "fillText", "fillBoldText", "fillRect", "strokeRect", "strokeCircle",
-        "drawIcon", "drawSelector", "drawBackground",
+        "clearMap", "fillText", "fillBoldText", "fillRect", "strokeRect", "fillEllipse", "strokeEllipse",
+        "fillArc", "strokeArc", "drawIcon", "drawSelector", "drawBackground",
     ];
     var others = {
-        "strokeCircle": ["r"],
+        "fillEllipse": ["a", "b"],
+        "strokeEllipse": ["a", "b"],
+        "fillArc": ["r", "start", "end"],
+        "strokeArc": ["r", "start", "end"],
         "drawLine": ["x1", "y1", "x2", "y2"],
         "drawArrow": ["x1", "y1", "x2", "y2"],
         "drawImage": ["x", "y", "w", "h", "x1", "y1", "w1", "h1"],
@@ -2213,11 +2216,19 @@ events.prototype._precompile_strokePolygon = function (data) {
     return data;
 }
 
-events.prototype._action_fillCircle = function (data, x, y, prefix) {
+events.prototype._action_fillEllipse = function (data, x, y, prefix) {
     this.__action_doUIEvent(data);
 }
 
-events.prototype._action_strokeCircle = function (data, x, y, prefix) {
+events.prototype._action_strokeEllipse = function (data, x, y, prefix) {
+    this.__action_doUIEvent(data);
+}
+
+events.prototype._action_fillArc = function (data, x, y, prefix) {
+    this.__action_doUIEvent(data);
+}
+
+events.prototype._action_strokeArc = function (data, x, y, prefix) {
     this.__action_doUIEvent(data);
 }
 
