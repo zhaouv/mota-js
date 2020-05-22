@@ -23,8 +23,8 @@ editor_table_wrapper = function (editor) {
     editor_table.prototype.checkbox = function (value) {
         return /* html */`<input type='checkbox' class='checkbox' ${(value ? 'checked ' : '')}/>\n`
     }
-    editor_table.prototype.textarea = function (value, indent) {
-        return /* html */`<textarea spellcheck='false'>${JSON.stringify(value, null, indent || 0)}</textarea>\n`
+    editor_table.prototype.textarea = function (value, indent, disable) {
+        return /* html */`<textarea spellcheck='false' ${disable ? 'disabled readonly' : ''}>${JSON.stringify(value, null, indent || 0)}</textarea>\n`
     }
     editor_table.prototype.checkboxSet = function (value, keys, prefixStrings) {
         if (value == null) value = [];
@@ -76,7 +76,7 @@ editor_table_wrapper = function (editor) {
         <td title="${field}">${shortField}</td>
         <td title="${commentHTMLescape}" cobj="${cobjstr}">${shortComment || commentHTMLescape}</td>
         <td><div class="etableInputDiv ${type}">${tdstr}</div></td>
-        <td>${editor.table.editGrid(shortComment, type != 'select' && type != 'checkbox' && type != 'checkboxSet')}</td>
+        <td>${editor.table.editGrid(shortComment, type != 'select' && type != 'checkbox' && type != 'checkboxSet' && type != 'disable')}</td>
         </tr>\n`
     }
 
@@ -283,7 +283,7 @@ editor_table_wrapper = function (editor) {
             case 'checkboxSet':
                 return editor.table.checkboxSet(thiseval, cobj._checkboxSet.key, cobj._checkboxSet.prefix);
             default: 
-                return editor.table.textarea(thiseval, cobj.indent || 0);
+                return editor.table.textarea(thiseval, cobj.indent || 0, cobj._type == 'disable');
         }
     }
 
@@ -412,6 +412,7 @@ editor_table_wrapper = function (editor) {
         if (cobj._type === 'event') editor_blockly.import(guid, { type: cobj._event });
         if (cobj._type === 'textarea') editor_multi.import(guid, { lint: cobj._lint, string: cobj._string });
         if (cobj._type === 'material') editor.table.selectMaterial(input, cobj);
+        if (cobj._type === 'color') editor.table.selectColor(input);
     }
 
     /**
@@ -426,6 +427,7 @@ editor_table_wrapper = function (editor) {
             if (cobj._type === 'event') editor_blockly.import(guid, { type: cobj._event });
             if (cobj._type === 'textarea') editor_multi.import(guid, { lint: cobj._lint, string: cobj._string });
             if (cobj._type === 'material') editor.table.selectMaterial(input, cobj);
+            if (cobj._type === 'color') editor.table.selectColor(input);
         } else if (editor_mode.doubleClickMode === 'add') {
             editor_mode.doubleClickMode = 'change';
             editor.table.addfunc(guid, obj, commentObj, thisTr, input, field, cobj, modeNode)
@@ -442,6 +444,21 @@ editor_table_wrapper = function (editor) {
             return one;
         }, function (data) {
             input.value = JSON.stringify(cobj._onconfirm ? eval("("+cobj._onconfirm+")(JSON.parse(input.value), data)") : data);
+            input.onchange();
+        })
+    }
+
+    editor_table.prototype.selectColor = function (input) {
+        if (input.value != null) {
+            var str = input.value.toString().replace(/[^\d.,]/g, '');
+            if (/^(25[0-5]|2[0-4]\d|1\d\d|[1-9]\d|\d),(25[0-5]|2[0-4]\d|1\d\d|[1-9]\d|\d),(25[0-5]|2[0-4]\d|1\d\d|[1-9]\d|\d)(,0(\.\d+)?|,1)?$/.test(str)) {            
+                document.getElementById('colorPicker').value = str;
+            }
+        }
+        var boundingBox = input.getBoundingClientRect();
+        openColorPicker(boundingBox.x, boundingBox.y + boundingBox.height, function (value) {
+            value = value.replace(/[^\d.,]/g, '');
+            input.value = '[' + value +']';
             input.onchange();
         })
     }

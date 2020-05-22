@@ -49,6 +49,61 @@ ActionParser.prototype.parse = function (obj,type) {
       }
       return MotaActionBlocks['level_m'].xmlText([text_choices]);
 
+    case 'levelChoose':
+      if(!obj) obj=[];
+      var text_choices = null;
+      for(var ii=obj.length-1,choice;choice=obj[ii];ii--) {
+        text_choices=MotaActionBlocks['levelChooseChoice'].xmlText([
+          choice.title, choice.name, choice.hard||0, choice.color, 'rgba('+choice.color+')', this.parseList(choice.action), text_choices]);
+      }
+      return MotaActionBlocks['levelChoose_m'].xmlText([text_choices]);
+
+    case 'equip':
+      if(!obj) obj={};
+      var buildEquip = function (obj) {
+        obj = obj || {};
+        var text_choices = null;
+        var knownEquipListKeys = MotaActionBlocks.equipKnown.json.args0[0].options.map(function (one) {return one[1];})
+        Object.keys(obj).sort().forEach(function (key) {
+          var one = knownEquipListKeys.indexOf(key) >= 0 ? 'equipKnown' : 'equipUnknown';
+          text_choices = MotaActionBlocks[one].xmlText([
+            key, obj.key, text_choices
+          ]);
+        })
+        return text_choices;
+      }
+      return MotaActionBlocks['equip_m'].xmlText([obj.type, obj.animate, buildEquip(obj.value), buildEquip(obj.percentage)]);
+
+      case 'doorInfo':
+        if(!obj) obj={};
+        var buildKeys = function (obj) {
+          obj = obj || {};
+          var text_choices = null;
+          var knownListKeys = MotaActionBlocks.doorKeyKnown.json.args0[0].options.map(function (one) {return one[1];})
+          Object.keys(obj).sort().forEach(function (key) {
+            var one = knownListKeys.indexOf(key) >= 0 ? 'doorKeyKnown' : 'doorKeyUnknown';
+            text_choices = MotaActionBlocks[one].xmlText([
+              key, obj.key, text_choices
+            ]);
+          })
+          return text_choices;
+        }
+        return MotaActionBlocks['doorInfo_m'].xmlText([obj.time || 160, obj.openSound, obj.closeSound, buildKeys(obj.keys)]);
+
+    case 'floorImage':
+      if(!obj) obj=[];
+      var text_choices = null;
+      for(var ii=obj.length-1,choice;choice=obj[ii];ii--) {
+        text_choices=MotaActionBlocks['floorOneImage'].xmlText([
+          choice.name, choice.reverse, choice.canvas||'bg', choice.x||0, choice.y||0, choice.disable||false, 
+          choice.sx, choice.sy, choice.w, choice.h, choice.frame, text_choices]);
+      }
+      return MotaActionBlocks['floorImage_m'].xmlText([text_choices]);
+
+    case 'faceIds':
+      if(!obj) obj={};
+      return MotaActionBlocks['faceIds_m'].xmlText([obj.up||"", obj.down||"", obj.left||"", obj.right||""]);
+
     case 'shop':
       var buildsub = function(obj,parser,next){
         var text_choices = null;
@@ -213,7 +268,7 @@ ActionParser.prototype.parseAction = function() {
         y_str.push(t[1]);
       })
       this.next = MotaActionBlocks['setBlock_s'].xmlText([
-        data.number||0,x_str.join(','),y_str.join(','),data.floorId||'',this.next]);
+        data.number||0,x_str.join(','),y_str.join(','),data.floorId||'',data.time,data.async||false,this.next]);
       break;
     case "turnBlock": // 事件转向
       data.loc=data.loc||[];
@@ -360,13 +415,13 @@ ActionParser.prototype.parseAction = function() {
       data.loc=data.loc||['','']
       if (data.sloc) {
         this.next = MotaActionBlocks['showImage_1_s'].xmlText([
-            data.code,data.image||data.name,data.sloc[0],data.sloc[1],data.sloc[2],data.sloc[3],data.opacity,
+            data.code,data.image||data.name,data.reverse,data.sloc[0],data.sloc[1],data.sloc[2],data.sloc[3],data.opacity,
             data.loc[0],data.loc[1],data.loc[2],data.loc[3],data.time||0,data.async||false,this.next
         ]);
       }
       else {
         this.next = MotaActionBlocks['showImage_s'].xmlText([
-              data.code,data.image||data.name,data.loc[0],data.loc[1],data.opacity,data.time||0,data.async||false,this.next]);
+              data.code,data.image||data.name,data.reverse,data.loc[0],data.loc[1],data.opacity,data.time||0,data.async||false,this.next]);
       }
       break;
     case "hideImage": // 清除图片
@@ -645,11 +700,11 @@ ActionParser.prototype.parseAction = function() {
       break;
     case "showHero":
       this.next = MotaActionBlocks['showHero_s'].xmlText([
-        this.next]);
+        data.time, data.async||false, this.next]);
       break;
     case "hideHero":
       this.next = MotaActionBlocks['hideHero_s'].xmlText([
-        this.next]);
+        data.time, data.async||false, this.next]);
       break;
     case "sleep": // 等待多少毫秒
       this.next = MotaActionBlocks['sleep_s'].xmlText([
@@ -812,12 +867,12 @@ ActionParser.prototype.parseAction = function() {
     case "drawImage": // 绘制图片
       if (data.x1 != null && data.y1 != null && data.w1 != null && data.h1 != null) {
         this.next = MotaActionBlocks['drawImage_1_s'].xmlText([
-          data.image, data.x, data.y, data.w, data.h, data.x1, data.y1, data.w1, data.h1, this.next
+          data.image, data.reverse, data.x, data.y, data.w, data.h, data.x1, data.y1, data.w1, data.h1, this.next
         ]);
       }
       else {
         this.next = MotaActionBlocks['drawImage_s'].xmlText([
-          data.image, data.x, data.y, data.w, data.h, this.next
+          data.image, data.reverse, data.x, data.y, data.w, data.h, this.next
         ]);
       }
       break;
@@ -1002,7 +1057,7 @@ ActionParser.prototype.matchEvalCompare=function(args, isShadow){
   if (raw[0]+raw.slice(-1)=='()') raw=raw.slice(1,-1);
   var str=raw
   var xml=MotaActionBlocks['expression_arithmetic_0'].xmlText
-  if (!/<=|<|>=|>|==|!=|&&|\|\|/.exec(str)) return {ret:false};
+  if (!/<=|<|>=|>|==|!=|===|!==|&&|\|\|/.exec(str)) return {ret:false};
   str=str.replace(/[^<>=!()&|]/g,' ')
   // 处理括号匹配
   var old;
@@ -1011,11 +1066,11 @@ ActionParser.prototype.matchEvalCompare=function(args, isShadow){
     str=str.replace(/\([^()]*\)/g,function(v){return Array.from({length:v.length+1}).join(' ')})
   } while (old!=str);
   // 按优先级依次寻找以下符号
-  var oplist=['<','<=','>','>=','==','!=','&&','||'].reverse()
+  var oplist=['<','<=','>','>=','==','!=','===','!==','&&','||'].reverse()
   for (var index = 0,op; op=oplist[index]; index++) {
-    var match=new RegExp('(?<= )'+(op=='||'?'\\|\\|':op)+'(?= )').exec(str)
+    var match=new RegExp(' '+(op=='||'?'\\|\\|':op)+' ').exec(str)
     if (!match) continue;
-    args=[this.expandEvalBlock([raw.slice(0,match.index)],isShadow),op.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'),this.expandEvalBlock([raw.slice(match.index+op.length)],isShadow)]
+    args=[this.expandEvalBlock([raw.slice(0,match.index+1)],isShadow),op.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'),this.expandEvalBlock([raw.slice(match.index+1+op.length)],isShadow)]
     return {ret:true,xml:xml,args:args}
   }
   return {ret:false}

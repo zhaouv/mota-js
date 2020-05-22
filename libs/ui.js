@@ -507,32 +507,61 @@ ui.prototype.splitLines = function (name, text, maxWidth, font) {
 
 ////// 绘制一张图片 //////
 ui.prototype.drawImage = function (name, image, x, y, w, h, x1, y1, w1, h1) {
+    // 检测文件名以 :x, :y, :o 结尾，表示左右翻转，上下翻转和中心翻转
     var ctx = this.getContextByName(name);
     if (!ctx) return;
+    var reverse = null;
     if (typeof image == 'string') {
+        if (image.endsWith(':x') || image.endsWith(':y') || image.endsWith(':o')) {
+            reverse = image.charAt(image.length - 1);
+            image = image.substring(0, image.length - 2);
+        }
         image = core.getMappedName(image);
         image = core.material.images.images[image];
-        if (!image) return;
+        if (!image || !(image instanceof Image)) return;
     }
+
+    var scale = {
+        'x': [-1, 1],
+        'y': [1, -1],
+        'o': [-1, -1]
+    };
 
     // 只能接受2, 4, 8个参数
     if (x != null && y != null) {
-        if (w != null && h != null) {
-            if (x1 != null && y1 != null && w1 != null && h1 != null) {
+        if (w == null || h == null) {
+            // 两个参数变成四个参数
+            w = image.width;
+            h = image.height;
+        }
+        if (x1 != null && y1 != null && w1 != null && h1 != null) {
+            if (reverse == null) {
                 ctx.drawImage(image, x, y, w, h, x1, y1, w1, h1);
-                return;
+            } else {
+                ctx.save();
+                ctx.translate(x1 + w1 / 2, y1 + h1 / 2);
+                ctx.scale(scale[reverse][0], scale[reverse][1]);
+                ctx.drawImage(image, x, y, w, h, -w1 / 2, -h1 / 2, w1, h1);
+                ctx.restore();
             }
-            ctx.drawImage(image, x, y, w, h);
             return;
         }
-        ctx.drawImage(image, x, y);
+        if (reverse == null) {
+            ctx.drawImage(image, x, y, w, h);
+        } else {
+            ctx.save();
+            ctx.translate(x + w / 2, y + h / 2);
+            ctx.scale(scale[reverse][0], scale[reverse][1]);
+            ctx.drawImage(image, -w / 2, -h / 2, w, h);
+            ctx.restore();
+        }
         return;
     }
 }
 
 ui.prototype._uievent_drawImage = function (data) {
     this._createUIEvent();
-    this.drawImage('uievent', data.image, core.calValue(data.x), core.calValue(data.y), core.calValue(data.w), core.calValue(data.h),
+    this.drawImage('uievent', data.image + (data.reverse || ''), core.calValue(data.x), core.calValue(data.y), core.calValue(data.w), core.calValue(data.h),
         core.calValue(data.x1), core.calValue(data.y1), core.calValue(data.w1), core.calValue(data.h1));
 }
 
@@ -547,7 +576,7 @@ ui.prototype.drawIcon = function (name, id, x, y, w, h, frame) {
             info = {image: core.statusBar.icons[id], posX: 0, posY: 0, height: 32};
         else return;
     }
-    ctx.drawImage(info.image, 32 * (info.posX + frame), info.height * info.posY, 32, info.height, x, y, w || 32, h || info.height);
+    core.drawImage(ctx, info.image, 32 * (info.posX + frame), info.height * info.posY, 32, info.height, x, y, w || 32, h || info.height);
 }
 
 ui.prototype._uievent_drawIcon = function (data) {
@@ -792,64 +821,53 @@ ui.prototype._clearUIEventSelector = function (codes) {
 ui.prototype._drawSelector = function (ctx, background, w, h, left, top) {
     left = left || 0;
     top = top || 0;
-    ctx = this.getContextByName(ctx);
-    if (!ctx) return;
-    if (typeof background == 'string')
-        background = core.material.images.images[background];
-    if (!(background instanceof Image)) return;
     // back
-    ctx.drawImage(background, 130, 66, 28, 28, left+2, top+2, w-4, h-4);
+    core.drawImage(ctx, background, 130, 66, 28, 28, left+2, top+2, w-4, h-4);
     // corner
-    ctx.drawImage(background, 128, 64,  2,  2, left,  top,  2,  2);
-    ctx.drawImage(background, 158, 64,  2,  2, left+w-2, top,  2,  2);
-    ctx.drawImage(background, 128, 94,  2,  2, left, top+h-2,  2,  2);
-    ctx.drawImage(background, 158, 94,  2,  2, left+w-2, top+h-2,  2,  2);
+    core.drawImage(ctx, background, 128, 64,  2,  2, left,  top,  2,  2);
+    core.drawImage(ctx, background, 158, 64,  2,  2, left+w-2, top,  2,  2);
+    core.drawImage(ctx, background, 128, 94,  2,  2, left, top+h-2,  2,  2);
+    core.drawImage(ctx, background, 158, 94,  2,  2, left+w-2, top+h-2,  2,  2);
     // border
-    ctx.drawImage(background, 130, 64, 28,  2, left+2, top, w-4,  2);
-    ctx.drawImage(background, 130, 94, 28,  2, left+2, top+h-2, w-4,  2);
-    ctx.drawImage(background, 128, 66,  2, 28, left,  top+2,  2,h-4);
-    ctx.drawImage(background, 158, 66,  2, 28, left+w-2, top+2,  2,h-4);
+    core.drawImage(ctx, background, 130, 64, 28,  2, left+2, top, w-4,  2);
+    core.drawImage(ctx, background, 130, 94, 28,  2, left+2, top+h-2, w-4,  2);
+    core.drawImage(ctx, background, 128, 66,  2, 28, left,  top+2,  2,h-4);
+    core.drawImage(ctx, background, 158, 66,  2, 28, left+w-2, top+2,  2,h-4);
 }
 
 ////// 绘制 WindowSkin
 ui.prototype.drawWindowSkin = function(background, ctx, x, y, w, h, direction, px, py) {
     background = background || core.status.textAttribute.background;
-    if (typeof background == 'string') {
-        background = core.getMappedName(background);
-        background = core.material.images.images[background];
-    }
 	// 仿RM窗口皮肤 ↓
-    var dstImage = core.getContextByName(ctx);
-    if (!dstImage) return;
     // 绘制背景
-    dstImage.drawImage(background, 0, 0, 128, 128, x+2, y+2, w-4, h-4);
+    core.drawImage(ctx, background, 0, 0, 128, 128, x+2, y+2, w-4, h-4);
     // 绘制边框
     // 上方
-    dstImage.drawImage(background, 128, 0,     16,     16,      x,      y,     16,     16);
+    core.drawImage(ctx, background, 128, 0,     16,     16,      x,      y,     16,     16);
     for (var dx = 0; dx < w - 64; dx += 32) {
-    dstImage.drawImage(background, 144, 0,     32,     16,x+dx+16,      y,     32,     16);
-    dstImage.drawImage(background, 144,48,     32,     16,x+dx+16, y+h-16,     32,     16);
+        core.drawImage(ctx, background, 144, 0,     32,     16,x+dx+16,      y,     32,     16);
+        core.drawImage(ctx, background, 144,48,     32,     16,x+dx+16, y+h-16,     32,     16);
     }
-    dstImage.drawImage(background, 144, 0,w-dx-32,     16,x+dx+16,      y,w-dx-32,     16);
-    dstImage.drawImage(background, 144,48,w-dx-32,     16,x+dx+16, y+h-16,w-dx-32,     16);
-    dstImage.drawImage(background, 176, 0,     16,     16, x+w-16,      y,     16,     16);
+    core.drawImage(ctx, background, 144, 0,w-dx-32,     16,x+dx+16,      y,w-dx-32,     16);
+    core.drawImage(ctx, background, 144,48,w-dx-32,     16,x+dx+16, y+h-16,w-dx-32,     16);
+    core.drawImage(ctx, background, 176, 0,     16,     16, x+w-16,      y,     16,     16);
     // 左右
     for (var dy = 0; dy < h - 64; dy += 32) {
-    dstImage.drawImage(background, 128,16,     16,     32,      x,y+dy+16,     16,     32);
-    dstImage.drawImage(background, 176,16,     16,     32, x+w-16,y+dy+16,     16,     32);
+        core.drawImage(ctx, background, 128,16,     16,     32,      x,y+dy+16,     16,     32);
+        core.drawImage(ctx, background, 176,16,     16,     32, x+w-16,y+dy+16,     16,     32);
     }
-    dstImage.drawImage(background, 128,16,     16,h-dy-32,      x,y+dy+16,     16,h-dy-32);
-    dstImage.drawImage(background, 176,16,     16,h-dy-32, x+w-16,y+dy+16,     16,h-dy-32);
+    core.drawImage(ctx, background, 128,16,     16,h-dy-32,      x,y+dy+16,     16,h-dy-32);
+    core.drawImage(ctx, background, 176,16,     16,h-dy-32, x+w-16,y+dy+16,     16,h-dy-32);
     // 下方
-    dstImage.drawImage(background, 128,48,     16,     16,      x, y+h-16,     16,     16);
-    dstImage.drawImage(background, 176,48,     16,     16, x+w-16, y+h-16,     16,     16);
+    core.drawImage(ctx, background, 128,48,     16,     16,      x, y+h-16,     16,     16);
+    core.drawImage(ctx, background, 176,48,     16,     16, x+w-16, y+h-16,     16,     16);
 
     // arrow
     if(px != null && py != null){
     	if(direction == 'up'){
-    		dstImage.drawImage(background,128,96,32,32,px,y+h-3,32,32);
+    		core.drawImage(ctx, background,128,96,32,32,px,y+h-3,32,32);
     	}else if(direction == 'down') {
-    		dstImage.drawImage(background,160,96,32,32,px,y-29,32,32);
+    		core.drawImage(ctx, background,160,96,32,32,px,y-29,32,32);
     	}
     }
     // 仿RM窗口皮肤 ↑
@@ -1045,7 +1063,7 @@ ui.prototype._drawTextContent_draw = function (ctx, tempCtx, content, config) {
         if (config.index >= config.blocks.length) return false;
         var block = config.blocks[config.index++];
         if (block != null) {
-            ctx.drawImage(tempCtx.canvas, block.left, block.top, block.width, block.height,
+            core.drawImage(ctx, tempCtx.canvas, block.left, block.top, block.width, block.height,
                 config.left + block.left + block.marginLeft, config.top + block.top + block.marginTop,
                 block.width, block.height);
         }
@@ -1283,18 +1301,14 @@ ui.prototype.drawTextBox = function(content, showAll) {
 ui.prototype._drawTextBox_drawImages = function (content) {
     return content.replace(/(\f|\\f)\[(.*?)]/g, function (text, sympol, str) {
         var ss = str.split(",");
-        if (ss.length!=3 && ss.length!=5 && ss.length!=9) return "";
-        ss[0] = core.getMappedName(ss[0]);
-        var img = core.material.images.images[ss[0]];
-        if (!img) return "";
         // 绘制
         if (ss.length==3)
-            core.drawImage('ui', img, parseFloat(ss[1]), parseFloat(ss[2]));
+            core.drawImage('ui', ss[0], parseFloat(ss[1]), parseFloat(ss[2]));
         else if (ss.length==5)
-            core.drawImage('ui', img, 0, 0, img.width, img.height, parseFloat(ss[1]), parseFloat(ss[2]), parseFloat(ss[3]), parseFloat(ss[4]));
+            core.drawImage('ui', ss[0], parseFloat(ss[1]), parseFloat(ss[2]), parseFloat(ss[3]), parseFloat(ss[4]));
         else if (ss.length==9 || ss.length==10) {
             if (ss.length==10) core.setAlpha('ui', parseFloat(ss[9]));
-            core.drawImage('ui', img, parseFloat(ss[1]), parseFloat(ss[2]), parseFloat(ss[3]), parseFloat(ss[4]), parseFloat(ss[5]), parseFloat(ss[6]), parseFloat(ss[7]), parseFloat(ss[8]));
+            core.drawImage('ui', ss[0], parseFloat(ss[1]), parseFloat(ss[2]), parseFloat(ss[3]), parseFloat(ss[4]), parseFloat(ss[5]), parseFloat(ss[6]), parseFloat(ss[7]), parseFloat(ss[8]));
             core.setAlpha('ui', 1);
         }
         return "";
@@ -1386,10 +1400,18 @@ ui.prototype._drawTextBox_drawTitleAndIcon = function (titleInfo, hPos, vPos, al
         core.status.boxAnimateObjs = [];
         // --- 勇士
         if (titleInfo.image == core.material.images.hero) {
-            core.clearMap('ui', hPos.left + 15, image_top, 32, titleInfo.height);
-            core.fillRect('ui', hPos.left + 15, image_top, 32, titleInfo.height, core.material.groundPattern);
-            core.drawImage('ui', titleInfo.image, 0, 0, core.material.icons.hero.width || 32, core.material.icons.hero.height,
-                hPos.left + 15, image_top, 32, titleInfo.height);
+            if (core.status.hero.animate) {
+                core.status.boxAnimateObjs.push({
+                    'bgx': hPos.left + 15, 'bgy': image_top, 'bgWidth': 32, 'bgHeight': titleInfo.height,
+                    'x': hPos.left + 15, 'y': image_top, 'height': titleInfo.height, 'animate': 4,
+                    'image': titleInfo.image, 'pos': core.material.icons.hero[core.getHeroLoc('direction')].loc * titleInfo.height
+                })
+            } else {
+                core.clearMap('ui', hPos.left + 15, image_top, 32, titleInfo.height);
+                core.fillRect('ui', hPos.left + 15, image_top, 32, titleInfo.height, core.material.groundPattern);
+                core.drawImage('ui', titleInfo.image, 0, 0, core.material.icons.hero.width || 32, core.material.icons.hero.height,
+                    hPos.left + 15, image_top, 32, titleInfo.height);
+            }            
         }
         else {
             core.status.boxAnimateObjs.push({
@@ -1655,16 +1677,15 @@ ui.prototype.drawWaiting = function(text) {
 ui.prototype.drawSwitchs = function() {
     core.status.event.id = 'switchs';
     var choices = [
-        "背景音乐： "+(core.musicStatus.bgmStatus ? "[ON]" : "[OFF]"),
-        "背景音效： "+(core.musicStatus.soundStatus ? "[ON]" : "[OFF]"),
+        "音乐/音效： "+(core.musicStatus.bgmStatus ? "[ON]" : "[OFF]") + " "+(core.musicStatus.soundStatus ? "[ON]" : "[OFF]"),
         //显示为 0~10 十挡
         " <     音量：" + Math.round(Math.sqrt(100 * core.musicStatus.userVolume)) + "     > ",
         //数值越大耗时越长
         " <   步时：" + core.values.moveSpeed + "   > ",
         " <   转场：" + core.values.floorChangeTime + "   > ",
+        " <   放缩：" + Math.max(core.domStyle.scale, 1) + "x   > ",
         "怪物显伤： "+(core.flags.displayEnemyDamage ? "[ON]" : "[OFF]"),
-        "临界显伤： "+(core.flags.displayCritical ? "[ON]" : "[OFF]"),
-        "领域显伤： "+(core.flags.displayExtraDamage ? "[ON]" : "[OFF]"),
+        "临界/领域： "+(core.flags.displayCritical ? "[ON]" : "[OFF]")+" "+(core.flags.displayExtraDamage ? "[ON]" : "[OFF]"),
         "血瓶绕路： "+(core.hasFlag('__potionNoRouting__') ? "[ON]":"[OFF]"),
         "单击瞬移： "+(!core.hasFlag("__noClickMove__") ? "[ON]":"[OFF]"),
         "返回主菜单"
@@ -2460,23 +2481,17 @@ ui.prototype._drawEquipbox_description = function (info, max_height) {
 }
 
 ui.prototype._drawEquipbox_getStatusChanged = function (info, equip, equipType, y) {
-    var compare, differentMode = null;
-    if (info.index < this.LAST) compare = core.compareEquipment(null, info.selectId);
-    else {
-        if (equipType<0) differentMode = '<当前没有该装备的空位，请先卸下装备>';
-        else {
-            var last = core.material.items[info.equipEquipment[equipType]]||{};
-            if (last.equip && (last.equip.percentage || false) != (equip.equip.percentage || false))
-                differentMode = '<数值和比例模式之间的切换不显示属性变化>';
-            else
-                compare = core.compareEquipment(info.selectId, info.equipEquipment[equipType]);
-        }
+    if (info.index < this.LAST) {
+        // 光标在装备栏上：查询卸下装备属性
+        return core.compareEquipment(null, info.selectId);
     }
-    if (differentMode != null) {
-        core.fillText('ui', differentMode, 10, y, '#CCCCCC', this._buildFont(14, false));
-        return;
+    if (equipType < 0) {
+        // 没有空位
+        core.fillText('ui', '<当前没有该装备的空位，请先卸下装备>', 10, y, '#CCCCCC', this._buildFont(14, false));
+        return null;
     }
-    return compare;
+    // 光标在装备上：查询装上后的属性变化
+    return core.compareEquipment(info.selectId, info.equipEquipment[equipType]);
 }
 
 ui.prototype._drawEquipbox_drawStatusChanged = function (info, y, equip, equipType) {
@@ -2486,19 +2501,19 @@ ui.prototype._drawEquipbox_drawStatusChanged = function (info, y, equip, equipTy
 
     // --- 变化值...
     core.setFont('ui', this._buildFont(14, true));
-    for (var name in compare) {
+    for (var name in core.status.hero) {
+        if (typeof core.status.hero[name] != 'number') continue;
+        var nowValue = core.getRealStatus(name);
+        // 查询新值
+        var newValue = (core.getStatus(name) + (compare.value[name] || 0))
+            * (core.getBuff(name) + (compare.percentage[name] || 0) / 100);
+        if (nowValue == newValue) continue;
         var text = this._drawEquipbox_getStatusName(name);
         this._drawEquipbox_drawStatusChanged_draw(text + " ", '#CCCCCC', obj);
-        var nowValue = core.getStatus(name) * core.getBuff(name), newValue = (core.getStatus(name) + compare[name]) * core.getBuff(name);
-        if (equip.equip.percentage) {
-            var nowBuff = core.getBuff(name), newBuff = nowBuff + compare[name] / 100;
-            nowValue = Math.floor(nowBuff * core.getStatus(name));
-            newValue = Math.floor(newBuff * core.getStatus(name));
-        }
         nowValue = core.formatBigNumber(nowValue);
         newValue = core.formatBigNumber(newValue);
         this._drawEquipbox_drawStatusChanged_draw(nowValue+"->", '#CCCCCC', obj);
-        this._drawEquipbox_drawStatusChanged_draw(newValue, compare[name]>0?'#00FF00':'#FF0000', obj);
+        this._drawEquipbox_drawStatusChanged_draw(newValue, newValue>nowValue?'#00FF00':'#FF0000', obj);
         obj.drawOffset += 8;
     }
 }
@@ -2636,7 +2651,7 @@ ui.prototype._drawSLPanel_drawRecord = function(title, data, x, y, size, cho, hi
         });
         if (core.isPlaying() && core.getFlag("hard") != data.hero.flags.hard) {
             core.fillRect('ui', x-size/2, y+15, size, size, [0, 0, 0, 0.4], 2);
-            core.fillText('ui', data.hard, x, parseInt(y+22+size/2), core.dom.hard.style.color, this._buildFont(30,true));
+            core.fillText('ui', data.hard, x, parseInt(y+22+size/2), data.hero.flags.__hardColor__ || 'red', this._buildFont(30,true));
         }
         var v = core.formatBigNumber(data.hero.hp,true)+"/"+core.formatBigNumber(data.hero.atk,true)+"/"+core.formatBigNumber(data.hero.def,true);
         var v2 = "/"+core.formatBigNumber(data.hero.mdef,true);
@@ -2829,7 +2844,6 @@ ui.prototype._drawStatistics_items = function (floorId, floor, id, obj) {
     if (obj.cls[id]=='items' && id!='superPotion') {
         var temp = core.clone(core.status.hero);
         core.setFlag("__statistics__", true);
-        var ratio = floor.item_ratio||1;
         try { eval(core.items.itemEffect[id]); }
         catch (e) {}
         hp = core.status.hero.hp - temp.hp;

@@ -236,7 +236,7 @@ ID必须由数字字母下划线组成，数字在1000以内，且均不能和�
 
 除此之外，额外素材在游戏中的使用和正式素材都是一致的，也能在前景或背景图层绘制。
 
-额外素材可以使用“tileset贴图”的方式进行绘制，一次绘制一个矩形区域。
+额外素材可以使用“tileset平铺”的方式进行绘制，一次绘制一个矩形区域。
 
 “辅助工具”中提供了“额外素材合并”，如果使用此功能，请不要对额外素材进行基于ID、索引和数字的判定和读写等操作，如确有此需求，可以创建一些玩家不可达也不可预览的隐藏样板层，然后用等量代换的办法去从样板层取用。
 ## 自定义道具效果
@@ -249,21 +249,18 @@ ID必须由数字字母下划线组成，数字在1000以内，且均不能和�
 
 如果你想要同种宝石在不同层效果不同的话，可以进行如下操作：
 
-1. 在楼层的item_ratio中定义宝石的比率（比如1-10的写1，11-20层写2等）
+1. 在楼层的ratio中定义宝石的比率（比如1-10的写1，11-20层写2等）
 2. 修改获得道具的itemEffect函数（编辑器中双击进行编辑）
 
 ``` js
-// ratio为楼层的item_ratio值，可以进行翻倍宝石属性
-core.status.hero.atk += core.values.redGem * ratio
+core.status.hero.atk += core.values.redGem * core.status.thisMap.ratio
 ```
-
-这里我们可以直接写ratio来取用该楼层中定义的`item_ratio`的值。
 
 如果不是倍数增加（比如线性增加）也可以类似来写
 
 ``` js
 // 一个二倍线性增加的例子
-core.status.hero.atk += core.values.redGem + 2*ratio
+core.status.hero.atk += core.values.redGem + 2*core.status.thisMap.ratio
 ```
 
 ### 消耗类道具（cls: tools）；永久类道具（cls: constants）

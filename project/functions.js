@@ -26,6 +26,7 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 	// 初始化地图
 	core.status.floorId = floorId;
 	core.status.maps = maps;
+	core.maps._resetFloorImages();
 	// 初始化怪物和道具
 	core.material.enemys = core.enemys.getEnemys();
 	core.material.items = core.items.getItems();
@@ -358,7 +359,9 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 	}
 
 	// 如果该点存在事件 -- V2.5.4 以后阻击怪也可以有战后事件了
-	core.push(todo, core.floors[core.status.floorId].afterBattle[x + "," + y]);
+	if (core.status.floorId != null) {
+		core.push(todo, core.floors[core.status.floorId].afterBattle[x + "," + y]);
+	}
 
 	// 在这里增加其他的自定义事件需求
 	/*
@@ -385,6 +388,7 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 
 	var todo = [];
 	// 检查该点的获得开门后事件。
+	if (core.status.floorId == null) return;
 	var event = core.floors[core.status.floorId].afterOpenDoor[x + "," + y];
 	if (event) core.unshift(todo, event);
 
@@ -403,6 +407,7 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 
 	var todo = [];
 	// 检查该点的获得道具后事件。
+	if (core.status.floorId == null) return;
 	var event = core.floors[core.status.floorId].afterGetItem[x + "," + y];
 	if (event && (event instanceof Array || !isGentleClick || !event.disableOnGentleClick)) {
 		core.unshift(todo, event);
@@ -1032,6 +1037,7 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 
 	// 难度
 	core.statusBar.hard.innerText = core.status.hard;
+	core.statusBar.hard.style.color = core.getFlag('__hardColor__', 'red');
 	// 自定义状态栏绘制
 	core.drawStatusBar();
 
@@ -1355,7 +1361,7 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 		// 绘制下一个数据
 		var name = toDraw[index];
 		// 图片大小25x25
-		ctx.drawImage(core.statusBar.icons[name], leftOffset, topOffset, 25, 25);
+		core.drawImage(ctx, core.statusBar.icons[name], leftOffset, topOffset, 25, 25);
 		// 文字内容
 		var text = (core.statusBar[name] || {}).innerText || " ";
 		// 斜体判定：如果不是纯数字和字母，斜体会非常难看，需要取消

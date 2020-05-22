@@ -22,17 +22,17 @@ var items_296f5d02_12fd_4166_a7c1_b5e830c9ee3a =
 		"redGem": {
 			"cls": "items",
 			"name": "红宝石",
-			"text": "'，攻击+${core.values.redGem}'"
+			"text": "攻击+${core.values.redGem}"
 		},
 		"blueGem": {
 			"cls": "items",
 			"name": "蓝宝石",
-			"text": "'，防御+${core.values.blueGem}'"
+			"text": "，防御+${core.values.blueGem}"
 		},
 		"greenGem": {
 			"cls": "items",
 			"name": "绿宝石",
-			"text": "'，护盾+${core.values.greenGem}'"
+			"text": "，护盾+${core.values.greenGem}"
 		},
 		"yellowGem": {
 			"cls": "items",
@@ -42,22 +42,22 @@ var items_296f5d02_12fd_4166_a7c1_b5e830c9ee3a =
 		"redPotion": {
 			"cls": "items",
 			"name": "红血瓶",
-			"text": "'，生命+${core.values.redPotion}'"
+			"text": "，生命+${core.values.redPotion}"
 		},
 		"bluePotion": {
 			"cls": "items",
 			"name": "蓝血瓶",
-			"text": "'，生命+${core.values.bluePotion}'"
+			"text": "，生命+${core.values.bluePotion}"
 		},
 		"yellowPotion": {
 			"cls": "items",
 			"name": "黄血瓶",
-			"text": "'，生命+${core.values.yellowPotion'}"
+			"text": "，生命+${core.values.yellowPotion}"
 		},
 		"greenPotion": {
 			"cls": "items",
 			"name": "绿血瓶",
-			"text": "'，生命+${core.values.greenPotion}'"
+			"text": "，生命+${core.values.greenPotion}"
 		},
 		"sword0": {
 			"cls": "items",
@@ -65,8 +65,10 @@ var items_296f5d02_12fd_4166_a7c1_b5e830c9ee3a =
 			"text": "一把已经生锈的剑",
 			"equip": {
 				"type": 0,
-				"atk": 0,
-				"animate": "sword"
+				"animate": "sword",
+				"value": {
+					"atk": 0
+				}
 			}
 		},
 		"sword1": {
@@ -75,8 +77,10 @@ var items_296f5d02_12fd_4166_a7c1_b5e830c9ee3a =
 			"text": "一把很普通的铁剑",
 			"equip": {
 				"type": 0,
-				"atk": 10,
-				"animate": "sword"
+				"animate": "sword",
+				"value": {
+					"atk": 10
+				}
 			}
 		},
 		"sword2": {
@@ -85,8 +89,10 @@ var items_296f5d02_12fd_4166_a7c1_b5e830c9ee3a =
 			"text": "一把很普通的银剑",
 			"equip": {
 				"type": 0,
-				"atk": 20,
-				"animate": "sword"
+				"animate": "sword",
+				"value": {
+					"atk": 20
+				}
 			}
 		},
 		"sword3": {
@@ -95,8 +101,10 @@ var items_296f5d02_12fd_4166_a7c1_b5e830c9ee3a =
 			"text": "一把很普通的骑士剑",
 			"equip": {
 				"type": 0,
-				"atk": 40,
-				"animate": "sword"
+				"animate": "sword",
+				"value": {
+					"atk": 40
+				}
 			}
 		},
 		"sword4": {
@@ -105,8 +113,10 @@ var items_296f5d02_12fd_4166_a7c1_b5e830c9ee3a =
 			"text": "一把很普通的圣剑",
 			"equip": {
 				"type": 0,
-				"atk": 80,
-				"animate": "sword"
+				"animate": "sword",
+				"value": {
+					"atk": 80
+				}
 			}
 		},
 		"sword5": {
@@ -115,8 +125,10 @@ var items_296f5d02_12fd_4166_a7c1_b5e830c9ee3a =
 			"text": "一把很普通的神圣剑",
 			"equip": {
 				"type": 0,
-				"atk": 100,
-				"animate": "sword"
+				"animate": "sword",
+				"value": {
+					"atk": 160
+				}
 			}
 		},
 		"shield0": {
@@ -125,7 +137,9 @@ var items_296f5d02_12fd_4166_a7c1_b5e830c9ee3a =
 			"text": "一个很破旧的铁盾",
 			"equip": {
 				"type": 1,
-				"def": 0
+				"value": {
+					"def": 0
+				}
 			}
 		},
 		"shield1": {
@@ -134,7 +148,9 @@ var items_296f5d02_12fd_4166_a7c1_b5e830c9ee3a =
 			"text": "一个很普通的铁盾",
 			"equip": {
 				"type": 1,
-				"def": 10
+				"value": {
+					"def": 10
+				}
 			}
 		},
 		"shield2": {
@@ -143,7 +159,9 @@ var items_296f5d02_12fd_4166_a7c1_b5e830c9ee3a =
 			"text": "一个很普通的银盾",
 			"equip": {
 				"type": 1,
-				"def": 20
+				"value": {
+					"def": 20
+				}
 			}
 		},
 		"shield3": {
@@ -152,7 +170,9 @@ var items_296f5d02_12fd_4166_a7c1_b5e830c9ee3a =
 			"text": "一个很普通的骑士盾",
 			"equip": {
 				"type": 1,
-				"def": 40
+				"value": {
+					"def": 40
+				}
 			}
 		},
 		"shield4": {
@@ -161,7 +181,9 @@ var items_296f5d02_12fd_4166_a7c1_b5e830c9ee3a =
 			"text": "一个很普通的圣盾",
 			"equip": {
 				"type": 1,
-				"def": 80
+				"value": {
+					"def": 80
+				}
 			}
 		},
 		"shield5": {
@@ -170,8 +192,10 @@ var items_296f5d02_12fd_4166_a7c1_b5e830c9ee3a =
 			"text": "一个很普通的神圣盾",
 			"equip": {
 				"type": 1,
-				"def": 100,
-				"mdef": 100
+				"value": {
+					"def": 100,
+					"mdef": 100
+				}
 			}
 		},
 		"superPotion": {
@@ -317,14 +341,14 @@ var items_296f5d02_12fd_4166_a7c1_b5e830c9ee3a =
 		}
 	},
 	"itemEffect": {
-		"redGem": "core.status.hero.atk += core.values.redGem * ratio",
-		"blueGem": "core.status.hero.def += core.values.blueGem * ratio",
-		"greenGem": "core.status.hero.mdef += core.values.greenGem * ratio",
+		"redGem": "core.status.hero.atk += core.values.redGem * core.status.thisMap.ratio",
+		"blueGem": "core.status.hero.def += core.values.blueGem * core.status.thisMap.ratio",
+		"greenGem": "core.status.hero.mdef += core.values.greenGem * core.status.thisMap.ratio",
 		"yellowGem": "core.status.hero.hp+=1000;core.status.hero.atk+=6;core.status.hero.def+=6;core.status.hero.mdef+=10;",
-		"redPotion": "core.status.hero.hp += core.values.redPotion * ratio",
-		"bluePotion": "core.status.hero.hp += core.values.bluePotion * ratio",
-		"yellowPotion": "core.status.hero.hp += core.values.yellowPotion * ratio",
-		"greenPotion": "core.status.hero.hp += core.values.greenPotion * ratio",
+		"redPotion": "core.status.hero.hp += core.values.redPotion * core.status.thisMap.ratio",
+		"bluePotion": "core.status.hero.hp += core.values.bluePotion * core.status.thisMap.ratio",
+		"yellowPotion": "core.status.hero.hp += core.values.yellowPotion * core.status.thisMap.ratio",
+		"greenPotion": "core.status.hero.hp += core.values.greenPotion * core.status.thisMap.ratio",
 		"sword0": "core.status.hero.atk += 0",
 		"sword1": "core.status.hero.atk += 10",
 		"sword2": "core.status.hero.atk += 20",
@@ -342,29 +366,29 @@ var items_296f5d02_12fd_4166_a7c1_b5e830c9ee3a =
 		"silverCoin": "core.status.hero.money += 500"
 	},
 	"itemEffectTip": {
-		"redGem": "'，攻击+'+core.values.redGem * ratio",
-		"blueGem": "'，防御+'+core.values.blueGem * ratio",
-		"greenGem": "'，护盾+'+core.values.greenGem * ratio",
-		"yellowGem": "'，全属性提升'",
-		"redPotion": "'，生命+'+core.values.redPotion * ratio",
-		"bluePotion": "'，生命+'+core.values.bluePotion * ratio",
-		"yellowPotion": "'，生命+'+core.values.yellowPotion * ratio",
-		"greenPotion": "'，生命+'+core.values.greenPotion * ratio",
-		"sword0": "'，攻击+0'",
-		"sword1": "'，攻击+10'",
-		"sword2": "'，攻击+20'",
-		"sword3": "'，攻击+40'",
-		"sword4": "'，攻击+80'",
-		"sword5": "'，攻击+100'",
-		"shield0": "'，防御+0'",
-		"shield1": "'，防御+10'",
-		"shield2": "'，防御+20'",
-		"shield3": "'，防御+40'",
-		"shield4": "'，防御+80'",
-		"shield5": "'，防御+100，护盾+100'",
-		"bigKey": "'，全钥匙+1'",
-		"superPotion": "'，生命值翻倍'",
-		"silverCoin": "'，金币+500'"
+		"redGem": "，攻击+${core.values.redGem * core.status.thisMap.ratio}",
+		"blueGem": "，防御+${core.values.blueGem * core.status.thisMap.ratio}",
+		"greenGem": "，护盾+${core.values.greenGem * core.status.thisMap.ratio}",
+		"yellowGem": "，全属性提升",
+		"redPotion": "，生命+${core.values.redPotion * core.status.thisMap.ratio}",
+		"bluePotion": "，生命+${core.values.bluePotion * core.status.thisMap.ratio}",
+		"yellowPotion": "，生命+${core.values.yellowPotion * core.status.thisMap.ratio}",
+		"greenPotion": "，生命+${core.values.greenPotion * core.status.thisMap.ratio}",
+		"sword0": "，攻击+0",
+		"sword1": "，攻击+10",
+		"sword2": "，攻击+20",
+		"sword3": "，攻击+40",
+		"sword4": "，攻击+80",
+		"sword5": "，攻击+100",
+		"shield0": "，防御+0",
+		"shield1": "，防御+10",
+		"shield2": "，防御+20",
+		"shield3": "，防御+40",
+		"shield4": "，防御+80",
+		"shield5": "，防御+100，护盾+100",
+		"bigKey": "，全钥匙+1",
+		"superPotion": "，生命值翻倍",
+		"silverCoin": "，金币+500"
 	},
 	"useItemEffect": {
 		"book": "core.ui.drawBook(0);",
